@@ -60,6 +60,7 @@
 46. Next After Phase 2 — Phase 3 hand-off brief
 47. TASK-10 Resumption Brief (when Phase 2 stops short of the review queue)
 48. Phase 2 Sign-off and Phase 3 Go/No-Go
+49. Review of the ad-hoc "Dashboard Redesign" prompt
 
 ---
 
@@ -5978,5 +5979,187 @@ The full brief is §46. In short:
 Hand the agent this document plus **TASK-08 only**. Do not hand all three at once — TASK-09 renders into a contract that does not exist until TASK-08 lands.
 
 **Expect the list to still look wrong at the end of Phase 3.** The seven undefined custom properties from §11.2 are not repaired until TASK-14, which leads Phase 4. Correct behaviour first, appearance second.
+
+---
+
+# 49. Review of the ad-hoc "Dashboard Redesign" prompt
+
+A prompt was written and handed to a coding agent asking it to redesign `/admin`, add a theme toggle, and fix the washed-out light mode. This section assesses that prompt against the real codebase. Seven of its premises are factually wrong, and two of its instructions will silently produce dead code.
+
+**Note on scope:** this work sits in Phase 4 (§44). Phase 3 has not started. Running it now means the article rows being restyled are the ones TASK-08 and TASK-09 are about to replace.
+
+## 49.1 Factual errors in the prompt
+
+| # | Prompt claims | Reality (verified) |
+|---|---|---|
+| 1 | "xCipher / GridX platform" | **GridX does not exist.** It is a fiction in the stale `AGENT_SKILL.md` (§13, TASK-32). Naming it invites the agent to invent components to match. |
+| 2 | "Missing Theme Toggle: no theme switcher exists" | **It already exists.** `components/layout/ThemeToggle.tsx` is a complete, hydration-safe toggle with `aria-label`, a mounted guard and sun/moon icons. `ThemeProvider` is already mounted in `app/layout.tsx` with `attribute="data-theme"`, `storageKey="xcipher-theme"`, `enableSystem` and `disableTransitionOnChange`. It is used by `SiteHeader`, `MobileDrawer`, `ArticleSidebar` and `ArticleMobileToolbar`. The only thing missing is **one import and one JSX line** in the admin header. |
+| 3 | "Inspect `tailwind.config.*`" | **No such file.** Tailwind v4 is configured CSS-first via `@import "tailwindcss"` + `@theme inline` in `app/globals.css`. |
+| 4 | "Check `@/components/ui/` for badge, dropdown, table, button primitives" | `components/ui/` contains exactly **one** file: `ConfirmDialog.tsx`. None of those primitives exist. |
+| 5 | "Use semantic tokens `bg-background`, `bg-card`, `text-foreground`, `text-muted-foreground`, `border-border`" | **None of these exist.** They are shadcn/ui conventions. A grep for `--background`, `--card`, `--muted-foreground` and `--border` in `app/globals.css` returns **zero**. The real tokens are `--paper`, `--surface`, `--ink`, `--muted`, `--line`, exposed to Tailwind as `bg-paper`, `bg-surface`, `text-ink`, `text-muted`, `border-line`. |
+| 6 | "Use `dark:hover:bg-neutral-900`, `dark:text-red-400`" | **Every `dark:` utility will silently do nothing.** Dark mode here is `[data-theme="dark"]`, not a `.dark` class, and `app/globals.css` declares no `@custom-variant dark`. Tailwind v4's default `dark:` variant will never match. |
+| 7 | "Sidebar active state is `bg-red-600 text-white`" | The class is `.cs-nav a.active` in `app/globals.css`, not a Tailwind utility. Searching for the utility will not find it. |
+
+## 49.2 Internal contradictions
+
+- **"Eliminate hardcoded color hexes"** — then immediately prescribes `bg-[#fafafa]`, `bg-[#0c0d10]`, `bg-[#14171c]`, `border-neutral-200/80`, `text-neutral-950`. These are hardcoded hexes and arbitrary values, and they will not respond to the theme.
+- **"Elevated metric cards"** contradicts the no-box principle this plan is built on (§42.6) and the original instruction that the console must not be a grid of cards. Elevated cards are exactly the `.cs-card` / `.stat` pattern §42.10 says to delete.
+- **"Do not leave light mode washed-out"** is the correct goal, but the prompt's diagnosis — hardcoded grey classes — is wrong, so the fix it prescribes cannot work.
+
+## 49.3 The actual root cause, which the prompt never mentions
+
+Light mode looks washed-out because **seven custom properties are referenced roughly ninety times and declared nowhere** (§11.2). Re-verified just now — still zero declarations each:
+
+```
+--bg-elevated   0 declarations   (~15 uses in CSS, ~5 in TSX)
+--ink-muted     0 declarations   (~43 uses)
+--success       0 declarations   (~9 uses)
+--error         0 declarations   (~11 uses)
+--warning       0 declarations   (~5 uses)
+--surface-1     0 declarations   (~2 uses)
+--bg            0 declarations   (~5 uses)
+```
+
+The consequences are exactly what the screenshot shows:
+
+- `--ink-muted` resolving to nothing means **secondary text inherits primary ink** — there is no text hierarchy, so everything reads flat and muddy.
+- `--bg-elevated` resolving to nothing means **metric tiles and the sidebar have no surface** — they sit directly on the page background, which is why the cards look faint and unrefined.
+- `--success` / `--warning` / `--error` resolving to nothing means **status colours fall back to inherited values** — which is why status reads as grey text.
+- A row separator declared with an undefined colour falls back to full-strength ink, producing heavy black rules where hairlines were intended.
+
+No amount of `bg-[#fafafa]` fixes this. The seven aliases in §42.2 do, in about ten lines:
+
+```css
+:root {
+  --bg:          var(--paper);
+  --bg-elevated: var(--surface);
+  --surface-1:   var(--surface);
+  --ink-muted:   var(--muted);
+  --success:     var(--ok);
+  --warning:     var(--warn);
+  --error:       var(--bad);
+}
+```
+
+Dark mode inherits automatically, because every alias points at a token that already has a `[data-theme="dark"]` override at `app/globals.css:51-69`.
+
+There is also a real contrast bug the prompt missed: `.btn-cs.primary` sets `background: var(--accent)` with `color: var(--ink)` — dark red on near-black ink. That is the "Start new story" button the prompt calls "a flat red block".
+
+## 49.4 What the prompt gets right
+
+- The washed-out light mode, the solid-red active state, the disconnected profile card and the metadata-free story list are all **real, already-documented defects** (§4, §11, §13).
+- Restrained red discipline matches §42.1 principle 4 exactly.
+- Status badges by colour **and** shape, `divide-y` row layout, focus rings, `transition-colors` and WCAG AA all match §41.5, §42.6 and §42.8.
+- The accessibility requirements are correct and were missing from the codebase.
+
+## 49.5 Did it solve the problem?
+
+**Partially at best, and it likely introduced new debt.** Assessed against the prompt's own Definition of Done:
+
+| Definition of Done item | Likely outcome |
+|---|---|
+| Theme toggle in admin header | ✅ Achievable — but the correct fix was importing the existing `ThemeToggle`, not building one. If the agent built a second toggle, there are now two implementations with one storage key. |
+| Light mode high-contrast | ❌ Not durably. Without declaring the seven aliases, `--ink-muted` and `--bg-elevated` are still undefined everywhere else in the console. Any page the agent did not touch is still washed out, and the ones it did touch are now hardcoded rather than tokenised. |
+| Sidebar active state refined | ⚠️ Likely, but if written with `dark:` utilities the dark-mode half does nothing. |
+| Article lists with rich metadata | ⚠️ Cosmetic only. Status badges need `APPROVED`/`SCHEDULED`/`ARCHIVED` and read time; read time is never persisted (§33 M28) and the richer row is TASK-09, which depends on TASK-08's row contract. This will be rebuilt in Phase 3. |
+| Zero TypeScript / lint errors | ⚠️ Probable, since dead `dark:` utilities and non-existent token classes fail silently rather than erroring. **A clean build does not mean it worked.** |
+
+## 49.6 How to check what the agent actually did
+
+```
+git diff --stat HEAD~1                      # scope of the change
+grep -rn "dark:" app/admin components/editorial | wc -l   # every hit is dead code
+grep -rn "bg-background\|bg-card\|text-muted-foreground\|border-border" app components
+grep -rn "#fafafa\|#0c0d10\|#14171c\|neutral-950\|neutral-200" app components
+grep -c -- "--ink-muted:" app/globals.css   # must be 1, not 0
+grep -rn "ThemeToggle" app components       # must be ONE component, imported twice
+```
+
+Any hit in lines 2, 3 or 4 is new debt to remove. Line 5 returning `0` means the real bug is untouched.
+
+## 49.7 Corrected prompt — use this instead
+
+Two changes from the original: fix the tokens first, and use the real vocabulary.
+
+ROLE:
+You are a senior front-end engineer working inside an existing technology publishing platform. This is a Next.js 16 App Router project using Tailwind v4 configured CSS-first. There is no Tailwind config file and no shadcn/ui.
+
+TASK:
+Fix the console's broken design tokens, then mount the existing theme toggle in the admin header and refine the sidebar active state. Do not restyle the article list; that is handled by a later task.
+
+FIRST:
+Read the root and dark-theme variable blocks and the `@theme inline` block at the top of `app/globals.css`. Confirm for yourself that the custom properties named background, elevated background, muted ink, success, warning, error and surface-one are referenced throughout the stylesheet and components but declared nowhere. Then read `components/layout/ThemeToggle.tsx` and `components/layout/ThemeProvider.tsx`, and confirm a complete theme toggle already exists and is already mounted at the application root.
+
+CURRENT IMPLEMENTATION:
+The stylesheet defines a coherent editorial palette as custom properties on the root element with overrides under a dark data-theme attribute selector, and republishes them as Tailwind theme tokens. The console block, pasted from a standalone HTML prototype, references a different set of seven custom properties that were never declared. A working, hydration-safe theme toggle exists and is used by the public site header, the mobile drawer and the article sidebar, but it was never added to the admin header, which contains only a view-site link and a sign-out control.
+
+PROBLEM:
+Because the muted ink property resolves to nothing, secondary text inherits the primary ink colour and the console has no text hierarchy. Because the elevated background property resolves to nothing, the sidebar and the statistic tiles have no surface. Row separators declared with an undefined colour fall back to full-strength ink, producing heavy black rules where hairlines were intended. Together these make light mode look flat, grey and unfinished. Separately, the admin header offers no way to switch themes, and the active sidebar item is a solid saturated red block that dominates the viewport.
+
+ROOT CAUSE:
+Console CSS was copied from a prototype that used a different token naming scheme, and the two vocabularies were never reconciled.
+
+GOAL:
+Every referenced token resolves in both themes, the admin header exposes the existing theme toggle, and the sidebar active state is a restrained indicator rather than a solid slab.
+
+FUNCTIONAL REQUIREMENTS:
+Declare the seven missing custom properties as aliases onto the existing palette in the root block, so that background maps to paper, elevated background and surface-one map to surface, muted ink maps to muted, success maps to the positive token, warning maps to the caution token and error maps to the negative token. Do not add dark-theme overrides for the aliases; they inherit automatically because each target already has one. Import the existing theme toggle component into the admin header and place it before the view-site link. Do not create a second toggle. Replace the solid red active state on the sidebar with a two-pixel accent left bar plus a font-weight shift and a background tint of no more than ten percent accent opacity. Fix the primary button, which currently places ink-coloured text on the accent background, by using white text and verifying contrast in both themes.
+
+ROLE & PERMISSIONS:
+Not applicable. Do not change any guard, query or action.
+
+DATA REQUIREMENTS:
+None. Do not touch data fetching, the session context or routing.
+
+UI/UX REQUIREMENTS:
+Use only the existing token vocabulary: paper, surface, surface-2, surface-3, ink, ink-2, muted, faint, line, line-2, accent, accent-deep, accent-soft, ok, warn, bad. In Tailwind these are available as background, text and border utilities named after those tokens. Do not introduce background, card, foreground, muted-foreground or border utility names; they do not exist in this project and will produce no styling.
+
+DESIGN SYSTEM:
+Do not add cards, shadows or elevated containers. Structure comes from whitespace, typography and single hairline dividers. The accent red is reserved for the wordmark, primary buttons, the active navigation indicator and focus rings, and must never encode a status.
+
+DARK MODE:
+Dark mode is driven by a data-theme attribute on the document element, not by a class. Tailwind's default dark variant will not match, so it must not be used. Write theme-dependent styling by declaring the token once under the dark attribute selector in the stylesheet, never with a dark-prefixed utility. Verify by grepping your own diff for dark-prefixed utilities and removing every one you find.
+
+RESPONSIVE REQUIREMENTS:
+Do not change the responsive behaviour in this task; the console's mobile layout is handled separately.
+
+ACCESSIBILITY:
+The existing toggle already carries an accessible label and a mounted guard; do not weaken either. Every interactive element must keep a visible focus ring. Verify muted text and the primary button at four and a half to one in both themes.
+
+SECURITY:
+Not applicable.
+
+PERFORMANCE:
+Report the stylesheet size before and after.
+
+BACKWARD COMPATIBILITY:
+The public site shares the same root variables. Verify that the home page, an article page and a category page are visually unchanged.
+
+TESTING:
+Add a script that extracts every custom property reference from the stylesheet and from components and asserts each has a declaration, and run it as part of the build.
+
+ACCEPTANCE CRITERIA:
+No undefined custom property remains. The admin header contains exactly one theme toggle, and it is the pre-existing component. Toggling updates the header, sidebar, canvas, text, borders and badges instantly with no hydration warning, and the choice survives a reload. The sidebar active state is no longer a solid red block. No dark-prefixed utility appears anywhere in the diff. The public site is visually unchanged.
+
+VERIFICATION:
+Run the token script. Walk every console route in both themes at 375, 768 and 1440 pixels. Grep the diff for dark-prefixed utilities, for arbitrary hex values, and for the shadcn token names, and confirm zero matches.
+
+CONSTRAINTS:
+* Do not rewrite unrelated code.
+* Do not remove existing functionality unnecessarily.
+* Reuse existing architecture where practical.
+* Reuse existing dependencies when possible.
+* Do not add unnecessary packages.
+* Preserve existing data.
+* Maintain responsive behavior.
+* Maintain accessibility.
+* Review the diff before completion.
+
+## 49.8 Recommendation
+
+1. **Review what the agent produced** with the greps in §49.6 before building on it. Revert anything using `dark:` utilities, shadcn token names or arbitrary hexes.
+2. **Land the seven aliases** from §49.3 regardless — it is ten lines and it is the actual bug.
+3. **Then return to Phase 3** (`TASK-08 → TASK-09 → TASK-06`, §46). The article row this prompt asked to redesign is replaced by TASK-09, which needs TASK-08's contract first. Styling it now is work done twice.
+4. **Do the full visual pass as Phase 4** (`TASK-14 → TASK-13 → TASK-12 → TASK-15`), where it belongs and where the primitives get built once rather than per page.
 
 ---
