@@ -58,6 +58,7 @@
 44. Phased Execution Roadmap
 45. Phase 2 Plan Review — gaps to close before "done"
 46. Next After Phase 2 — Phase 3 hand-off brief
+47. TASK-10 Resumption Brief (when Phase 2 stops short of the review queue)
 
 ---
 
@@ -5726,5 +5727,124 @@ No visual system fix. The seven undefined CSS custom properties are still undefi
 - [ ] Status is distinguishable with colour disabled.
 - [ ] A scheduled article publishes automatically and is invisible publicly beforehand.
 - [ ] `/admin/drafts` and `/admin/submissions` still redirect correctly with presets.
+
+---
+
+# 47. TASK-10 Resumption Brief (when Phase 2 stops short of the review queue)
+
+TASK-10 is the last item on the Phase 2 checklist and the largest: two new routes, a claim mechanism, ageing, a two-pane decision screen and a server-computed pre-flight. It is the item most likely to be skipped or silently deferred. Before re-running it, confirm its prerequisites actually exist — TASK-10 **cannot** be built without them, and an agent that finds them missing will usually move on rather than fail loudly.
+
+## 47.1 Prerequisite audit — run these first
+
+| # | Check | Command / location | Why TASK-10 needs it |
+|---|---|---|---|
+| 1 | `submittedAt` column exists on `Article` | `grep -n "submittedAt" prisma/schema.prisma` | The queue is ordered by submission time and ageing is computed from it. Without it there is nothing to order by. |
+| 2 | Claim fields exist (`reviewerId`, `claimedAt`) | `grep -n "reviewerId\|claimedAt" prisma/schema.prisma` | Claiming is a conditional update on `reviewerId`. No column, no claim. |
+| 3 | `ArticleReview` model exists | `grep -n "model ArticleReview" prisma/schema.prisma` | The decision screen renders review history and the pass number. |
+| 4 | **Migration actually applied**, not just generated | `npx prisma migrate status` | `prisma generate` only rebuilds the client. If no migration ran, the database has none of the above columns and every queue query throws at runtime. |
+| 5 | Workflow actions exist and are callable | `ls app/actions/workflow.ts` | The decision panel must call `approveArticle` / `requestChanges` / `rejectArticle`, never write the article directly. |
+| 6 | Capability layer exposes `article.review` | `grep -n "article.review" lib/capabilities.ts` | Both routes are gated on it. |
+| 7 | `SUBMITTED`-only scope is reachable | the unified index from TASK-01 | The queue is that scope with a preset filter. |
+
+If check 4 fails, **stop**. Apply the migration first. Everything else in Phase 2 that appears to work is working only against the Prisma client's type definitions, not the real database.
+
+## 47.2 Why TASK-10 commonly gets skipped
+
+1. **Budget exhaustion.** It is the fifth and biggest task in a five-task run. Agents frequently complete four and summarise the fifth as "pending".
+2. **Missing columns.** If `submittedAt` or the claim fields never landed (see 47.1), the ordering and claiming requirements are unimplementable, so the agent defers rather than inventing schema mid-task.
+3. **Migration skipped.** A checklist note such as "migration skipped, generate used" means the database and the schema file disagree. Any new route querying new columns fails immediately, so the agent avoids creating it.
+4. **Ambiguity about `/admin/submissions`.** The task requires the old route to become a redirect. An agent unwilling to delete a working page may stall rather than replace it.
+
+## 47.3 Resumption prompt — hand this alone, with this document
+
+ROLE:
+You are a senior full-stack engineer working inside an existing technology publishing platform.
+
+TASK:
+Implement TASK-10 only — the dedicated review queue and focused review screen. Phase 2 tasks 16, 04, 05 and 11 are already done; do not redo them.
+
+FIRST:
+Before writing any code, verify the prerequisites and report the result of each: that `Article` has `submittedAt`, `reviewerId` and `claimedAt`; that the `ArticleReview` model exists; that `npx prisma migrate status` reports no pending migration; that `app/actions/workflow.ts` exports the approve, request-changes and reject actions; and that the capability layer exposes the review capability. If any check fails, stop and report it rather than working around it.
+
+CURRENT IMPLEMENTATION:
+Review decisions are reachable only through the existing submissions route, which lists submitted, review and revision-requested articles ordered by the updated timestamp in the generic table, and through a decision panel embedded in the article editor.
+
+PROBLEM:
+The queue never empties because revision-requested articles remain in it, ordering by the updated timestamp sorts by the author's last keystroke rather than by submission time, nothing prevents two reviewers duplicating work, and deciding requires scrolling through the whole editing form.
+
+GOAL:
+A queue containing only articles awaiting a decision, ordered oldest-first by submission time with visible ageing and atomic claiming, plus a focused decision screen with a rendered preview beside a sticky decision panel.
+
+FUNCTIONAL REQUIREMENTS:
+Build the queue at the review route and the decision screen at the review detail route exactly as specified in section 22 and the TASK-10 entry of section 38 of the master plan. Claiming must be a conditional update that matches only an unclaimed row and treats a zero-row result as a lost race returning a conflict; a read-then-write check is not acceptable. Take-over of another reviewer's claim must be explicit, confirmed and audited. Ageing thresholds at twenty-four and seventy-two hours must each carry a text label, never colour alone. Block a reviewer from approving their own article unless they are the only editor, enforced in the action. Make the old submissions route a permanent redirect to the new queue, preserving any bookmarked links.
+
+ROLE & PERMISSIONS:
+Both routes require the review capability, enforced server-side. Approve-and-publish and approve-and-schedule appear only for actors who also hold the publish or schedule capability.
+
+DATA REQUIREMENTS:
+Order by the submitted-at column using the status-with-submitted-at index. The queue must not select the article body; only the decision screen loads it.
+
+ARTICLE WORKFLOW:
+Every decision calls the existing workflow action. The review screen must never write the article record directly.
+
+UI/UX REQUIREMENTS:
+Two panes above 1024 pixels at sixty and forty percent with the decision panel sticky; tabs for Preview, Decide and History below that. No cards around queue rows.
+
+DESIGN SYSTEM:
+The design tokens are not yet repaired — that is Phase 4, TASK-14. Use only tokens that currently resolve, and do not introduce new references to the undefined properties listed in section 11.2.
+
+RESPONSIVE REQUIREMENTS:
+All decision controls reachable without horizontal scrolling at 320 pixels.
+
+ACCESSIBILITY:
+Tabs follow the ARIA tabs pattern. The reason textarea is labelled and its character requirement is announced.
+
+SECURITY:
+Reason length, reason code and transition legality are enforced in the server action, not the form.
+
+PERFORMANCE:
+The queue uses projected list fields plus the claim and submission columns only.
+
+ERROR STATES:
+A lost claim race returns a conflict and the row refreshes to show the actual claimant.
+
+EMPTY STATES:
+A queue-clear message explaining that resubmissions appear automatically, with a link to the article index.
+
+LOADING STATES:
+Skeleton rows for the queue and a skeleton preview pane on the decision screen.
+
+BACKWARD COMPATIBILITY:
+The submissions route must redirect, not return not-found. The editor's embedded review panel may remain but must call the same workflow actions.
+
+TESTING:
+Test two concurrent claims where exactly one succeeds, both ageing thresholds, each decision path, self-review refusal, and the pre-flight checklist against an article missing a deck.
+
+ACCEPTANCE CRITERIA:
+The queue reaches zero when all submissions are decided; ordering is by submission time; two reviewers cannot claim the same article; a decision is two clicks from the queue.
+
+VERIFICATION:
+Submit three articles as an author, decide them as a reviewer, and confirm the queue empties, the author is notified of each outcome, and the history records every decision with its reason.
+
+CONSTRAINTS:
+* Do not rewrite unrelated code.
+* Do not remove existing functionality unnecessarily.
+* Reuse existing architecture where practical.
+* Reuse existing dependencies when possible.
+* Do not add unnecessary packages.
+* Enforce sensitive permissions server-side.
+* Preserve existing data.
+* Maintain responsive behavior.
+* Maintain accessibility.
+* Review the diff before completion.
+
+## 47.4 Do not move to Phase 3 until
+
+- [ ] `npx prisma migrate status` reports no pending migration.
+- [ ] The queue lists only articles awaiting a decision and can reach zero.
+- [ ] Two concurrent claims result in exactly one winner.
+- [ ] `/admin/submissions` redirects rather than 404s.
+- [ ] A reviewer can complete approve, request-changes and reject without holding the edit capability.
+- [ ] Every remaining box in the Phase 2 exit criteria of section 45.7 is ticked.
 
 ---
