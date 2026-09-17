@@ -43,7 +43,8 @@ Verified working:
 
 ### FIX-01 — A live database password is committed to the repository
 
-- [x] **DONE** (reported by the user). `test-db.js` is no longer tracked on `main`. Confirm the Supabase password was rotated and that `git log --all --full-history -- test-db.js` is empty.
+- [x] **File removed** — `4d2e56a`, and `.gitignore` updated in `39ae88c`.
+- [ ] **STILL OPEN: the password is in git history.** `git log --all --oneline -- test-db.js` returns `4d2e56a` *and* `85ec52c`. Anyone can run `git show 85ec52c:test-db.js` on the public repository and read the credential. Deleting a file does not remove it from history. Either rotate the Supabase password (simplest, and sufficient) or purge with `git filter-repo --path test-db.js --invert-paths` followed by a coordinated force-push. **Confirm which you did.**
 - [ ] ~~**Severity: CRITICAL (security incident)**~~
 
 **Evidence:** `test-db.js`, tracked by git:
@@ -153,6 +154,60 @@ Also note the enum order changed (`DRAFT, REVIEW, PUBLISHED, SUBMITTED, ...` ins
 
 ## 2. HIGH — correctness and security
 
+### FIX-06b — The self-review reviewer count includes roles that cannot review
+
+- [ ] **Severity: MEDIUM** (follow-up to FIX-06, `cdda564`)
+
+`checkSelfReviewGuard` counts active users with `role: { in: ["OWNER","ADMIN","EDITOR","REVIEWER","MODERATOR"] }`. But `MODERATOR_CAPS` in `lib/capabilities.ts:112` does **not** contain `article.review` — a moderator cannot review anything.
+
+Consequence: a solo editor who happens to have one moderator on the team sees a count of 2, so the sole-reviewer exception never fires and they are locked out of approving their own work with no way to proceed. This is exactly the single-operator lockout the exception existed to prevent.
+
+The hardcoded role list also duplicates the capability map, so the two will drift.
+
+**Fix:** derive the list from the capability map instead of hardcoding it:
+
+```ts
+const reviewerRoles = (Object.keys(ROLE_CAPABILITIES) as Role[])
+  .filter((r) => authorize(r, "article.review"));
+const activeReviewersCount = await db.user.count({
+  where: { isActive: true, role: { in: reviewerRoles } },
+});
+```
+
+Export `ROLE_CAPABILITIES` from `lib/capabilities.ts` if it is not already exported.
+
+**Verification:** with one editor and one moderator in the system, the editor can approve their own article. With two editors, they cannot.
+
+---
+
+### FIX-08b — The conflict banner hardcodes hex colours and is not announced
+
+- [ ] **Severity: LOW** (follow-up to FIX-08, `56a5d54`)
+
+The banner uses `bg-[#fffbeb] text-[#d97706] border-[#f59e0b]/30`, and the buttons `bg-[#d97706]`, `text-[#92400e]`. Five hardcoded values that will not respond to the theme — in dark mode this is a pale-yellow slab. The project has `--warn`, exposed as `bg-warn` / `text-warn`.
+
+The prompt also asked for the state change to be announced through a polite live region. The agent searched for `aria-live`, found nothing in the editor, and settled for `showToast`. That is acceptable if the toast helper carries `role="status"` — `lib/utils.ts` does — but the banner itself should still be a labelled region so a screen-reader user who scrolls past the toast can still find it.
+
+**Fix:** replace the five hex values with the warn token, and add `role="status"` to the banner container.
+
+**Verification:** toggle to dark mode with a conflict active and confirm the banner is legible.
+
+---
+
+### FIX-09b — Dashboard: leftover role branch and a non-existent default role
+
+- [ ] **Severity: MEDIUM** (follow-up to FIX-09, `eb570f2`)
+
+Two issues remain in `app/admin/(authenticated)/page.tsx`:
+
+1. **`isAuthorOnly = user?.role === "AUTHOR"` survived.** It no longer affects any query — good — but it still switches the section headings ("Your Stories" versus "Total Articles"). A reviewer or moderator now sees scoped counts under a heading that says "Total Articles", which is misleading. Derive the heading from whether the actor holds `article.view.all` instead.
+
+2. **The actor falls back to `role: "CONTRIBUTOR"`** when no user is resolved. There is no `CONTRIBUTOR` value in the `Role` enum — the master plan proposes adding it, but it does not exist. `buildArticleScope` will fall through every branch and return the deny-all filter, which is the safe outcome, so this is not exploitable. But it is a silent type lie. Use `"STAFF"` (the real least-privileged role) or, better, redirect when there is no user rather than constructing a fake actor.
+
+**Verification:** sign in as a reviewer and confirm the dashboard headings match the scope shown.
+
+---
+
 ### FIX-04 — The JWT callback fails **open** on a database error
 
 - [x] **DONE** — the `catch` clause in `app/api/auth/[...nextauth]/route.ts` now returns `{}` after logging. Verified on `main` @ `055999b`. One line, log retained, fail-closed.
@@ -186,7 +241,8 @@ The invalidation logic itself is correct — `if (!dbUser || !dbUser.isActive ||
 
 ### FIX-05 — `takeOverReview` silently steals a claim with no confirmation and no guard
 
-- [ ] **Severity: HIGH**
+- [x] **DONE** — `e9ae662`. Signature now `takeOverReview(id, confirm)`. Refuses unclaimed articles, refuses self, refuses without explicit confirmation. `ReviewWorkspace` routes through `ConfirmDialog` naming the current claimant. Audit records both reviewer ids.
+- [ ] ~~**Severity: HIGH**~~
 
 **Evidence:** `app/actions/workflow.ts:99-121`. It checks the review capability, then unconditionally `db.article.update({ data: { reviewedById: actor.id } })`. There is no check that the article is even claimed, no confirmation requirement, and no distinction from `claimReview`.
 
@@ -203,7 +259,8 @@ It does write an audit entry with `previousReviewerId`, which is good. But §45.
 
 ### FIX-06 — No self-review guard
 
-- [ ] **Severity: HIGH**
+- [x] **DONE** — `cdda564`. `checkSelfReviewGuard()` at `app/actions/workflow.ts:35`, applied in all three decision actions (lines 228, 277, 327). Sole-reviewer exception works. **One follow-up below (FIX-06b).**
+- [ ] ~~**Severity: HIGH**~~
 
 **Evidence:** `grep -rn "self\|sole editor" lib/workflow.ts app/actions/workflow.ts` → only match is the own-draft check in `deleteOwnDraft`. `validateTransition()` (`lib/workflow.ts:131`) checks the transition table, the capability and ownership, but never that the reviewer is not the author.
 
@@ -249,7 +306,8 @@ and move the `tx.auditLog.create(...)` call **above** the deletes, capturing tit
 
 ### FIX-08 — Autosave still reports success after a conflict
 
-- [ ] **Severity: HIGH (data-loss adjacent)**
+- [x] **DONE** — `56a5d54`. `autosaveStatus` gains a `"conflict"` member; the timer is suspended while unresolved (`ArticleEditor.tsx:301`); a banner offers Reload and Overwrite; the false success tick is gone. **One follow-up below (FIX-08b).**
+- [ ] ~~**Severity: HIGH (data-loss adjacent)**~~
 
 **Evidence:** `components/editorial/ArticleEditor.tsx:444-450`
 
@@ -271,7 +329,8 @@ The comment says "silently resync the baseline". The user sees "✓ Saved" for a
 
 ### FIX-09 — The dashboard bypasses `buildArticleScope`
 
-- [ ] **Severity: HIGH (scope leak)**
+- [x] **DONE** — `eb570f2`. `buildArticleScope(actor)` now drives every dashboard query, and a single `groupBy` counts every status so the total is no longer published-plus-drafts. **Two follow-ups below (FIX-09b).**
+- [ ] ~~**Severity: HIGH (scope leak)**~~
 
 **Evidence:** `app/admin/(authenticated)/page.tsx:58-64`
 
@@ -411,12 +470,15 @@ A clean build does **not** validate FIX-03, FIX-04, FIX-06, FIX-07, FIX-08 or FI
 | FIX-02b schema round-trip | ✅ done | `c0a8b67` |
 | FIX-03 `@custom-variant dark` | ✅ done | `055999b` |
 | FIX-04 fail-closed JWT | ✅ done | `055999b` |
-| FIX-05 take-over confirmation | open | |
-| **FIX-06 self-review guard** | **next** | |
+| FIX-05 take-over confirmation | ✅ done | `e9ae662` |
+| FIX-06 self-review guard | ✅ done | `cdda564` |
+| FIX-06b reviewer-count derivation | open | |
+| FIX-08b conflict banner tokens | open | |
+| FIX-09b dashboard heading + fake role | open | |
 | FIX-07 delete status guard | ✅ done | `c0a8b67` |
-| FIX-08 autosave conflict state | open | |
-| FIX-09 dashboard scope | open | |
-| FIX-10 revalidation | open | |
+| FIX-08 autosave conflict state | ✅ done | `56a5d54` |
+| FIX-09 dashboard scope | ✅ done | `eb570f2` |
+| **FIX-10 revalidation** | **NOT DONE — was in the same prompt as FIX-09 but never implemented** | |
 | FIX-11 duplicate Pagination | open | |
 | FIX-12 five remaining tokens | open | |
 | FIX-13 notification stubs | open | |
