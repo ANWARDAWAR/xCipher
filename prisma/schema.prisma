@@ -8,35 +8,20 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// ==========================================
-// User & Auth Models (NextAuth)
-// ==========================================
-
-enum Role {
-  OWNER
-  ADMIN
-  EDITOR
-  AUTHOR
-  REVIEWER
-  MODERATOR
-  STAFF
-}
-
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -50,31 +35,26 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?   // For credentials provider
-  role          Role      @default(AUTHOR)
-  isActive      Boolean   @default(true)
-  sessionVersion Int      @default(1)
-  
-  accounts      Account[]
-  sessions      Session[]
-  
+  id                String            @id @default(cuid())
+  name              String?
+  email             String?           @unique
+  emailVerified     DateTime?
+  image             String?
+  password          String?
+  role              Role              @default(AUTHOR)
+  authorId          String?           @unique
   notificationPrefs Json?
-
-  // CMS relationships
-  authorId      String?   @unique
-  authorProfile Author?   @relation(fields: [authorId], references: [id])
-  
-  auditLogs     AuditLog[]
-  notifications Notification[]
-  revisions     ArticleRevision[]
-  articleReviews ArticleReview[]
-  claimedArticles Article[] @relation("ArticleReviewer")
+  isActive          Boolean           @default(true)
+  sessionVersion    Int               @default(1)
+  accounts          Account[]
+  claimedArticles   Article[]         @relation("ArticleReviewer")
+  articleReviews    ArticleReview[]
+  revisions         ArticleRevision[]
+  auditLogs         AuditLog[]
   moderatedComments Comment[]
+  notifications     Notification[]
+  sessions          Session[]
+  authorProfile     Author?           @relation(fields: [authorId], references: [id])
 }
 
 model VerificationToken {
@@ -85,32 +65,27 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// ==========================================
-// Publication Models
-// ==========================================
-
 model Author {
-  id          String    @id @default(uuid())
-  slug        String    @unique
-  name        String
-  headline    String?
-  role        String?
-  overview    String?
-  bio         String?
-  avatar      String?
-  location    String?
-  website     String?
-  email       String?
-  socialLinks Json?
-  expertise   String?
-  verifiedTitle Boolean @default(false)
-  disclosure  String?   @db.Text
-  publicContact Boolean @default(true)
-  previousSlugs String[] @default([])
-  joinedAt    DateTime  @default(now())
-  
-  user        User?
-  articles    Article[]
+  id            String    @id @default(uuid())
+  slug          String    @unique
+  name          String
+  role          String?
+  bio           String?
+  avatar        String?
+  socialLinks   Json?
+  joinedAt      DateTime  @default(now())
+  email         String?
+  headline      String?
+  location      String?
+  website       String?
+  overview      String?
+  disclosure    String?
+  expertise     String?
+  previousSlugs String[]  @default([])
+  publicContact Boolean   @default(true)
+  verifiedTitle Boolean   @default(false)
+  articles      Article[]
+  user          User?
 }
 
 model Category {
@@ -127,67 +102,47 @@ model Tag {
   slug        String    @unique
   name        String
   description String?
-  articles    Article[]
-}
-
-enum ArticleStatus {
-  DRAFT
-  SUBMITTED
-  REVIEW            // Deprecated: kept to avoid destructive migration. Backfill to SUBMITTED.
-  REVISION_REQUESTED
-  APPROVED
-  SCHEDULED
-  REJECTED
-  PUBLISHED
-  ARCHIVED
+  articles    Article[] @relation("ArticleToTag")
 }
 
 model Article {
-  id          String        @id @default(uuid())
-  slug        String        @unique
-  previousSlugs String[]    @default([])
-  title       String
-  deck        String?
-  contentHtml String?
-  contentJson Json?
-  
-  // Legacy / Fallback String Authors
-  author      String?
-  role        String?
-  
-  // Relational Author
-  authorId    String?
-  authorModel Author?       @relation(fields: [authorId], references: [id])
-  
-  categoryId  String?
-  category    Category?     @relation(fields: [categoryId], references: [id])
-  
-  status      ArticleStatus @default(DRAFT)
-  views       Int           @default(0)
-  legacyTags  String[]      @map("tags")
-  tags        Tag[]
-  featured    Boolean       @default(false)
+  id                String            @id @default(uuid())
+  slug              String            @unique
+  title             String
+  deck              String?
+  contentHtml       String?
+  contentJson       Json?
+  author            String?
+  role              String?
+  categoryId        String?
+  status            ArticleStatus     @default(DRAFT)
+  views             Int               @default(0)
+  legacyTags        String[]          @map("tags")
+  featured          Boolean           @default(false)
+  img               String?
+  seoTitle          String?
+  seoDesc           String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  authorId          String?
+  publishedAt       DateTime?
+  scheduledFor      DateTime?
   homepagePlacement String?
-  img         String?
-  seoTitle    String?
-  seoDesc     String?
-  
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  publishedAt DateTime?
-  scheduledFor DateTime?
-  submittedAt  DateTime?
-  submittedById String?
-  reviewedAt   DateTime?
-  reviewedById String?
-  reviewer     User?         @relation("ArticleReviewer", fields: [reviewedById], references: [id])
-  approvedAt   DateTime?
-  approvedById String?
-  archivedAt   DateTime?
-
-  revisions   ArticleRevision[]
-  reviews     ArticleReview[]
-  comments    Comment[]
+  previousSlugs     String[]          @default([])
+  approvedAt        DateTime?
+  approvedById      String?
+  archivedAt        DateTime?
+  reviewedAt        DateTime?
+  reviewedById      String?
+  submittedAt       DateTime?
+  submittedById     String?
+  authorModel       Author?           @relation(fields: [authorId], references: [id])
+  category          Category?         @relation(fields: [categoryId], references: [id])
+  reviewer          User?             @relation("ArticleReviewer", fields: [reviewedById], references: [id])
+  reviews           ArticleReview[]
+  revisions         ArticleRevision[]
+  comments          Comment[]
+  tags              Tag[]             @relation("ArticleToTag")
 
   @@index([status, updatedAt])
   @@index([status, submittedAt])
@@ -197,63 +152,57 @@ model Article {
   @@index([scheduledFor])
 }
 
-// ==========================================
-// CMS Operational Models
-// ==========================================
-
 model ArticleRevision {
-  id          String   @id @default(uuid())
-  articleId   String
-  article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  id           String   @id @default(uuid())
+  articleId    String
   userId       String
-  user         User     @relation(fields: [userId], references: [id])
-  
-  title        String?
-  deck         String?
+  notes        String?
+  statusChange String?
+  createdAt    DateTime @default(now())
   contentHtml  String?
   contentJson  Json?
-  
-  notes        String?  @db.Text
-  statusChange String?
-  createdAt   DateTime @default(now())
+  deck         String?
+  title        String?
+  article      Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id])
 }
 
 model ArticleReview {
-  id          String   @id @default(uuid())
-  articleId   String
-  article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  reviewerId  String
-  reviewer    User     @relation(fields: [reviewerId], references: [id])
-  decision    String   // APPROVED, CHANGES_REQUESTED, REJECTED
-  reason      String?  @db.Text
-  reasonCode  String?
-  fromStatus  String
-  toStatus    String
-  passNumber  Int      @default(1)
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  articleId  String
+  reviewerId String
+  decision   String
+  reason     String?
+  reasonCode String?
+  fromStatus String
+  toStatus   String
+  passNumber Int      @default(1)
+  createdAt  DateTime @default(now())
+  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  reviewer   User     @relation(fields: [reviewerId], references: [id])
 
   @@index([articleId, createdAt])
 }
 
 model AuditLog {
-  id          String   @id @default(uuid())
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  action      String
-  entityType  String
-  entityId    String?
-  details     Json?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  details    Json?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id])
 }
 
 model Notification {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  message     String
-  link        String?
-  isRead      Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  userId    String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Invitation {
@@ -262,14 +211,62 @@ model Invitation {
   role      Role     @default(AUTHOR)
   token     String   @unique
   expires   DateTime
-  status    String   @default("PENDING") // PENDING, ACCEPTED, REVOKED, EXPIRED
-  invitedBy String?  
+  status    String   @default("PENDING")
+  invitedBy String?
   createdAt DateTime @default(now())
 }
 
-// ==========================================
-// Audience Models
-// ==========================================
+model Subscriber {
+  id               String           @id @default(uuid())
+  email            String           @unique
+  status           SubscriberStatus @default(ACTIVE)
+  source           String           @default("HOMEPAGE")
+  consentAt        DateTime         @default(now())
+  unsubscribeToken String           @unique @default(uuid())
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model Comment {
+  id            String        @id @default(uuid())
+  articleId     String
+  articleSlug   String
+  displayName   String
+  emailHash     String
+  email         String
+  body          String
+  status        CommentStatus @default(PENDING)
+  ipHash        String?
+  userAgent     String?
+  moderatorId   String?
+  moderatorNote String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  article       Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  moderator     User?         @relation(fields: [moderatorId], references: [id])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  EDITOR
+  AUTHOR
+  REVIEWER
+  MODERATOR
+  STAFF
+}
+
+enum ArticleStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  SUBMITTED
+  REVISION_REQUESTED
+  REJECTED
+  APPROVED
+  SCHEDULED
+  ARCHIVED
+}
 
 enum SubscriberStatus {
   PENDING
@@ -278,43 +275,9 @@ enum SubscriberStatus {
   BOUNCED
 }
 
-model Subscriber {
-  id               String           @id @default(uuid())
-  email            String           @unique
-  status           SubscriberStatus @default(ACTIVE)
-  source           String           @default("HOMEPAGE") // HOMEPAGE, ARTICLE, FOOTER
-  consentAt        DateTime         @default(now())
-  unsubscribeToken String           @unique @default(uuid())
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-}
-
 enum CommentStatus {
   PENDING
   APPROVED
   REJECTED
   SPAM
-}
-
-model Comment {
-  id            String        @id @default(uuid())
-  articleId     String
-  article       Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  articleSlug   String
-  
-  displayName   String
-  emailHash     String        // SHA-256 of normalized email for Gravatar — never expose raw email publicly
-  email         String        // Stored server-side only, never returned to public clients
-  body          String        @db.Text
-  
-  status        CommentStatus @default(PENDING)
-  ipHash        String?       // SHA-256 of IP — for abuse tracking, never stored raw
-  userAgent     String?
-  
-  moderatorId   String?
-  moderator     User?         @relation(fields: [moderatorId], references: [id], onDelete: SetNull)
-  moderatorNote String?
-  
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
 }
