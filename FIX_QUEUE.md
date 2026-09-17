@@ -43,7 +43,8 @@ Verified working:
 
 ### FIX-01 — A live database password is committed to the repository
 
-- [ ] **Severity: CRITICAL (security incident)**
+- [x] **DONE** (reported by the user). `test-db.js` is no longer tracked on `main`. Confirm the Supabase password was rotated and that `git log --all --full-history -- test-db.js` is empty.
+- [ ] ~~**Severity: CRITICAL (security incident)**~~
 
 **Evidence:** `test-db.js`, tracked by git:
 
@@ -68,7 +69,8 @@ This is a real Supabase project reference, username and password, in a public Gi
 
 ### FIX-02 — No migrations directory exists; the database does not match the schema
 
-- [ ] **Severity: CRITICAL (everything below is unverified until this passes)**
+- [~] **PARTIALLY DONE — still open.** `prisma/schema.prisma` was reformatted by an introspection or `db push` round-trip on `main` @ `055999b`, which indicates the database was synchronised. **But `prisma/migrations/` still does not exist** (`git ls-tree origin/main prisma/` → only `schema.prisma`). See FIX-02b below.
+- [ ] ~~**Severity: CRITICAL (everything below is unverified until this passes)**
 
 **Evidence:** `ls prisma/migrations` → **directory does not exist.** The Phase 2 checklist itself recorded *"Create Prisma migration for sessionVersion (skipped, generate used)"*.
 
@@ -103,7 +105,8 @@ WHERE "status" IN ('SUBMITTED','REVIEW') AND "submittedAt" IS NULL;
 
 ### FIX-03 — 153 dead `dark:` utilities: the entire dark mode of the redesign does nothing
 
-- [ ] **Severity: CRITICAL (the redesign is half-broken and it fails silently)**
+- [x] **DONE** — `app/globals.css:2` now declares `@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));`. Verified on `main` @ `055999b`. One line, exactly as scoped.
+- [ ] ~~**Severity: CRITICAL (the redesign is half-broken and it fails silently)**
 
 **Evidence:**
 
@@ -130,11 +133,28 @@ Toggle the theme on any of those pages today and the light-mode colours stay.
 
 ---
 
+### FIX-02b — Schema round-trip side effects (NEW, found 2026-09-18)
+
+- [ ] **Severity: HIGH**
+
+The `055999b` diff reformats `prisma/schema.prisma` wholesale (+375/−375 style churn). Model fields, all 7 indexes, `ArticleReview` and the three new enum values survived intact — verified field-by-field against `85ec52c` for `User`, `Article`, `ArticleReview`, `Author`, `Category`, `Notification`, `Invitation` and `Comment`, all identical. Two real regressions did slip in:
+
+1. **All 7 `@db.Text` annotations were dropped.** `85ec52c` had 7; `055999b` has 0. Affected: `Account.refresh_token`, `Account.access_token`, `Account.id_token`, `ArticleRevision.notes`, `ArticleReview.reason`, and the other long-text columns. Without `@db.Text` Prisma maps these to `VARCHAR(191)`-equivalent on some providers. On Postgres the practical effect is limited, but a rejection reason or an OAuth token longer than the default will now be at risk, and the schema no longer documents the intent. **Restore all 7 annotations.**
+
+2. **Comment banners were stripped.** The `// User & Auth Models (NextAuth)` and `// CMS Operational Models` section headers are gone, and the `REVIEW` enum value lost its `// Deprecated: kept to avoid destructive migration` note — which was the only record of that decision. **Restore the deprecation comment at minimum.**
+
+Also note the enum order changed (`DRAFT, REVIEW, PUBLISHED, SUBMITTED, ...` instead of the logical workflow order). Harmless in Postgres — enum ordering only affects `ORDER BY` on the enum type itself, which nothing does — but if you ever sort by status, sort by an explicit map instead.
+
+**Verification:** `grep -c "@db.Text" prisma/schema.prisma` returns 7; `npx prisma migrate status` reports no pending migration; `prisma/migrations/` exists and is committed.
+
+---
+
 ## 2. HIGH — correctness and security
 
 ### FIX-04 — The JWT callback fails **open** on a database error
 
-- [ ] **Severity: HIGH (security)**
+- [x] **DONE** — the `catch` clause in `app/api/auth/[...nextauth]/route.ts` now returns `{}` after logging. Verified on `main` @ `055999b`. One line, log retained, fail-closed.
+- [ ] ~~**Severity: HIGH (security)**~~
 
 **Evidence:** `app/api/auth/[...nextauth]/route.ts:65-67`
 
