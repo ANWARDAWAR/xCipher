@@ -37,7 +37,8 @@ export default async function ReviewScreen({ params }: ReviewScreenProps) {
       revisions: {
         orderBy: { createdAt: "desc" },
         include: { user: { select: { name: true, email: true } } }
-      }
+      },
+      reviewer: { select: { name: true, email: true } }
     }
   });
 
@@ -119,6 +120,7 @@ export default async function ReviewScreen({ params }: ReviewScreenProps) {
             userRole={userRole}
             userId={user.id}
             reviewerId={article.reviewedById}
+            reviewerName={article.reviewer?.name || article.reviewer?.email || "Another reviewer"}
             articleId={article.id}
             currentStatus={article.status}
             revisions={article.revisions}

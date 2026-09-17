@@ -6,6 +6,7 @@ import { Role } from "@prisma/client";
 import { claimReview, releaseReview, takeOverReview } from "@/app/actions/workflow";
 import { showToast } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import ConfirmDialog from "../ui/ConfirmDialog";
 
 interface Revision {
   id: string;
@@ -19,15 +20,17 @@ interface ReviewWorkspaceProps {
   userRole: string;
   userId: string;
   reviewerId: string | null;
+  reviewerName?: string;
   articleId: string;
   currentStatus: string;
   revisions?: Revision[];
   onDecision: (status: string, notes: string) => Promise<void>;
 }
 
-export default function ReviewWorkspace({ userRole, userId, reviewerId, articleId, currentStatus, revisions = [], onDecision }: ReviewWorkspaceProps) {
+export default function ReviewWorkspace({ userRole, userId, reviewerId, reviewerName, articleId, currentStatus, revisions = [], onDecision }: ReviewWorkspaceProps) {
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showTakeOverConfirm, setShowTakeOverConfirm] = useState(false);
   const router = useRouter();
 
   const canReview = ["OWNER", "ADMIN", "EDITOR", "REVIEWER"].includes(userRole);
@@ -45,6 +48,25 @@ export default function ReviewWorkspace({ userRole, userId, reviewerId, articleI
     } catch (e) {
       console.error(e);
       alert("Failed to submit decision.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleTakeOver = async () => {
+    setShowTakeOverConfirm(false);
+    setIsSubmitting(true);
+    try {
+      const res = await takeOverReview(articleId, true);
+      if (res.ok) {
+        showToast("Review taken over");
+        router.refresh();
+      } else {
+        alert(res.message || "Action failed.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("An error occurred.");
     } finally {
       setIsSubmitting(false);
     }
@@ -142,13 +164,22 @@ export default function ReviewWorkspace({ userRole, userId, reviewerId, articleI
           <div style={{ padding: "12px", background: "var(--surface-1)", borderRadius: "6px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "13px", color: "var(--ink-muted)" }}>This review is claimed by another user.</span>
             {canTakeOver && (
-              <button className="btn-cs danger" onClick={() => handleWorkflowAction(takeOverReview, "Review taken over")} disabled={isSubmitting}>
+              <button className="btn-cs danger" onClick={() => setShowTakeOverConfirm(true)} disabled={isSubmitting}>
                 Take Over Review
               </button>
             )}
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={showTakeOverConfirm}
+        title="Take Over Review"
+        description={`This review is currently claimed by ${reviewerName || 'another reviewer'}. Are you sure you want to take it over? They will lose their claim and any unsaved progress.`}
+        confirmText="Take Over"
+        onConfirm={handleTakeOver}
+        onCancel={() => setShowTakeOverConfirm(false)}
+      />
 
       {canReview && currentStatus !== "PUBLISHED" && (
         <div style={{ borderTop: "1px solid var(--line)", paddingTop: "16px" }}>

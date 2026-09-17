@@ -109,7 +109,7 @@ export async function releaseReview(id: string): Promise<ActionResponse> {
   return { ok: true };
 }
 
-export async function takeOverReview(id: string): Promise<ActionResponse> {
+export async function takeOverReview(id: string, confirm: boolean): Promise<ActionResponse> {
   const actor = await getActor();
   if (!actor) return { ok: false, code: "UNAUTHENTICATED", message: "Sign in required." };
   if (!authorize(actor.role, "article.review")) {
@@ -119,13 +119,25 @@ export async function takeOverReview(id: string): Promise<ActionResponse> {
   const article = await getArticle(id);
   if (!article) return { ok: false, code: "NOT_FOUND", message: "Article not found." };
 
+  if (!article.reviewedById) {
+    return { ok: false, code: "VALIDATION", message: "This article is unclaimed. Please use the ordinary claim action." };
+  }
+  
+  if (article.reviewedById === actor.id) {
+    return { ok: false, code: "VALIDATION", message: "You are already the reviewer of this article." };
+  }
+  
+  if (!confirm) {
+    return { ok: false, code: "VALIDATION", message: "You must explicitly confirm to take over an article." };
+  }
+
   await db.article.update({
     where: { id },
     data: { reviewedById: actor.id }
   });
 
   await db.auditLog.create({
-    data: { userId: actor.id, action: "TAKEOVER_REVIEW", entityType: "Article", entityId: id, details: { previousReviewerId: article.reviewedById } }
+    data: { userId: actor.id, action: "TAKEOVER_REVIEW", entityType: "Article", entityId: id, details: { previousReviewerId: article.reviewedById, newReviewerId: actor.id } }
   });
 
   revalidatePath(`/admin/review`);
