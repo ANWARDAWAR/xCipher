@@ -1,0 +1,74 @@
+"use client";
+
+import Link from "next/link";
+import { useState, useEffect } from "react";
+import { Article, Category } from "@prisma/client";
+
+interface Props {
+  articles: (Article & { category?: Category | null })[];
+}
+
+export default function BreakingTicker({ articles }: Props) {
+  const [index, setIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    if (articles.length <= 1 || isPaused) return;
+
+    const interval = setInterval(() => {
+      setIndex((prev) => (prev + 1) % articles.length);
+    }, 5500);
+
+    return () => clearInterval(interval);
+  }, [articles.length, isPaused]);
+
+  if (articles.length === 0) return null;
+
+  const currentArticle = articles[index];
+  const catName = currentArticle.category?.name || "News";
+
+  const handlePrev = () => {
+    setIndex((prev) => (prev - 1 + articles.length) % articles.length);
+  };
+
+  const handleNext = () => {
+    setIndex((prev) => (prev + 1) % articles.length);
+  };
+
+  return (
+    <div 
+      className="ticker" 
+      role="region" 
+      aria-label="Breaking news"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onFocus={() => setIsPaused(true)}
+      onBlur={() => setIsPaused(false)}
+    >
+      <div className="wrap ticker-in">
+        <span className="tick-label">
+          <span className="tick-dot" aria-hidden="true"></span>BREAKING
+        </span>
+        <div className="tick-stage" aria-live="polite">
+          <Link className="tick-item" id="tickItem" href={`/article/${currentArticle.slug}`}>
+            <span className="tick-cat" id="tickCat">{catName}</span>
+            <span id="tickText">{currentArticle.title}</span>
+          </Link>
+        </div>
+        <div className="tick-ctrl">
+          <button id="tickPrev" aria-label="Previous headline" onClick={handlePrev}>
+            <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="m14 6-6 6 6 6" />
+            </svg>
+          </button>
+          <span className="tick-count" id="tickCount">{index + 1}/{articles.length}</span>
+          <button id="tickNext" aria-label="Next headline" onClick={handleNext}>
+            <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="m10 6 6 6-6 6" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
