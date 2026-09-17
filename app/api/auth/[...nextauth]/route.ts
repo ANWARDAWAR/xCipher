@@ -23,7 +23,7 @@ export const authOptions: AuthOptions = {
           where: { email: credentials.email },
         });
 
-        if (!user || !user.password) {
+        if (!user || !user.password || !user.isActive) {
           return null;
         }
 
@@ -38,6 +38,7 @@ export const authOptions: AuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
+          sessionVersion: user.sessionVersion,
         };
       },
     }),
@@ -50,6 +51,20 @@ export const authOptions: AuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.sessionVersion = user.sessionVersion;
+      } else if (token.id) {
+        try {
+          const dbUser = await db.user.findUnique({
+            where: { id: token.id },
+            select: { sessionVersion: true, isActive: true, role: true }
+          });
+          if (!dbUser || !dbUser.isActive || dbUser.sessionVersion !== token.sessionVersion) {
+            return {};
+          }
+          token.role = dbUser.role; // keep role synced
+        } catch (e) {
+          console.error("JWT verification error", e);
+        }
       }
       return token;
     },

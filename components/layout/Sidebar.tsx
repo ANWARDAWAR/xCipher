@@ -22,6 +22,7 @@ export default async function Sidebar() {
         title: a.title,
         catName: a.category?.name || "News",
         views: a.views || 0,
+        mins: (a as any).mins || 5, // fallback if schema doesn't have it explicitly typed
       }));
     }
   } catch (error) {
@@ -41,6 +42,7 @@ export default async function Sidebar() {
         title: a.title,
         catName: (CATS as any)[a.cat]?.name || "News",
         views: a.views,
+        mins: (a as any).mins || 5,
       }));
   }
 
@@ -59,7 +61,7 @@ export default async function Sidebar() {
                     <span className="hlink">{a.title}</span>
                   </Link>
                 </h3>
-                <span className="mr-cat">{a.catName} · {fmtViews(a.views)} reads</span>
+                <span className="mr-cat">{a.catName} · {a.mins || 5} min read</span>
               </div>
             </li>
           ))}
@@ -67,9 +69,17 @@ export default async function Sidebar() {
       </section>
 
       {/* Sidebar Ad */}
-      <div className="ad-wrap" style={{ padding: 0 }}>
-        <div className="ad-label">Advertisement</div>
-        <div className="ad-slot ad-mrec" data-ad-location="sidebar" data-size="300 × 250" role="complementary" aria-label="Advertisement placement"></div>
+      <div className="ad-wrap" style={{ padding: 0, marginTop: "32px", marginBottom: "32px" }}>
+        <div className="text-[10px] uppercase tracking-wider text-[var(--muted)] mb-2 font-medium">Advertisement</div>
+        <div className="bg-[var(--surface)] border border-[var(--line)] rounded-xl h-[250px] flex flex-col items-center justify-center p-6 text-center text-[var(--muted)] transition-colors hover:border-[var(--line-2)]">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="mb-3 opacity-50">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          <span className="font-semibold text-sm text-[var(--ink-2)]">Sponsor Slot Available</span>
+          <span className="text-xs mt-1">Reach our technology audience.</span>
+        </div>
       </div>
 
       <div className="trust-card">

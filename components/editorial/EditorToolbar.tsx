@@ -1,6 +1,10 @@
 import React, { useCallback } from 'react';
 import { Editor } from '@tiptap/react';
-import { CODE_LANGUAGES } from './extensions/CodeBlockLowlight';
+import { 
+  Undo, Redo, Heading1, Heading2, Heading3, Type, Bold, Italic, Underline, 
+  Strikethrough, Code, List, ListOrdered, Quote, ImagePlus, Link2, 
+  FileCode, Minus, Maximize2, RemoveFormatting 
+} from 'lucide-react';
 
 interface EditorToolbarProps {
   editor: Editor;
@@ -19,7 +23,6 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
       return;
     }
-    // Basic URL safety check
     try {
       const parsed = new URL(url);
       if (!['http:', 'https:', 'mailto:'].includes(parsed.protocol)) {
@@ -44,311 +47,180 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
     (editor.chain().focus() as any).setFigure({ src: url, alt, caption, credit }).run();
   }, [editor]);
 
-  const addTable = useCallback(() => {
-    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
-  }, [editor]);
+  const ToolbarButton = ({ 
+    isActive = false, 
+    onClick, 
+    disabled = false, 
+    icon: Icon, 
+    title 
+  }: { 
+    isActive?: boolean, 
+    onClick: () => void, 
+    disabled?: boolean, 
+    icon: React.ElementType, 
+    title: string 
+  }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
+        isActive 
+          ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold shadow-sm' 
+          : 'text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)]'
+      } ${disabled ? 'opacity-50 cursor-not-allowed hover:bg-transparent hover:text-[var(--muted)]' : ''}`}
+    >
+      <Icon className="w-4 h-4" />
+    </button>
+  );
 
-  // Current heading level for the dropdown
-  const getCurrentHeading = (): string => {
-    for (let level = 1; level <= 6; level++) {
-      if (editor.isActive("heading", { level })) return `h${level}`;
-    }
-    return "paragraph";
-  };
-
-  const handleHeadingChange = (value: string) => {
-    if (value === "paragraph") {
-      editor.chain().focus().setParagraph().run();
-    } else {
-      const level = parseInt(value.replace("h", ""));
-      editor.chain().focus().toggleHeading({ level: level as 1|2|3|4|5|6 }).run();
-    }
-  };
-
-  const currentLanguage = editor.isActive("codeBlock") 
-    ? editor.getAttributes("codeBlock").language || '' 
-    : '';
-
-  const isInTable = editor.isActive("table");
+  const Divider = () => <div className="h-4 w-[1px] bg-[var(--line)] mx-1" />;
 
   return (
-    <div className="ed-toolbar" role="toolbar" aria-label="Formatting">
-      {/* ── Undo / Redo ─────────────── */}
-      <button
-        type="button"
+    <div 
+      className="sticky top-[61px] z-20 bg-[var(--bg)]/95 backdrop-blur-md border border-[var(--line)] rounded-xl p-1.5 my-6 flex flex-wrap items-center gap-1 shadow-sm"
+      role="toolbar" 
+      aria-label="Formatting"
+    >
+      {/* Group 1: History */}
+      <ToolbarButton
+        icon={Undo}
         onClick={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().undo()}
         title="Undo (Ctrl+Z)"
-        aria-label="Undo"
-      >
-        ↩
-      </button>
-      <button
-        type="button"
+      />
+      <ToolbarButton
+        icon={Redo}
         onClick={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().redo()}
         title="Redo (Ctrl+Shift+Z)"
-        aria-label="Redo"
-      >
-        ↪
-      </button>
-      <span className="t-sep" />
+      />
+      
+      <Divider />
 
-      {/* ── Block Type Selector ─────────────── */}
-      <select
-        className="ed-heading-select"
-        value={getCurrentHeading()}
-        onChange={(e) => handleHeadingChange(e.target.value)}
-        title="Block type"
-        aria-label="Block type"
-      >
-        <option value="paragraph">Paragraph</option>
-        <option value="h1">Heading 1</option>
-        <option value="h2">Heading 2</option>
-        <option value="h3">Heading 3</option>
-        <option value="h4">Heading 4</option>
-      </select>
-      <span className="t-sep" />
+      {/* Group 2: Hierarchy & Style */}
+      <ToolbarButton
+        icon={Heading1}
+        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+        isActive={editor.isActive('heading', { level: 1 })}
+        title="Heading 1"
+      />
+      <ToolbarButton
+        icon={Heading2}
+        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        isActive={editor.isActive('heading', { level: 2 })}
+        title="Heading 2"
+      />
+      <ToolbarButton
+        icon={Heading3}
+        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+        isActive={editor.isActive('heading', { level: 3 })}
+        title="Heading 3"
+      />
+      <ToolbarButton
+        icon={Type}
+        onClick={() => editor.chain().focus().setParagraph().run()}
+        isActive={editor.isActive('paragraph')}
+        title="Paragraph"
+      />
+      
+      <Divider />
 
-      {/* ── Inline Formatting ─────────────── */}
-      <button
-        type="button"
+      <ToolbarButton
+        icon={Bold}
         onClick={() => editor.chain().focus().toggleBold().run()}
-        className={editor.isActive("bold") ? "active" : ""}
+        isActive={editor.isActive('bold')}
         title="Bold (Ctrl+B)"
-        aria-label="Bold"
-      >
-        <b>B</b>
-      </button>
-      <button
-        type="button"
+      />
+      <ToolbarButton
+        icon={Italic}
         onClick={() => editor.chain().focus().toggleItalic().run()}
-        className={editor.isActive("italic") ? "active" : ""}
+        isActive={editor.isActive('italic')}
         title="Italic (Ctrl+I)"
-        aria-label="Italic"
-      >
-        <i style={{ fontFamily: "Georgia" }}>I</i>
-      </button>
-      <button
-        type="button"
+      />
+      <ToolbarButton
+        icon={Underline}
         onClick={() => editor.chain().focus().toggleUnderline().run()}
-        className={editor.isActive("underline") ? "active" : ""}
+        isActive={editor.isActive('underline')}
         title="Underline (Ctrl+U)"
-        aria-label="Underline"
-      >
-        <u>U</u>
-      </button>
-      <button
-        type="button"
+      />
+      <ToolbarButton
+        icon={Strikethrough}
         onClick={() => editor.chain().focus().toggleStrike().run()}
-        className={editor.isActive("strike") ? "active" : ""}
+        isActive={editor.isActive('strike')}
         title="Strikethrough"
-        aria-label="Strikethrough"
-      >
-        <s>S</s>
-      </button>
-      <button
-        type="button"
+      />
+      <ToolbarButton
+        icon={Code}
         onClick={() => editor.chain().focus().toggleCode().run()}
-        className={editor.isActive("code") ? "active" : ""}
+        isActive={editor.isActive('code')}
         title="Inline Code"
-        aria-label="Inline Code"
-      >
-        <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '11px' }}>{`<>`}</span>
-      </button>
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleHighlight().run()}
-        className={editor.isActive("highlight") ? "active" : ""}
-        title="Highlight"
-        aria-label="Highlight"
-      >
-        <span style={{ background: 'rgba(255, 213, 0, 0.5)', padding: '0 2px', borderRadius: '2px' }}>H</span>
-      </button>
-      <span className="t-sep" />
+      />
 
-      {/* ── Block Formatting ─────────────── */}
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        className={editor.isActive("blockquote") ? "active" : ""}
-        title="Blockquote"
-        aria-label="Blockquote"
-      >
-        ❝
-      </button>
-      <button
-        type="button"
-        onClick={() => (editor.chain().focus() as any).setCallout({ type: 'info' }).run()}
-        className={editor.isActive("callout", { type: 'info' }) ? "active" : ""}
-        title="Info Callout"
-        aria-label="Info Callout"
-      >
-        ℹ️
-      </button>
-      <button
-        type="button"
-        onClick={() => (editor.chain().focus() as any).setCallout({ type: 'takeaway' }).run()}
-        className={editor.isActive("callout", { type: 'takeaway' }) ? "active" : ""}
-        title="Key Takeaway"
-        aria-label="Key Takeaway"
-      >
-        💡
-      </button>
-      <span className="t-sep" />
+      <Divider />
 
-      {/* ── Lists ─────────────── */}
-      <button
-        type="button"
+      {/* Group 3: Lists & Quotes */}
+      <ToolbarButton
+        icon={List}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
-        className={editor.isActive("bulletList") ? "active" : ""}
-        title="Bullet list (Ctrl+Shift+8)"
-        aria-label="Bullet list"
-      >
-        • List
-      </button>
-      <button
-        type="button"
+        isActive={editor.isActive('bulletList')}
+        title="Bullet List"
+      />
+      <ToolbarButton
+        icon={ListOrdered}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        className={editor.isActive("orderedList") ? "active" : ""}
-        title="Numbered list (Ctrl+Shift+7)"
-        aria-label="Numbered list"
-      >
-        1. List
-      </button>
-      <span className="t-sep" />
+        isActive={editor.isActive('orderedList')}
+        title="Ordered List"
+      />
+      <ToolbarButton
+        icon={Quote}
+        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        isActive={editor.isActive('blockquote')}
+        title="Blockquote"
+      />
 
-      {/* ── Insert ─────────────── */}
-      <button
-        type="button"
-        onClick={setLink}
-        className={editor.isActive("link") ? "active" : ""}
-        title="Insert link (Ctrl+K)"
-        aria-label="Insert link"
-      >
-        🔗
-      </button>
-      <button
-        type="button"
+      <Divider />
+
+      {/* Group 4: Media & Embeds */}
+      <ToolbarButton
+        icon={ImagePlus}
         onClick={addImage}
-        title="Insert Image (with caption)"
-        aria-label="Insert Image"
-      >
-        🖼️
-      </button>
-      <button
-        type="button"
-        onClick={addTable}
-        title="Insert Table"
-        aria-label="Insert Table"
-      >
-        📊
-      </button>
-      <button
-        type="button"
+        title="Insert Image"
+      />
+      <ToolbarButton
+        icon={Link2}
+        onClick={setLink}
+        isActive={editor.isActive('link')}
+        title="Insert Link"
+      />
+      <ToolbarButton
+        icon={FileCode}
+        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+        isActive={editor.isActive('codeBlock')}
+        title="Code Block"
+      />
+      <ToolbarButton
+        icon={Minus}
         onClick={() => editor.chain().focus().setHorizontalRule().run()}
         title="Horizontal Rule"
-        aria-label="Horizontal Rule"
-      >
-        —
-      </button>
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-        className={editor.isActive("codeBlock") ? "active" : ""}
-        title="Code block"
-        aria-label="Code block"
-      >
-        &lt;/&gt;
-      </button>
+      />
 
-      {/* ── Language Selector (shown when inside a code block) ─────────────── */}
-      {editor.isActive("codeBlock") && (
-        <>
-          <span className="t-sep" />
-          <select
-            className="ed-lang-select"
-            value={currentLanguage}
-            onChange={(e) => {
-              editor.chain().focus().updateAttributes('codeBlock', { language: e.target.value }).run();
-            }}
-            title="Code language"
-            aria-label="Code language"
-          >
-            {Object.entries(CODE_LANGUAGES).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </>
-      )}
+      <Divider />
 
-      {/* ── Table Controls (shown when inside a table) ─────────────── */}
-      {isInTable && (
-        <>
-          <span className="t-sep" />
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().addRowAfter().run()}
-            title="Add row below"
-            aria-label="Add row below"
-          >
-            +Row
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().addColumnAfter().run()}
-            title="Add column right"
-            aria-label="Add column right"
-          >
-            +Col
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().deleteRow().run()}
-            title="Delete row"
-            aria-label="Delete row"
-            style={{ color: 'var(--bad)' }}
-          >
-            −Row
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().deleteColumn().run()}
-            title="Delete column"
-            aria-label="Delete column"
-            style={{ color: 'var(--bad)' }}
-          >
-            −Col
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().deleteTable().run()}
-            title="Delete table"
-            aria-label="Delete table"
-            style={{ color: 'var(--bad)' }}
-          >
-            ✕ Table
-          </button>
-        </>
-      )}
-
-      {/* ── Fullscreen Toggle ─────────────── */}
+      {/* Group 5: View / Utilities */}
+      <ToolbarButton
+        icon={RemoveFormatting}
+        onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
+        title="Clear Formatting"
+      />
       {toggleFullscreen && (
-        <>
-          <span style={{ flexGrow: 1 }} />
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}
-            aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}
-          >
-            {isFullscreen ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-            )}
-          </button>
-        </>
+        <ToolbarButton
+          icon={Maximize2}
+          onClick={toggleFullscreen}
+          isActive={isFullscreen}
+          title="Toggle Fullscreen"
+        />
       )}
     </div>
   );

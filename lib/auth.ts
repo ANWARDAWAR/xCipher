@@ -5,9 +5,32 @@ export async function getSession() {
   return await getServerSession(authOptions);
 }
 
-export async function getCurrentUser() {
+import { cache } from "react";
+import { db } from "@/lib/db";
+import { Role } from "@prisma/client";
+
+export const getActor = cache(async () => {
   const session = await getSession();
-  return session?.user;
+  if (!session?.user?.id) return null;
+  
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      id: true,
+      role: true,
+      isActive: true,
+      authorId: true,
+      name: true,
+      email: true,
+    }
+  });
+
+  if (!user || !user.isActive) return null;
+  return user as { id: string, role: Role, authorId: string | null, name: string | null, email: string | null };
+});
+
+export async function getCurrentUser() {
+  return await getActor();
 }
 
 export async function requireRole(allowedRoles: string[]) {

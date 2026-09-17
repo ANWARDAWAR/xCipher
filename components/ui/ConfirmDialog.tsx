@@ -9,6 +9,7 @@ interface ConfirmDialogProps {
   confirmText?: string;
   cancelText?: string;
   isDestructive?: boolean;
+  requireTypedConfirmation?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -20,9 +21,11 @@ export default function ConfirmDialog({
   confirmText = "Confirm",
   cancelText = "Cancel",
   isDestructive = true,
+  requireTypedConfirmation,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const [typedString, setTypedString] = React.useState("");
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -70,16 +73,38 @@ export default function ConfirmDialog({
         <p style={{ color: "var(--ink-muted)", fontSize: "14px", marginBottom: "24px", lineHeight: 1.5 }}>
           {description}
         </p>
+
+        {requireTypedConfirmation && (
+          <div style={{ marginBottom: "24px" }}>
+            <label style={{ display: "block", fontSize: "13px", marginBottom: "8px" }}>
+              Please type <strong>{requireTypedConfirmation}</strong> to confirm.
+            </label>
+            <input 
+              type="text" 
+              className="ed-input"
+              value={typedString}
+              onChange={(e) => setTypedString(e.target.value)}
+              placeholder={requireTypedConfirmation}
+              style={{ width: "100%" }}
+            />
+          </div>
+        )}
+
         <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
           <button 
             className="btn-cs" 
-            onClick={onCancel}
+            onClick={() => {
+              setTypedString("");
+              onCancel();
+            }}
           >
             {cancelText}
           </button>
           <button 
             className={`btn-cs ${isDestructive ? "danger" : "primary"}`} 
+            disabled={requireTypedConfirmation ? typedString !== requireTypedConfirmation : false}
             onClick={() => {
+              setTypedString("");
               onConfirm();
             }}
           >

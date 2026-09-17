@@ -61,14 +61,15 @@ export default function AuthorProfileView({ author, articles, socials, totalView
                 </svg>
               )}
             </h1>
-            {author.headline && <p className="ap-headline">{author.headline}</p>}
+            
+            {/* Primary Credential (Headline / Tagline) */}
+            {author.headline && (
+              <p className="ap-headline" style={{ color: "var(--ink-2)", fontWeight: 500 }}>
+                {author.headline}
+              </p>
+            )}
 
-            <div className="ap-meta-row">
-              {author.role && (
-                <span className="ap-meta-item" style={{ fontWeight: 600, color: "var(--ink)" }}>
-                  {author.role}
-                </span>
-              )}
+            <div className="ap-meta-row" style={{ marginTop: "12px" }}>
               {author.location && (
                 <span className="ap-meta-item">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -91,14 +92,14 @@ export default function AuthorProfileView({ author, articles, socials, totalView
 
             {/* Social icons */}
             {socials.length > 0 && (
-              <div className="ap-socials">
+              <div className="ap-socials" style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "16px" }}>
                 {socials.map((s, i) => (
                   <a
                     key={i}
                     href={s.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ap-social-btn"
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-[var(--line)] text-xs font-medium text-[var(--ink-2)] hover:bg-[var(--surface-2)] transition-colors"
                     aria-label={s.platform}
                     title={s.platform}
                   >
@@ -121,8 +122,21 @@ export default function AuthorProfileView({ author, articles, socials, totalView
           </div>
           <div className="ap-stat-divider" />
           <div className="ap-stat">
-            <span className="ap-stat-val">{fmtViews(totalViews)}</span>
-            <span className="ap-stat-label">Total Reads</span>
+            {totalViews >= 1000 ? (
+              <>
+                <span className="ap-stat-val">{fmtViews(totalViews)}</span>
+                <span className="ap-stat-label">Total Reads</span>
+              </>
+            ) : (
+              <>
+                <span className="ap-stat-val">
+                  {articles.length > 0
+                    ? `~${Math.round(articles.reduce((sum, a) => sum + (a.mins || 5), 0) / articles.length)} mins`
+                    : "--"}
+                </span>
+                <span className="ap-stat-label">Avg. Read Time</span>
+              </>
+            )}
           </div>
           <div className="ap-stat-divider" />
           <div className="ap-stat">
@@ -141,8 +155,21 @@ export default function AuthorProfileView({ author, articles, socials, totalView
             <section className="ap-about" aria-label="About">
               <div className="ap-section-label">About</div>
               {author.expertise && (
-                <div style={{ marginBottom: "16px", fontSize: "14px", color: "var(--ink)" }}>
-                  <strong>Coverage Beats: </strong> {author.expertise}
+                <div style={{ marginBottom: "20px" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    {author.expertise.split(',').map((beat: string, idx: number) => {
+                      const trimmed = beat.trim();
+                      if (!trimmed) return null;
+                      return (
+                        <span 
+                          key={idx} 
+                          className="bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--ink-2)] border border-[var(--line-2)] px-3 py-1.5 rounded-md text-xs font-mono tracking-wide transition-all cursor-default"
+                        >
+                          {trimmed}
+                        </span>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
               <div className="ap-bio prose" dangerouslySetInnerHTML={{ __html: sanitizeBioHtml(author.bio) }} />

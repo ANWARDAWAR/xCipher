@@ -115,28 +115,15 @@ export async function upsertArticle(data: any) {
 
     const uniqueSlug = await getUniqueSlug(data.slug || data.title, data.id);
 
-    let statusVal: ArticleStatus = data.status?.toUpperCase() || "DRAFT";
-    
-    // Role-based logic for Publishing
-    const publishPolicy = canPublishArticle(dbUser.role as Role);
-    if (statusVal === "PUBLISHED" && !publishPolicy.success) {
-      statusVal = "SUBMITTED";
-    }
-
-    let publishedAt = existingArticle?.publishedAt || null;
     let scheduledFor = data.scheduledFor ? new Date(data.scheduledFor) : null;
 
-    if (statusVal === "PUBLISHED" && !publishedAt) {
-      // First time publishing
-      publishedAt = new Date();
-    }
-    
-    // Clear scheduled time if published immediately or reverted to draft
-    if (statusVal === "PUBLISHED" || statusVal === "DRAFT") {
-      scheduledFor = null;
-    }
 
     const sanitizedBodyHtml = sanitizeArticleHtml(data.bodyHtml);
+
+    const {
+      status, // Strip status: handled by workflow actions now
+      ...restData
+    } = data;
 
     const payload = {
       title: data.title.trim(),
@@ -146,7 +133,6 @@ export async function upsertArticle(data: any) {
       contentJson: data.bodyJson || null,
       author: data.author?.trim() || user.name || "xCipher Staff",
       role: data.role?.trim() || user.role || null,
-      status: statusVal,
       featured: Boolean(data.featured),
       img: data.img || null,
       seoTitle: data.seoTitle || null,
@@ -156,7 +142,6 @@ export async function upsertArticle(data: any) {
       categoryId: category.id,
       // Strictly enforce authorId from session/DB, don't trust client payload for Authors
       authorId: dbUser.role === "AUTHOR" ? userWithAuth.authorId : (data.authorId || userWithAuth.authorId || null), 
-      publishedAt,
       scheduledFor,
     };
 
@@ -184,7 +169,7 @@ export async function upsertArticle(data: any) {
         },
         include: { category: true },
       });
-      actionType = `UPDATE_ARTICLE_${statusVal}`;
+      actionType = `UPDATE_ARTICLE_${article.status}`;
     } else {
       article = await db.article.create({
         data: {
@@ -193,24 +178,26 @@ export async function upsertArticle(data: any) {
         },
         include: { category: true },
       });
-      actionType = `CREATE_ARTICLE_${statusVal}`;
+      actionType = `CREATE_ARTICLE_${article.status}`;
     }
 
-    // Always create an immutable revision snapshot
-    await db.articleRevision.create({
-      data: {
-        articleId: article.id,
-        userId: user.id,
-        title: article.title,
-        deck: article.deck,
-        contentHtml: article.contentHtml,
-        contentJson: article.contentJson ? JSON.parse(JSON.stringify(article.contentJson)) : null,
-        notes: data.notes || null,
-        statusChange: existingArticleStatus !== statusVal ? `${existingArticleStatus} -> ${statusVal}` : null,
-      }
-    });
+    // Do not create an immutable revision snapshot for autosaves
+    if (!data.isAutosave) {
+      await db.articleRevision.create({
+        data: {
+          articleId: article.id,
+          userId: user.id,
+          title: article.title,
+          deck: article.deck,
+          contentHtml: article.contentHtml,
+          contentJson: article.contentJson ? JSON.parse(JSON.stringify(article.contentJson)) : null,
+          notes: data.notes || null,
+          statusChange: null,
+        }
+      });
+    }
 
-    await logAudit(actionType, "Article", article.id, { title: article.title, status: statusVal });
+    await logAudit(actionType, "Article", article.id, { title: article.title, status: article.status });
 
     // Revalidate relevant pages
     try {

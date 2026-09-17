@@ -24,7 +24,10 @@ export async function updateUserRole(userId: string, newRole: Role) {
 
     await db.user.update({
       where: { id: userId },
-      data: { role: newRole }
+      data: { 
+        role: newRole,
+        sessionVersion: { increment: 1 } 
+      }
     });
 
     await db.auditLog.create({

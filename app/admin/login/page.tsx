@@ -1,18 +1,29 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect, useRef } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Loader2, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  const emailInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("from") || "/admin";
   const setupSuccess = searchParams.get("setup") === "success";
+
+  // Auto-focus email input on mount
+  useEffect(() => {
+    if (emailInputRef.current) {
+      emailInputRef.current.focus();
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,54 +46,188 @@ function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="w-full flex flex-col gap-5">
       {setupSuccess && (
-        <div className="p-3 bg-green-500/10 text-green-400 rounded text-sm mb-2">
-          Setup complete! You may now log in with your new Owner account.
+        <div 
+          className="flex items-start gap-3 p-3.5 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 rounded-lg text-sm"
+          role="status"
+        >
+          <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
+          <p className="font-medium text-xs sm:text-sm leading-relaxed">
+            Setup complete! You may now log in with your new Owner account.
+          </p>
         </div>
       )}
-      {error && <div className="p-3 bg-red-500/10 text-red-400 rounded text-sm">{error}</div>}
-      <div>
-        <label className="block text-sm font-medium mb-1">Email</label>
+      
+      {error && (
+        <div 
+          className="flex items-start gap-3 p-3.5 bg-red-500/10 border border-red-500/25 text-red-400 rounded-lg text-sm"
+          role="alert"
+          aria-live="assertive"
+        >
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
+          <p className="font-medium text-xs sm:text-sm leading-relaxed">{error}</p>
+        </div>
+      )}
+
+      {/* Email Form Group */}
+      <div className="flex flex-col gap-2">
+        <label 
+          htmlFor="email" 
+          className="block text-xs font-semibold uppercase tracking-wider text-neutral-300"
+        >
+          Email Address
+        </label>
         <input 
+          id="email"
           type="email" 
+          ref={emailInputRef}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          placeholder="editor@xcipher.com"
           required 
-          className="w-full bg-white/5 border border-white/10 rounded-lg p-2 focus:border-white/30 outline-none" 
+          autoComplete="email"
+          className="block w-full h-11 px-3.5 py-2.5 bg-neutral-900/90 border border-neutral-700/80 rounded-lg text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-red-500/70 focus:ring-1 focus:ring-red-500/40 transition-all box-border" 
         />
       </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Password</label>
+
+      {/* Password Form Group */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <label 
+            htmlFor="password" 
+            className="block text-xs font-semibold uppercase tracking-wider text-neutral-300"
+          >
+            Password
+          </label>
+          <a 
+            href="#" 
+            className="text-xs font-medium text-neutral-400 hover:text-neutral-200 transition-colors focus:outline-none focus-visible:underline"
+          >
+            Forgot password?
+          </a>
+        </div>
         <input 
+          id="password"
           type="password" 
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          placeholder="••••••••••••"
           required 
-          className="w-full bg-white/5 border border-white/10 rounded-lg p-2 focus:border-white/30 outline-none" 
+          autoComplete="current-password"
+          className="block w-full h-11 px-3.5 py-2.5 bg-neutral-900/90 border border-neutral-700/80 rounded-lg text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-red-500/70 focus:ring-1 focus:ring-red-500/40 transition-all box-border" 
         />
       </div>
-      <button 
-        type="submit" 
-        disabled={loading} 
-        className="w-full py-2 bg-white text-black font-semibold rounded-lg mt-2 hover:bg-gray-200 disabled:opacity-50 transition-colors"
-      >
-        {loading ? "Signing in..." : "Sign In"}
-      </button>
+
+      {/* Primary CTA Action */}
+      <div className="pt-1">
+        <button 
+          type="submit" 
+          disabled={loading} 
+          style={{ backgroundColor: loading ? '#b91c1c' : '#dc2626' }}
+          className="w-full h-11 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-medium text-sm tracking-wide rounded-lg shadow-md shadow-red-600/25 transition-all duration-200 active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin text-white" />
+              <span>Signing in...</span>
+            </>
+          ) : (
+            <span>Sign In</span>
+          )}
+        </button>
+      </div>
     </form>
   );
 }
 
 export default function LoginPage() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh]">
-      <div className="w-full max-w-md p-8 bg-[#111] rounded-2xl border border-white/10">
-        <h1 className="text-2xl font-semibold mb-2">Sign in to xCipher</h1>
-        <p className="text-white/60 mb-6">Enter your credentials to access the editorial console.</p>
-        <Suspense fallback={<div className="text-white/50">Loading form...</div>}>
+    <div className="min-h-screen w-full flex flex-col items-center justify-center text-neutral-200 p-4 sm:p-6 lg:p-8 relative selection:bg-red-500 selection:text-white">
+      {/* High-Performance Animated Tech Background */}
+      <div 
+        className="fixed inset-0 overflow-hidden pointer-events-none -z-10 bg-[#0c0d10]"
+        aria-hidden="true"
+      >
+        {/* Layer 1: Subtle Tech Grid with drifting animation */}
+        <div 
+          className="absolute inset-0 opacity-[0.07] animate-tech-grid"
+          style={{
+            backgroundImage: `linear-gradient(to right, rgba(255, 255, 255, 0.25) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.25) 1px, transparent 1px)`,
+            backgroundSize: "48px 48px",
+          }}
+        />
+
+        {/* Layer 2: Ambient Deep Crimson Breathing Glow */}
+        <div 
+          className="absolute top-1/2 left-1/2 w-[580px] h-[580px] rounded-full blur-[130px] pointer-events-none animate-ambient-pulse"
+          style={{
+            background: "radial-gradient(circle, rgba(220, 38, 38, 0.14) 0%, rgba(185, 28, 28, 0.05) 55%, transparent 75%)",
+            willChange: "transform, opacity",
+          }}
+        />
+
+        {/* Layer 3: Soft Radial Vignette */}
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: "radial-gradient(ellipse at center, transparent 35%, #0c0d10 90%)",
+          }}
+        />
+      </div>
+
+      {/* Editorial Auth Card */}
+      <div className="w-full max-w-[420px] bg-[#14171c]/95 border border-white/10 shadow-2xl shadow-black/80 rounded-2xl p-8 sm:p-10 relative z-10 flex flex-col items-center backdrop-blur-sm">
+        
+        {/* Header Section with Brand Mark */}
+        <div className="flex flex-col items-center mb-6 text-center w-full">
+          <div className="flex items-center gap-2.5 mb-3">
+            <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" className="text-white shrink-0">
+              <rect x="1" y="1" width="10" height="10" fill="currentColor" />
+              <rect x="15" y="1" width="10" height="10" fill="currentColor" opacity=".35" />
+              <rect x="1" y="15" width="10" height="10" fill="currentColor" opacity=".35" />
+              <path d="M15.5 15.5 24.5 24.5M24.5 15.5l-9 9" stroke="#f04552" strokeWidth="3.2" strokeLinecap="round" />
+            </svg>
+            <span className="text-2xl font-bold tracking-tight text-white font-[var(--f-ui)]">
+              x<span className="text-[#f04552]">Cipher</span>
+            </span>
+            <span className="px-2 py-0.5 text-[10px] font-semibold tracking-widest uppercase bg-white/5 border border-white/10 text-neutral-400 rounded">
+              Console
+            </span>
+          </div>
+
+          <h1 className="sr-only">Sign In to xCipher Editorial Console</h1>
+          <p className="text-neutral-400 text-xs sm:text-sm font-normal tracking-wide">
+            Sign in to access editorial newsroom & CMS
+          </p>
+        </div>
+
+        <Suspense fallback={
+          <div className="flex flex-col items-center justify-center py-12 text-neutral-400 space-y-4">
+            <Loader2 className="w-6 h-6 animate-spin text-neutral-500" />
+            <p className="text-sm font-medium">Loading console...</p>
+          </div>
+        }>
           <LoginForm />
         </Suspense>
+
       </div>
+      
+      {/* Return Link & Footer */}
+      <div className="mt-6 mb-3 relative z-10 flex flex-col items-center gap-3 text-center">
+        <Link 
+          href="/" 
+          className="group inline-flex items-center gap-2 text-xs font-medium text-neutral-400 hover:text-white transition-colors duration-200 py-1.5 px-3.5 rounded-full hover:bg-white/5 border border-transparent hover:border-white/10"
+        >
+          <ArrowLeft className="w-4 h-4 text-neutral-400 group-hover:text-white transition-transform duration-200 group-hover:-translate-x-1" />
+          <span>Return to publication</span>
+        </Link>
+        <p className="text-[11px] text-neutral-500 tracking-wider uppercase">
+          &copy; {new Date().getFullYear()} xCipher Media Network · Authorized Editorial Staff Only
+        </p>
+      </div>
+
     </div>
   );
 }

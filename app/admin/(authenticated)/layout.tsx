@@ -4,7 +4,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import SignOutButton from "@/components/editorial/SignOutButton";
 import AdminNavLinks from "@/components/editorial/AdminNavLinks";
-import { canViewReviewQueue, canViewUsersList, canViewAuditLogs, canModerateComments, canViewSubscribers } from "@/lib/permissions";
+import ThemeToggle from "@/components/layout/ThemeToggle";
+import { canViewReviewQueue, canViewUsersList, canViewAuditLogs, canModerateComments, canViewSubscribers, canViewTaxonomy } from "@/lib/permissions";
 import { Role } from "@prisma/client";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -25,20 +26,45 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const userRole = (dbUser?.role || user.role || "AUTHOR").toUpperCase();
   const authorSlug = dbUser?.authorProfile?.slug || null;
 
+  let reviewCount = 0;
+  if (canViewReviewQueue(userRole as Role)) {
+    reviewCount = await db.article.count({
+      where: { status: "SUBMITTED" }
+    });
+  }
+
   return (
     <div className="console open" id="console" role="dialog" aria-modal="true" aria-label="xCipher editorial console" style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
       <div className="cs-top">
-        <svg width="21" height="21" viewBox="0 0 26 26" aria-hidden="true" style={{ color: "#fff" }}>
-          <rect x="1" y="1" width="10" height="10" fill="currentColor" />
-          <rect x="15" y="1" width="10" height="10" fill="currentColor" opacity=".32" />
-          <rect x="1" y="15" width="10" height="10" fill="currentColor" opacity=".32" />
-          <path d="M15.5 15.5 24.5 24.5M24.5 15.5l-9 9" stroke="var(--accent)" strokeWidth="3.2" strokeLinecap="round" />
-        </svg>
-        <span className="wm">x<span className="wm-x">Cipher</span></span>
-        <span className="cs-tag">xCipher Editorial Console</span>
+        <Link href="/admin" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
+          <svg width="22" height="22" viewBox="0 0 26 26" aria-hidden="true" style={{ color: "var(--ink)" }}>
+            <rect x="1" y="1" width="10" height="10" fill="currentColor" />
+            <rect x="15" y="1" width="10" height="10" fill="currentColor" opacity=".35" />
+            <rect x="1" y="15" width="10" height="10" fill="currentColor" opacity=".35" />
+            <path d="M15.5 15.5 24.5 24.5M24.5 15.5l-9 9" stroke="var(--accent)" strokeWidth="3.2" strokeLinecap="round" />
+          </svg>
+          <span className="wm">x<span className="wm-x">Cipher</span></span>
+        </Link>
+        <span className="cs-tag">Editorial Console</span>
         <span className="spacer"></span>
-        <SignOutButton />
-        <Link className="btn-cs" href="/" target="_blank">View site</Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Link 
+            className="btn-cs" 
+            href="/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            title="Open public website in a new tab"
+          >
+            <span>View site</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+          </Link>
+          <SignOutButton />
+        </div>
       </div>
       <div className="cs-body">
         <nav className="cs-nav" aria-label="Console sections">
@@ -91,6 +117,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             canViewLogs={canViewAuditLogs(userRole as Role)}
             canModerateComments={canModerateComments(userRole as Role)}
             canViewSubscribers={canViewSubscribers(userRole as Role)}
+            canViewTaxonomy={canViewTaxonomy(userRole as Role)}
+            reviewCount={reviewCount}
           />
         </nav>
         <div className="cs-main" id="csMain">

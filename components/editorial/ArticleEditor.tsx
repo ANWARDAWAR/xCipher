@@ -19,7 +19,7 @@ import { TableHeader } from "@tiptap/extension-table-header";
 import tippy from 'tippy.js';
 
 import { upsertArticle } from "@/app/actions/article";
-import { Role } from "@prisma/client";
+import { Role, ArticleStatus } from "@prisma/client";
 import { ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
 import SeoPreview from "./SeoPreview";
 import ReviewWorkspace from "./ReviewWorkspace";
@@ -129,6 +129,8 @@ export default function ArticleEditor({
   const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [reviewNotes, setReviewNotes] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [tagInput, setTagInput] = useState("");
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
   const router = useRouter();
@@ -153,7 +155,7 @@ export default function ArticleEditor({
     homepagePlacement: initialData?.homepagePlacement || "",
   };
 
-  const { register, setValue, watch, getValues, reset } = useForm<ArticleFormValues>({
+  const { register, setValue, watch, getValues, reset, formState: { errors, isSubmitted } } = useForm<ArticleFormValues>({
     resolver: zodResolver(articleSchema),
     defaultValues,
   });
@@ -162,6 +164,9 @@ export default function ArticleEditor({
     extensions: [
       StarterKit.configure({
         codeBlock: false, // Replaced by CodeBlockLowlight for syntax highlighting
+        heading: {
+          levels: [1, 2, 3, 4, 5, 6],
+        },
       }),
       CodeBlockLowlight,
       Underline,
@@ -428,7 +433,7 @@ export default function ArticleEditor({
         }
 
         showToast(targetStatus === "PUBLISHED" ? "Story published successfully!" : "Saved successfully!");
-        setValue("status", result.article.status);
+        setValue("status", result.article.status as any);
         if (!initialData?.id && result.article.id) {
           router.push(`/admin/editor/${result.article.id}`);
         } else {
@@ -490,236 +495,361 @@ export default function ArticleEditor({
   const canPublish = ["OWNER", "ADMIN", "EDITOR"].includes(userRole || "");
   const currentFormStatus = watch("status") || "DRAFT";
 
+  
+  const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = tagInput.trim().toLowerCase();
+      if (!val) return;
+      const current = watch("tags") || "";
+      const currentArr = typeof current === "string" ? current.split(",").map(t => t.trim()).filter(Boolean) : (Array.isArray(current) ? current : []);
+      if (!currentArr.includes(val)) {
+        setValue("tags", [...currentArr, val].join(", "), { shouldDirty: true });
+      }
+      setTagInput("");
+    }
+  };
+  const handleRemoveTag = (tagToRemove: string) => {
+    const current = watch("tags") || "";
+    const currentArr = typeof current === "string" ? current.split(",").map(t => t.trim()).filter(Boolean) : (Array.isArray(current) ? current : []);
+    setValue("tags", currentArr.filter(t => t !== tagToRemove).join(", "), { shouldDirty: true });
+  };
+  
+  const currentTagsString = watch("tags") || "";
+  const currentTags = typeof currentTagsString === "string" ? currentTagsString.split(",").map(t => t.trim()).filter(Boolean) : (Array.isArray(currentTagsString) ? currentTagsString : []);
+
   return (
-    <form className="ed-grid" onSubmit={(e) => { e.preventDefault(); }}>
-      <div className="ed-full" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: "var(--surface)", borderRadius: "var(--r-md)", border: "1px solid var(--line)", marginBottom: "16px" }}>
-        <div>
-          <span style={{ fontWeight: 600, color: "var(--ink)" }}>Status: </span>
-          <span className="muted" style={{ padding: "4px 8px", background: "var(--surface-2)", borderRadius: "4px", fontSize: "12px", fontWeight: "bold" }}>{currentFormStatus}</span>
+    <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col h-[100dvh] overflow-hidden bg-[var(--bg)]">
+      
+      {/* ── Sticky Top Editorial Command Header ── */}
+      <header className="h-14 flex-shrink-0 z-40 bg-[var(--bg)]/95 backdrop-blur-md border-b border-[var(--line)] px-4 sm:px-6 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button 
+            type="button"
+            onClick={() => router.push('/admin/articles')}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--muted)] hover:text-[var(--ink)] transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            <span className="hidden sm:inline">Back</span>
+          </button>
+          
+          <div className="w-px h-4 bg-[var(--line)] hidden sm:block mx-1"></div>
+          
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+            currentFormStatus === 'PUBLISHED' ? 'bg-[var(--ok)]/10 text-[var(--ok)] border border-[var(--ok)]/20' :
+            currentFormStatus === 'SUBMITTED' ? 'bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20' :
+            'bg-[#f59e0b]/10 text-[#d97706] border border-[#f59e0b]/20'
+          }`}>
+            {currentFormStatus === 'SUBMITTED' ? 'In Review' : currentFormStatus}
+          </span>
+          
+          <span className="text-xs text-[var(--muted)] hidden md:inline ml-2">
+            {editor.storage.characterCount.words()} words · {editor.storage.characterCount.characters()} chars
+          </span>
         </div>
-        <div style={{ fontSize: "12px", color: "var(--ink-muted)", display: "flex", alignItems: "center", gap: "8px" }}>
-          {autosaveStatus === "saving" && <span>⏳ Autosaving...</span>}
-          {autosaveStatus === "saved" && <span style={{ color: "var(--accent)" }}>✓ Saved</span>}
-          {autosaveStatus === "error" && <span style={{ color: "red" }}>⚠️ Save failed</span>}
-          {lastSaved && <span>Last saved: {lastSaved.toLocaleTimeString()}</span>}
-          <div style={{ marginLeft: "12px" }}>
-            <select 
-              onChange={(e) => fillTestData(e.target.value)} 
-              value=""
-              style={{ padding: "4px 8px", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "4px", fontSize: "12px" }}
+
+        <div className="flex items-center gap-2">
+          {/* Mobile Inspector Toggle */}
+          <button 
+            type="button" 
+            onClick={() => setIsInspectorOpen(true)}
+            className="lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg text-[var(--ink-2)] hover:bg-[var(--surface-2)] transition-colors border border-[var(--line-2)]"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            <span className="hidden sm:inline">Settings</span>
+          </button>
+          
+          <button 
+            type="button" 
+            disabled={isPending} 
+            onClick={handlePreview}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg text-[var(--ink-2)] hover:bg-[var(--surface-2)] transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span className="hidden sm:inline">Preview</span>
+          </button>
+          
+          {(currentFormStatus === "DRAFT" || currentFormStatus === "REVISION_REQUESTED") && (
+            <button 
+              type="button" 
+              disabled={isPending} 
+              onClick={() => handleSave(currentFormStatus)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-[var(--line-2)] text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors"
             >
-              <option value="" disabled>Apply Template...</option>
-              {Object.keys(ARTICLE_TEMPLATES).map(k => (
-                <option key={k} value={k}>{ARTICLE_TEMPLATES[k].title}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div className="ed-full">
-        <label className="ed-label" htmlFor="edTitle">Article title</label>
-        <input 
-          className="ed-input" 
-          id="edTitle" 
-          placeholder="Write a headline that earns the click honestly" 
-          {...register("title", { onChange: handleTitleChange })} 
-        />
-      </div>
-      
-      <div>
-        <label className="ed-label" htmlFor="edSlug">Slug</label>
-        <input 
-          className="ed-input" 
-          id="edSlug" 
-          placeholder="auto-generated-from-title" 
-          {...register("slug", {
-            onChange: () => setSlugManuallyEdited(true),
-          })} 
-        />
-      </div>
-      
-      <div>
-        <label className="ed-label" htmlFor="edCat">Category</label>
-        <select className="ed-input" id="edCat" {...register("cat")}>
-          {availableCategories.map((c) => (
-            <option key={c.id} value={c.slug}>{c.name}</option>
-          ))}
-        </select>
-      </div>
-      
-      <div>
-        <label className="ed-label" htmlFor="edAuthor">Author</label>
-        <input className="ed-input" id="edAuthor" placeholder="e.g. xCipher Staff" {...register("author")} readOnly title="Set from profile settings" style={{ cursor: "not-allowed", backgroundColor: "var(--bg-elevated)", color: "var(--ink-muted)" }} />
-        <span style={{ display: "block", marginTop: "4px", fontSize: "12px", color: "var(--ink-muted)" }}>This is automatically set from your profile settings.</span>
-      </div>
-
-      <div>
-        <label className="ed-label" htmlFor="edRole">Author role</label>
-        <input className="ed-input" id="edRole" placeholder="e.g. Senior Tech Correspondent" {...register("role")} readOnly title="Set from profile settings" style={{ cursor: "not-allowed", backgroundColor: "var(--bg-elevated)", color: "var(--ink-muted)" }} />
-      </div>
-      
-      {canPublish && (
-        <div>
-          <label className="ed-label" htmlFor="edScheduledFor">Schedule Publication (Optional)</label>
-          <input className="ed-input" id="edScheduledFor" type="datetime-local" {...register("scheduledFor")} />
-        </div>
-      )}
-
-      <div style={{ display: "flex", gap: "24px", marginTop: "24px", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <input 
-            type="checkbox" 
-            id="edFeatured" 
-            {...register("featured")} 
-            style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "var(--accent)" }} 
-          />
-          <label className="ed-label" htmlFor="edFeatured" style={{ margin: 0, cursor: "pointer" }}>
-            Feature on homepage / top stories
-          </label>
-        </div>
-
-        {canPublish && (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <label className="ed-label" htmlFor="edHomepagePlacement" style={{ margin: 0 }}>Homepage Placement:</label>
-            <select className="ed-input" id="edHomepagePlacement" {...register("homepagePlacement")} style={{ width: "auto" }}>
-              <option value="">None (Default)</option>
-              <option value="hero">Hero Section</option>
-              <option value="featured">Featured Stories</option>
-              <option value="picks">Editor's Picks</option>
-            </select>
-          </div>
-        )}
-      </div>
-      
-      <div className="ed-full">
-        <label className="ed-label" htmlFor="edExcerpt">Excerpt / deck</label>
-        <textarea className="ed-input" id="edExcerpt" rows={2} placeholder="One or two sentences that make the story clear" {...register("deck")} />
-      </div>
-      
-      <div className="ed-full">
-        <label className="ed-label" htmlFor="edImg">Featured image URL</label>
-        <input className="ed-input" id="edImg" placeholder="https://images.pexels.com/…" {...register("img")} />
-        {watch("img") && (
-          <div className="ed-imgprev">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={watch("img")!} alt="Draft featured image preview" onError={(e) => (e.currentTarget.style.display = "none")} />
-          </div>
-        )}
-      </div>
-      
-      <div className="ed-full">
-        <label className="ed-label" htmlFor="edTags">Tags</label>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "8px", padding: "12px", border: "1px solid var(--line)", borderRadius: "var(--r-md)", background: "var(--bg-elevated)", maxHeight: "160px", overflowY: "auto" }}>
-          {availableTags.length > 0 ? availableTags.map(tag => (
-            <label key={tag.id} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "14px", cursor: "pointer" }}>
-              <input type="checkbox" value={tag.slug} {...register("tags")} style={{ accentColor: "var(--accent)" }} />
-              {tag.name}
-            </label>
-          )) : (
-            <span className="muted text-sm">No tags available. Manage them in Taxonomy.</span>
-          )}
-        </div>
-        <input type="hidden" {...register("tags")} />
-      </div>
-      
-      <div className="ed-full" style={{ padding: "16px", border: "1px solid var(--line)", borderRadius: "var(--r-md)", background: "var(--surface-1)" }}>
-        <h3 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "16px" }}>SEO & Metadata</h3>
-        
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
-          <div>
-            <label className="ed-label" htmlFor="edSeoTitle">SEO title</label>
-            <input className="ed-input" id="edSeoTitle" placeholder="Defaults to article title" {...register("seoTitle")} />
-          </div>
-          <div>
-            <label className="ed-label" htmlFor="edSeoDesc">SEO description</label>
-            <input className="ed-input" id="edSeoDesc" placeholder="Defaults to excerpt" {...register("seoDesc")} />
-          </div>
-        </div>
-
-        <SeoPreview 
-          title={watch("seoTitle") || watch("title") || ""} 
-          description={watch("seoDesc") || watch("deck") || ""}
-          slug={watch("slug") || ""}
-          image={watch("img") || ""}
-        />
-      </div>
-      
-      <div className={isFullscreen ? "ed-editor-shell is-fullscreen fixed inset-0 z-[9999] bg-[var(--bg)] flex flex-col p-4 overflow-y-auto" : "ed-full ed-editor-shell"}>
-        <div className={isFullscreen ? "ed-editor-inner w-full mx-auto" : ""}>
-          <label className="ed-label">Article body</label>
-          
-          <EditorToolbar 
-            editor={editor} 
-            isFullscreen={isFullscreen} 
-            toggleFullscreen={() => setIsFullscreen(!isFullscreen)} 
-          />
-          
-          <div className="ed-body" id="edBody" aria-label="Article body editor" style={isFullscreen ? { minHeight: "calc(100vh - 150px)", maxHeight: "none", border: "none" } : {}}>
-            <EditorContent editor={editor} />
-          </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--surface-2)', border: '1px solid var(--line)', borderTop: 'none', borderBottomLeftRadius: 'var(--r-md)', borderBottomRightRadius: 'var(--r-md)', fontSize: '12px', color: 'var(--ink-muted)' }}>
-            <span>
-              {editor.storage.characterCount.words()} words · {editor.storage.characterCount.characters()} characters
-            </span>
-            <span>
-              ~{Math.ceil(editor.storage.characterCount.words() / 200)} min read
-            </span>
-          </div>
-        </div>
-      </div>
-
-      
-      {initialData?.id && (
-        <div className="ed-full" style={{ marginTop: "24px" }}>
-          <ReviewWorkspace 
-            userRole={userRole || "AUTHOR"} 
-            articleId={initialData.id} 
-            currentStatus={currentFormStatus}
-            revisions={initialRevisions}
-            onDecision={async (status, notes) => {
-              await handleSave(status, false, notes);
-            }}
-          />
-        </div>
-      )}
-
-      <div className="ed-full ed-actions" style={{ flexWrap: "wrap", gap: "12px", marginTop: "32px", padding: "16px", background: "var(--surface)", borderTop: "1px solid var(--line)" }}>
-        <button 
-          className="btn-cs" 
-          type="button" 
-          disabled={isPending} 
-          onClick={handlePreview}
-        >
-          Preview
-        </button>
-
-        <span className="spacer" style={{ flexGrow: 1 }}></span>
-
-        {/* Explicit Transitions based on Role and Status */}
-        {currentFormStatus === "DRAFT" || currentFormStatus === "REVISION_REQUESTED" ? (
-          <>
-            <button className="btn-cs" type="button" disabled={isPending} onClick={() => handleSave(currentFormStatus)}>
               {isPending ? "Saving..." : "Save Draft"}
             </button>
-            <button className="btn-cs primary" type="button" disabled={isPending} onClick={() => handleSave("SUBMITTED")}>
-              Submit for Review
-            </button>
-          </>
-        ) : null}
+          )}
 
-        {currentFormStatus === "PUBLISHED" && canPublish ? (
-          <>
-            <button className="btn-cs danger" type="button" disabled={isPending} onClick={() => handleSave("DRAFT", false, "Unpublished by editor")}>
-              Unpublish
-            </button>
-            <button className="btn-cs primary" type="button" disabled={isPending} onClick={() => handleSave("PUBLISHED")}>
+          {currentFormStatus === "PUBLISHED" && canPublish ? (
+            <button 
+              type="button" 
+              disabled={isPending} 
+              onClick={() => handleSave("PUBLISHED")}
+              className="bg-[var(--accent)] hover:bg-[var(--accent-deep)] text-white font-medium px-4 py-1.5 rounded-lg shadow-sm shadow-[var(--accent)]/20 text-sm transition-colors"
+            >
               {isPending ? "Updating..." : "Update Live"}
             </button>
-          </>
-        ) : null}
+          ) : (
+            (currentFormStatus === "DRAFT" || currentFormStatus === "REVISION_REQUESTED") && (
+              <button 
+                type="button" 
+                disabled={isPending} 
+                onClick={() => handleSave(canPublish ? "PUBLISHED" : "SUBMITTED")}
+                className="bg-[var(--accent)] hover:bg-[var(--accent-deep)] text-white font-medium px-4 py-1.5 rounded-lg shadow-sm shadow-[var(--accent)]/20 text-sm transition-colors"
+              >
+                {canPublish ? "Publish Story" : "Submit for Review"}
+              </button>
+            )
+          )}
+        </div>
+      </header>
 
+      {/* ── 2-Column Workspace ── */}
+      <div className="flex flex-row flex-1 overflow-hidden w-full relative">
+        
+        {/* ── Main Writing Canvas (Left/Center) ── */}
+        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden px-4 sm:px-10 py-8 bg-[var(--paper)]">
+          <div className="max-w-4xl mx-auto space-y-6 pb-24">
+            
+            {/* Title Input */}
+            <div>
+              <label htmlFor="article-title" className="block text-[11px] font-bold uppercase tracking-wider text-[var(--muted)] mb-1.5">Article Title <span className="text-[var(--bad)]">*</span></label>
+              <textarea
+                id="article-title"
+                className={`w-full text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[var(--ink)] tracking-tight leading-tight placeholder:text-[var(--muted)]/30 bg-transparent resize-none border-b focus:outline-none pb-3 transition-colors ${errors.title && isSubmitted ? 'border-[var(--bad)] focus:border-[var(--bad)]' : 'border-[var(--line)]/40 focus:border-[var(--ink)]/30'}`}
+                rows={2}
+                placeholder="Write a headline that earns the click honestly..."
+                {...register("title", { onChange: handleTitleChange })}
+              />
+              {errors.title && isSubmitted && <p className="text-xs text-[var(--bad)] mt-1">{errors.title.message}</p>}
+            </div>
+
+            {/* Deck / Excerpt Input */}
+            <div>
+              <label htmlFor="article-deck" className="block text-[11px] font-bold uppercase tracking-wider text-[var(--muted)] mb-1.5">Deck / Excerpt</label>
+              <textarea
+                id="article-deck"
+                className="w-full text-base sm:text-lg text-[var(--muted)] placeholder:text-[var(--muted)]/40 bg-transparent resize-none border-b border-[var(--line)]/40 focus:border-[var(--ink)]/30 focus:outline-none pb-2 transition-colors leading-relaxed"
+                rows={2}
+                placeholder="Write a compelling one or two sentence deck that summarizes the core revelation..."
+                {...register("deck")}
+              />
+            </div>
+
+            {/* Tiptap Editor Canvas */}
+            <div className={isFullscreen ? "ed-editor-shell is-fullscreen fixed inset-0 z-[9999] bg-[var(--bg)] flex flex-col p-4 overflow-y-auto" : "ed-editor-shell border-none shadow-none bg-transparent"}>
+              <div className={isFullscreen ? "ed-editor-inner w-full mx-auto max-w-3xl" : "w-full"}>
+                <EditorToolbar 
+                  editor={editor} 
+                  isFullscreen={isFullscreen} 
+                  toggleFullscreen={() => setIsFullscreen(!isFullscreen)} 
+                />
+                
+                <div 
+                  className="ed-body mt-2 prose prose-lg dark:prose-invert max-w-none min-h-[500px]" 
+                  id="edBody" 
+                  aria-label="Article body editor"
+                  style={isFullscreen ? { minHeight: "calc(100vh - 150px)" } : { border: 'none', padding: 0 }}
+                >
+                  <EditorContent editor={editor} />
+                </div>
+              </div>
+            </div>
+
+            {/* Templates Utility */}
+            <div className="pt-6 border-t border-[var(--line)]">
+              <label className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider mb-2 block">Quick Start Templates</label>
+              <select 
+                onChange={(e) => fillTestData(e.target.value)} 
+                value=""
+                className="text-sm bg-[var(--surface-2)] border border-[var(--line)] rounded-md px-3 py-1.5 text-[var(--ink-2)] focus:outline-none focus:border-[var(--accent)]"
+              >
+                <option value="" disabled>Apply Template...</option>
+                {Object.keys(ARTICLE_TEMPLATES).map(k => (
+                  <option key={k} value={k}>{ARTICLE_TEMPLATES[k].title}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </main>
+
+        {/* Backdrop for mobile slide-over */}
+        {isInspectorOpen && (
+          <div 
+            className="fixed inset-0 z-40 bg-[var(--ink)]/40 backdrop-blur-sm lg:hidden"
+            onClick={() => setIsInspectorOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+        
+        {/* ── Document Inspector Rail (Right Sidebar) ── */}
+        <aside className={`fixed inset-y-0 right-0 z-50 w-full max-w-[360px] lg:w-80 xl:w-96 shrink-0 border-l border-[var(--line)] bg-[var(--surface)]/30 overflow-y-auto p-5 sm:p-6 space-y-8 transform transition-transform duration-300 ease-in-out lg:static lg:transform-none lg:translate-x-0 lg:block ${isInspectorOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+          <div className="flex items-center justify-between lg:hidden mb-2 pb-4 border-b border-[var(--line-2)]">
+            <h2 className="text-lg font-bold text-[var(--ink)]">Settings</h2>
+            <button 
+              type="button" 
+              onClick={() => setIsInspectorOpen(false)}
+              className="p-2 -mr-2 text-[var(--muted)] hover:text-[var(--ink)] rounded-full hover:bg-[var(--surface-2)] transition-colors"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+
+{/* Panel A: Publishing & Categorization */}
+          <section className="space-y-4">
+            <h3 className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider border-b border-[var(--line-2)] pb-2">Categorization</h3>
+            
+            <div>
+              <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5" htmlFor="edCat">Category</label>
+              <select className="w-full text-sm bg-[var(--surface-2)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--ink)] focus:outline-none focus:border-[var(--accent)]" id="edCat" {...register("cat")}>
+                {availableCategories.map((c) => (
+                  <option key={c.id} value={c.slug}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5">Tags</label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {currentTags.map(tag => (
+                  <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface-3)] text-[var(--ink)] border border-[var(--line-2)]">
+                    {tag}
+                    <button type="button" onClick={() => handleRemoveTag(tag)} className="text-[var(--muted)] hover:text-[var(--bad)] transition-colors focus:outline-none">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <input 
+                type="text" 
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleAddTag}
+                placeholder="Type tag & press Enter"
+                className="w-full text-sm bg-[var(--surface-2)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] placeholder:text-[var(--muted)]"
+              />
+              <input type="hidden" {...register("tags")} />
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <div>
+                <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5">Author</label>
+                <input className="w-full text-sm bg-[var(--surface-3)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--muted)] cursor-not-allowed" value={watch("author")} readOnly title="Set from profile settings" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5">Author Role</label>
+                <input className="w-full text-sm bg-[var(--surface-3)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--muted)] cursor-not-allowed" value={watch("role")} readOnly title="Set from profile settings" />
+              </div>
+            </div>
+
+            {canPublish && (
+              <div className="pt-2">
+                <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5" htmlFor="edScheduledFor">Schedule Publication</label>
+                <input className="w-full text-sm bg-[var(--surface-2)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--ink)] focus:outline-none focus:border-[var(--accent)]" type="datetime-local" id="edScheduledFor" {...register("scheduledFor")} />
+              </div>
+            )}
+
+            <div className="space-y-3 pt-2 border-t border-[var(--line-2)]">
+              <label className="flex items-start gap-2 cursor-pointer group">
+                <input type="checkbox" id="edFeatured" {...register("featured")} className="mt-0.5 accent-[var(--accent)]" />
+                <span className="text-sm font-medium text-[var(--ink-2)] group-hover:text-[var(--ink)]">Feature on homepage / top stories</span>
+              </label>
+              
+              {canPublish && (
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5" htmlFor="edHomepagePlacement">Homepage Placement</label>
+                  <select className="w-full text-sm bg-[var(--surface-2)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--ink)] focus:outline-none focus:border-[var(--accent)]" id="edHomepagePlacement" {...register("homepagePlacement")}>
+                    <option value="">None (Default)</option>
+                    <option value="hero">Hero Section</option>
+                    <option value="featured">Featured Stories</option>
+                    <option value="picks">Editor's Picks</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Panel B: Featured Media */}
+          <section className="space-y-4">
+            <h3 className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider border-b border-[var(--line-2)] pb-2">Featured Media</h3>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5" htmlFor="edImg">Image URL</label>
+              <input className="w-full text-sm bg-[var(--surface-2)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] placeholder:text-[var(--muted)]" id="edImg" placeholder="https://images.pexels.com/..." {...register("img")} />
+              {watch("img") && (
+                <div className="mt-3 aspect-video w-full rounded-md overflow-hidden border border-[var(--line-2)] bg-[var(--surface-3)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={watch("img")!} alt="Featured image preview" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = "none")} />
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Panel C: SEO */}
+          <section className="space-y-4">
+            <h3 className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider border-b border-[var(--line-2)] pb-2">Search & Social SEO</h3>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5" htmlFor="edSeoTitle">SEO Title</label>
+              <input className="w-full text-sm bg-[var(--surface-2)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] placeholder:text-[var(--muted)]" id="edSeoTitle" placeholder="Defaults to article title" {...register("seoTitle")} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5" htmlFor="edSeoDesc">SEO Description</label>
+              <textarea className="w-full text-sm bg-[var(--surface-2)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] placeholder:text-[var(--muted)] resize-none" rows={3} id="edSeoDesc" placeholder="Defaults to excerpt" {...register("seoDesc")} />
+            </div>
+            <div className="pt-2">
+              <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5">Google SERP Preview</label>
+              <SeoPreview 
+                title={watch("seoTitle") || watch("title") || ""} 
+                description={watch("seoDesc") || watch("deck") || ""}
+                slug={watch("slug") || ""}
+                image={watch("img") || ""}
+              />
+            </div>
+          </section>
+
+          {/* Panel D: Permanent Slug */}
+          <section className="space-y-4">
+            <h3 className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider border-b border-[var(--line-2)] pb-2">Permanent URL</h3>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5" htmlFor="edSlug">Slug</label>
+              <input 
+                className="w-full text-sm bg-[var(--surface-2)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] font-mono" 
+                id="edSlug" 
+                {...register("slug", { onChange: () => setSlugManuallyEdited(true) })} 
+              />
+            </div>
+          </section>
+
+          {/* Review Workspace */}
+          {initialData?.id && (
+            <section className="pt-6 border-t border-[var(--line-2)]">
+              <ReviewWorkspace 
+                userRole={userRole || "AUTHOR"} 
+                userId={authorId || ""}
+                reviewerId={null}
+                articleId={initialData.id} 
+                currentStatus={currentFormStatus}
+                revisions={initialRevisions}
+                onDecision={async (status, notes) => {
+                  await handleSave(status, false, notes);
+                }}
+              />
+            </section>
+          )}
+
+          {/* Mobile bottom actions for unpublish (desktop has it in header, but just in case) */}
+          {currentFormStatus === "PUBLISHED" && canPublish && (
+            <div className="pt-4 lg:hidden">
+              <button 
+                type="button" 
+                disabled={isPending} 
+                onClick={() => handleSave("DRAFT", false, "Unpublished by editor")}
+                className="w-full bg-[var(--surface-3)] hover:bg-[var(--line-2)] text-[var(--bad)] font-medium px-4 py-2 rounded-lg transition-colors text-sm"
+              >
+                Unpublish
+              </button>
+            </div>
+          )}
+        </aside>
       </div>
     </form>
   );

@@ -76,7 +76,7 @@ export default async function ArticlePage({ params }: Props) {
   
   const authorName = article.authorModel?.name || article.author || "xCipher Staff";
   const authorSlug = article.authorModel?.slug || null;
-  const authorHeadline = article.authorModel?.headline || article.role || "Contributing writer";
+  const articleAuthorRole = article.authorModel?.role || article.role || "Contributing writer";
 
   // Author bio mapping
   const bios: Record<string, string> = { 
@@ -160,7 +160,7 @@ export default async function ArticlePage({ params }: Props) {
             ) : (
               <b itemProp="author">{authorName}</b>
             )}<br/>
-            <span className="muted">{authorHeadline}</span>
+            <span className="muted">{articleAuthorRole}</span>
           </div>
           <div className="ab-meta" style={{ marginLeft: "auto", textAlign: "right" }}>
             Published <b><time itemProp="datePublished">{article.createdAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</time></b><br/>
@@ -217,42 +217,53 @@ export default async function ArticlePage({ params }: Props) {
           </span>
         </div>
 
-        <section className="author-card" aria-label="About the author">
-          {authorSlug ? (
-            <Link href={`/author/${authorSlug}`} style={{ flexShrink: 0, display: 'block' }}>
-              {article.authorModel?.avatar ? (
-                <img src={article.authorModel.avatar} alt={authorName} className="ava lg object-cover" />
-              ) : (
-                <div className="ava lg">{authorName.charAt(0)}</div>
-              )}
-            </Link>
-          ) : (
-            article.authorModel?.avatar ? (
-              <img src={article.authorModel.avatar} alt={authorName} className="ava lg object-cover" />
+        <section className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl p-6 sm:p-7 shadow-sm flex flex-col sm:flex-row gap-6 mt-12 mb-10" aria-label="About the author">
+          <div className="flex-shrink-0">
+            {authorSlug ? (
+              <Link href={`/author/${authorSlug}`} className="block">
+                {article.authorModel?.avatar ? (
+                  <img src={article.authorModel.avatar} alt={authorName} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-[var(--line)] shadow-sm shrink-0" />
+                ) : (
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold text-xl sm:text-2xl border-2 border-[var(--line)] shadow-sm shrink-0">{authorName.charAt(0)}</div>
+                )}
+              </Link>
             ) : (
-              <div className="ava lg">{authorName.charAt(0)}</div>
-            )
-          )}
-          <div>
-            <h4>
-              {authorSlug ? (
-                <Link href={`/author/${authorSlug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{authorName}</Link>
-              ) : authorName}
-            </h4>
-            <div className="ar">{authorHeadline}</div>
-            <div className="prose" style={{ marginTop: "12px", fontSize: "14px", lineHeight: 1.6, color: "var(--ink-muted)" }} dangerouslySetInnerHTML={{ __html: article.authorModel?.bio || authorBio || "" }} />
-            {socials.length > 0 && (
-              <div className="al">
+              article.authorModel?.avatar ? (
+                <img src={article.authorModel.avatar} alt={authorName} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-[var(--line)] shadow-sm shrink-0" />
+              ) : (
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold text-xl sm:text-2xl border-2 border-[var(--line)] shadow-sm shrink-0">{authorName.charAt(0)}</div>
+              )
+            )}
+          </div>
+          <div className="flex-1 w-full">
+            <div className="flex flex-col mb-2">
+              <span className="text-lg sm:text-xl font-bold text-[var(--ink)] tracking-tight">
+                {authorSlug ? (
+                  <Link href={`/author/${authorSlug}`} className="hover:text-[var(--accent)] transition-colors">{authorName}</Link>
+                ) : authorName}
+              </span>
+              <span className="inline-block mt-0.5 text-xs font-semibold text-[var(--accent)] tracking-wider uppercase">
+                {articleAuthorRole}
+              </span>
+            </div>
+            <p className="text-sm text-[var(--muted)] leading-relaxed mt-2.5 max-w-2xl">
+              {article.authorModel?.overview || "Contributing writer at xCipher."}
+            </p>
+            <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--line)]/50">
+              <div className="flex items-center gap-1.5">
                 {socials.map((s, i) => (
-                  <Link key={i} href={s.url} target="_blank" rel="noopener noreferrer" aria-label={`${authorName} on ${s.platform}`}>
+                  <Link key={i} href={s.url} target="_blank" rel="noopener noreferrer" aria-label={`${authorName} on ${s.platform}`} className="inline-flex items-center justify-center w-8 h-8 rounded-full text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors">
                     <SocialIcon platform={s.platform} />
                   </Link>
                 ))}
               </div>
-            )}
-            <Link href={`/category/${catSlug}`} style={{ font: "600 12px var(--f-ui)", color: "var(--accent)", display: "inline-block", marginTop: "10px" }}>
-              View all articles →
-            </Link>
+              {authorSlug && (
+                <Link href={`/author/${authorSlug}`} className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--ink)] hover:text-[var(--accent)] transition-colors group">
+                  View all articles 
+                  <span aria-hidden="true" className="group-hover:translate-x-1 transition-transform duration-150">→</span>
+                </Link>
+              )}
+            </div>
           </div>
         </section>
 

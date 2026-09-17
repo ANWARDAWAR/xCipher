@@ -1,3 +1,6 @@
 {
-  "css.lint.unknownAtRules": "ignore"
+    "opencode.apiKey": "sk-7mFduZFJiq6ghd1nb99I9cy61Bw2vcbICrZPHTwjJaQmybQW",
+    "opencode.apiBaseUrl": "https://api.agentrouter.com/v1",
+    "opencode.model": "gpt-4o" 
 }
+

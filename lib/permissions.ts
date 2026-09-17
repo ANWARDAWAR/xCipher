@@ -1,6 +1,11 @@
 import { Role } from "@prisma/client";
+import { authorize } from "./capabilities";
 
-// Role numeric hierarchy (higher number = more privileges)
+// ──────────────────────────────────────────────────────────────────────────────
+// Role hierarchy — retained ONLY for user management rank comparisons.
+// Do NOT use this for any other authorization check.
+// ──────────────────────────────────────────────────────────────────────────────
+
 export const ROLE_HIERARCHY: Record<Role, number> = {
   OWNER: 100,
   ADMIN: 90,
@@ -18,16 +23,18 @@ export type ActionPolicy = {
   error: string;
 };
 
-// Base permission check
+// Base permission check — retained for backward compatibility
 export function hasRequiredRole(userRole: Role, minimumRole: Role): boolean {
   return (ROLE_HIERARCHY[userRole] || 0) >= (ROLE_HIERARCHY[minimumRole] || 0);
 }
 
-// User Management Policies
+// ──────────────────────────────────────────────────────────────────────────────
+// User Management Policies (rank-gated — the only legitimate use of hierarchy)
+// ──────────────────────────────────────────────────────────────────────────────
+
 export function canManageUser(actorRole: Role, targetRole: Role): ActionPolicy {
   if (actorRole === "OWNER") return { success: true };
   if (actorRole === "ADMIN") {
-    // Admins can manage anyone EXCEPT Owners
     if (targetRole === "OWNER") {
       return { success: false, error: "Administrators cannot manage Owner accounts." };
     }
@@ -39,7 +46,6 @@ export function canManageUser(actorRole: Role, targetRole: Role): ActionPolicy {
 export function canAssignRole(actorRole: Role, newRole: Role): ActionPolicy {
   if (actorRole === "OWNER") return { success: true };
   if (actorRole === "ADMIN") {
-    // Admins cannot grant OWNER
     if (newRole === "OWNER") {
       return { success: false, error: "Administrators cannot assign the Owner role." };
     }
@@ -48,74 +54,88 @@ export function canAssignRole(actorRole: Role, newRole: Role): ActionPolicy {
   return { success: false, error: "Insufficient permissions to assign roles." };
 }
 
-// Article Policies
+// ──────────────────────────────────────────────────────────────────────────────
+// Article Policies — now delegate to the capability map
+// ──────────────────────────────────────────────────────────────────────────────
+
 export function canEditArticle(
   user: { id: string; role: string; authorId?: string | null }, 
   article?: { id: string; authorId?: string | null }
 ): ActionPolicy {
   const role = user.role as Role;
   
-  // High-level editorial roles have full edit access
-  if (["OWNER", "ADMIN", "EDITOR"].includes(role)) {
+  // Full editorial access
+  if (authorize(role, "article.edit.any")) {
     return { success: true };
   }
   
-  // Authors can only edit their own articles
-  if (role === "AUTHOR") {
-    // If it's a new article, author can create it
+  // Own-article access
+  if (authorize(role, "article.edit.own")) {
+    // New article — allowed
     if (!article) return { success: true };
     
-    // Check if the author matches
+    // Check ownership
     if (user.authorId && article.authorId === user.authorId) {
       return { success: true };
     }
-    return { success: false, error: "Authors can only edit their own articles." };
+    return { success: false, error: "You can only edit your own articles." };
   }
   
-  // Reviewers, Moderators, Staff cannot arbitrarily edit content
-  return { success: false, error: "Role is not permitted to edit articles." };
+  return { success: false, error: "Your role does not permit editing articles." };
 }
 
 export function canPublishArticle(userRole: Role): ActionPolicy {
-  if (["OWNER", "ADMIN", "EDITOR"].includes(userRole)) {
+  if (authorize(userRole, "article.publish")) {
     return { success: true };
   }
-  return { success: false, error: "Role is not permitted to publish articles." };
+  return { success: false, error: "Your role does not permit publishing articles." };
 }
 
 export function canDeleteArticle(userRole: Role): ActionPolicy {
-  if (["OWNER", "ADMIN", "EDITOR"].includes(userRole)) {
+  if (authorize(userRole, "article.delete")) {
     return { success: true };
   }
-  return { success: false, error: "Role is not permitted to delete articles." };
+  return { success: false, error: "Your role does not permit deleting articles." };
 }
 
-// UI Visibility Policies (Returns boolean for rendering logic)
+// ──────────────────────────────────────────────────────────────────────────────
+// UI Visibility Policies — all delegate to authorize()
+// ──────────────────────────────────────────────────────────────────────────────
+
 export function canViewAdminPanel(userRole: Role): boolean {
-  return hasRequiredRole(userRole, "STAFF");
+  return authorize(userRole, "console.access");
 }
 
 export function canViewUsersList(userRole: Role): boolean {
-  return hasRequiredRole(userRole, "ADMIN");
+  return authorize(userRole, "user.view");
 }
 
 export function canViewSettings(userRole: Role): boolean {
-  // Everyone can view their own settings
-  return true; 
+  // Everyone can view their own settings (settings.personal is universal)
+  return authorize(userRole, "settings.personal");
 }
 
 export function canViewAuditLogs(userRole: Role): boolean {
-  return hasRequiredRole(userRole, "ADMIN");
+  return authorize(userRole, "audit.view");
 }
 
 export function canViewReviewQueue(userRole: Role): boolean {
-  return ["OWNER", "ADMIN", "EDITOR", "REVIEWER"].includes(userRole);
+  return authorize(userRole, "article.review");
 }
 
 export function canModerateComments(userRole: Role): boolean {
-  return hasRequiredRole(userRole, "MODERATOR");
+  return authorize(userRole, "comment.moderate");
 }
 
 export function canViewSubscribers(userRole: Role): boolean {
-  return hasRequiredRole(userRole, "ADMIN");
+  return authorize(userRole, "subscriber.view");
+}
+
+/**
+ * Taxonomy page access — OWNER, ADMIN, EDITOR only.
+ * This was previously gated by canReview, which incorrectly admitted REVIEWER
+ * (who was then redirected by the page guard — a guaranteed dead link).
+ */
+export function canViewTaxonomy(userRole: Role): boolean {
+  return authorize(userRole, "taxonomy.create");
 }
