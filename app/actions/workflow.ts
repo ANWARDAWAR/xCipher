@@ -32,6 +32,19 @@ async function getArticle(id: string) {
   });
 }
 
+async function checkSelfReviewGuard(article: any, actor: any) {
+  if (article.authorId && actor.authorId && article.authorId === actor.authorId) {
+    const activeReviewersCount = await db.user.count({
+      where: { isActive: true, role: { in: ["OWNER", "ADMIN", "EDITOR", "REVIEWER", "MODERATOR"] } }
+    });
+    if (activeReviewersCount > 1) {
+      return { ok: false, code: "FORBIDDEN", message: "A reviewer cannot decide on their own article. Please ask another editor to review it." };
+    }
+    return { ok: true, isSelfReview: true };
+  }
+  return { ok: true, isSelfReview: false };
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Review Claiming (Not strict transitions, but workflow operations)
 // ──────────────────────────────────────────────────────────────────────────────
@@ -96,7 +109,7 @@ export async function releaseReview(id: string): Promise<ActionResponse> {
   return { ok: true };
 }
 
-export async function takeOverReview(id: string): Promise<ActionResponse> {
+export async function takeOverReview(id: string, confirm: boolean): Promise<ActionResponse> {
   const actor = await getActor();
   if (!actor) return { ok: false, code: "UNAUTHENTICATED", message: "Sign in required." };
   if (!authorize(actor.role, "article.review")) {
@@ -106,13 +119,25 @@ export async function takeOverReview(id: string): Promise<ActionResponse> {
   const article = await getArticle(id);
   if (!article) return { ok: false, code: "NOT_FOUND", message: "Article not found." };
 
+  if (!article.reviewedById) {
+    return { ok: false, code: "VALIDATION", message: "This article is unclaimed. Please use the ordinary claim action." };
+  }
+  
+  if (article.reviewedById === actor.id) {
+    return { ok: false, code: "VALIDATION", message: "You are already the reviewer of this article." };
+  }
+  
+  if (!confirm) {
+    return { ok: false, code: "VALIDATION", message: "You must explicitly confirm to take over an article." };
+  }
+
   await db.article.update({
     where: { id },
     data: { reviewedById: actor.id }
   });
 
   await db.auditLog.create({
-    data: { userId: actor.id, action: "TAKEOVER_REVIEW", entityType: "Article", entityId: id, details: { previousReviewerId: article.reviewedById } }
+    data: { userId: actor.id, action: "TAKEOVER_REVIEW", entityType: "Article", entityId: id, details: { previousReviewerId: article.reviewedById, newReviewerId: actor.id } }
   });
 
   revalidatePath(`/admin/review`);
@@ -200,6 +225,9 @@ export async function withdrawArticle(id: string): Promise<ActionResponse> {
 
 export async function approveArticle(id: string, notes?: string): Promise<ActionResponse> {
   return executeTransition(id, "APPROVED", async (article, actor) => {
+    const selfGuard = await checkSelfReviewGuard(article, actor);
+    if (!selfGuard.ok) return selfGuard as any;
+
     await db.$transaction(async (tx) => {
       await tx.article.update({
         where: { id },
@@ -222,9 +250,15 @@ export async function approveArticle(id: string, notes?: string): Promise<Action
           fromStatus: article.status,
           toStatus: "APPROVED",
           passNumber,
-          reason: notes || null
+          reason: selfGuard.isSelfReview ? `[Self-review: no other reviewers] ${notes || ""}`.trim() : (notes || null)
         }
       });
+
+      if (selfGuard.isSelfReview) {
+        await tx.auditLog.create({
+          data: { userId: actor.id, action: "SELF_REVIEW", entityType: "Article", entityId: id, details: { decision: "APPROVED", reason: "no other reviewers available" } }
+        });
+      }
     });
 
     revalidatePath(`/admin/articles`);
@@ -239,6 +273,9 @@ export async function requestChanges(id: string, reason: string): Promise<Action
     if (!reason || reason.trim().length < 20) {
       return { ok: false, code: "VALIDATION", message: "A reason of at least 20 characters is required to request changes." };
     }
+
+    const selfGuard = await checkSelfReviewGuard(article, actor);
+    if (!selfGuard.ok) return selfGuard as any;
 
     await db.$transaction(async (tx) => {
       await tx.article.update({
@@ -260,9 +297,15 @@ export async function requestChanges(id: string, reason: string): Promise<Action
           fromStatus: article.status,
           toStatus: "REVISION_REQUESTED",
           passNumber,
-          reason
+          reason: selfGuard.isSelfReview ? `[Self-review: no other reviewers] ${reason}` : reason
         }
       });
+
+      if (selfGuard.isSelfReview) {
+        await tx.auditLog.create({
+          data: { userId: actor.id, action: "SELF_REVIEW", entityType: "Article", entityId: id, details: { decision: "CHANGES_REQUESTED", reason: "no other reviewers available" } }
+        });
+      }
     });
 
     revalidatePath(`/admin/articles`);
@@ -280,6 +323,9 @@ export async function rejectArticle(id: string, reason: string, reasonCode: stri
     if (!reasonCode) {
       return { ok: false, code: "VALIDATION", message: "A reason code is required." };
     }
+
+    const selfGuard = await checkSelfReviewGuard(article, actor);
+    if (!selfGuard.ok) return selfGuard as any;
 
     await db.$transaction(async (tx) => {
       await tx.article.update({
@@ -301,10 +347,16 @@ export async function rejectArticle(id: string, reason: string, reasonCode: stri
           fromStatus: article.status,
           toStatus: "REJECTED",
           passNumber,
-          reason,
+          reason: selfGuard.isSelfReview ? `[Self-review: no other reviewers] ${reason}` : reason,
           reasonCode
         }
       });
+
+      if (selfGuard.isSelfReview) {
+        await tx.auditLog.create({
+          data: { userId: actor.id, action: "SELF_REVIEW", entityType: "Article", entityId: id, details: { decision: "REJECTED", reason: "no other reviewers available" } }
+        });
+      }
     });
 
     revalidatePath(`/admin/articles`);
