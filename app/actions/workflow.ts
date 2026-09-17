@@ -472,21 +472,21 @@ export async function deleteArticlePermanently(id: string): Promise<ActionRespon
   const article = await getArticle(id);
   if (!article) return { ok: false, code: "NOT_FOUND", message: "Article not found." };
   
-  if (article.status === "PUBLISHED" || article.status === "ARCHIVED") {
-    // Requires forcing in UI
+  if (article.status !== "ARCHIVED") {
+    return { ok: false, code: "FORBIDDEN", message: "Only archived articles can be permanently deleted. Please archive the article first." };
   }
 
   try {
     await db.$transaction(async (tx) => {
+      await tx.auditLog.create({
+        data: { userId: actor.id, action: "DELETE_ARTICLE_PERMANENTLY", entityType: "Article", entityId: id, details: { title: article.title, slug: article.slug, authorId: article.authorId, status: article.status } }
+      });
+      
       await tx.articleReview.deleteMany({ where: { articleId: id } });
       await tx.articleRevision.deleteMany({ where: { articleId: id } });
       await tx.comment.deleteMany({ where: { articleSlug: article.slug } });
       
       await tx.article.delete({ where: { id } });
-      
-      await tx.auditLog.create({
-        data: { userId: actor.id, action: "DELETE_ARTICLE_PERMANENTLY", entityType: "Article", entityId: id, details: { title: article.title, slug: article.slug } }
-      });
     });
 
     revalidatePath(`/admin/articles`);

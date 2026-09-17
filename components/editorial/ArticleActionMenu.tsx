@@ -46,7 +46,7 @@ export default function ArticleActionMenu({ id, title, status, canArchive, canDe
   };
 
   const showArchive = canArchive && status !== "ARCHIVED";
-  const showDeletePerm = canDeletePermanently;
+  const showDeletePerm = canDeletePermanently && status === "ARCHIVED";
   const showDeleteDraft = canDeleteOwnDraft && status === "DRAFT";
 
   if (!showArchive && !showDeletePerm && !showDeleteDraft) return null;
