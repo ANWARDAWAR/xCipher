@@ -56,6 +56,8 @@
 42. Master Dashboard Design System
 43. Final Verification Checklist
 44. Phased Execution Roadmap
+45. Phase 2 Plan Review — gaps to close before "done"
+46. Next After Phase 2 — Phase 3 hand-off brief
 
 ---
 
@@ -5610,5 +5612,119 @@ TASK-14 must lead: it defines the tokens and primitives that 13, 12 and 15 consu
 | TASK-18 | 01, 03, 09 |
 | TASK-23 | 01, 04, 09 |
 | TASK-25 | 03, 18 |
+
+---
+
+# 45. Phase 2 Plan Review — gaps to close before "done"
+
+The Phase 2 execution plan (TASK-16 → TASK-04 → TASK-05 → TASK-11 → TASK-10) matches the dependency order in §44 and is correct. The following items are in the task specifications of §38 but are **not** stated in the execution plan. Each is small, and each is the difference between "the feature exists" and "the acceptance criteria pass".
+
+## 45.1 TASK-16 — session invalidation
+
+| Gap | Required |
+|---|---|
+| Increment triggers listed as "role change" only | Also increment on **deactivation** and on **password change** (§38 TASK-16 functional requirements). A deactivated account must lose its sessions. |
+| No fail-closed rule | If the version lookup throws, **invalidate** the token. Never fall back to the previous role. |
+| Per-request DB read cost | The `jwt` callback must select only `id, role, sessionVersion, isActive` — not the whole user row — and `getActor()` must be memoised per request (`React.cache`) so one page render does not read the same user five times. |
+| Existing tokens | Current tokens carry no `sessionVersion` claim. Treat a **missing claim as stale** → one forced re-authentication for everyone at deploy. Put this in the release note. |
+| No user-facing path | A session invalidated mid-visit must redirect to sign-in with a short "your permissions changed" message, not a blank 401. |
+
+## 45.2 TASK-04 — transition actions
+
+| Gap | Required |
+|---|---|
+| "Strip `status` from `upsertArticle`" | Also remove the **silent downgrade**: today an unauthorised `PUBLISHED` request is rewritten to `SUBMITTED`. After this task an unauthorised transition must **return an error**. |
+| Autosave | Autosave must keep calling `upsertArticle` and must **never** call a workflow action. Confirm the 5s timer cannot fire a transition. |
+| Revalidation | Revalidate only on transitions that change public output (publish, unpublish, archive, restore, scheduled-publish). Do not revalidate `/` on `requestChanges`. |
+| Notification hook | TASK-17 is Phase 5, but leave a single call site per transition (a no-op emitter) so Phase 5 is a wiring job, not a re-open of every action. |
+| `REVIEW` enum value | It is dead (no code path writes it). Decide now: either back-fill any `REVIEW` rows to `SUBMITTED` and stop referencing it, or give it a meaning. Do not leave it ambiguous once the state machine is enforced. |
+| Enum migration note | Postgres `ALTER TYPE ... ADD VALUE` cannot run inside a transaction on older versions. Verify the generated migration applies cleanly against a copy of production before running it live. |
+
+## 45.3 TASK-05 — delete and archive
+
+| Gap | Required |
+|---|---|
+| "hard deletes dependencies first" | Must run inside one `$transaction`, and the **audit entry must be written before the delete**, capturing title, slug, author and status — otherwise the record of what was deleted dies with it. |
+| Status guard | `deleteArticlePermanently` must additionally assert the article is **ARCHIVED**. Capability alone is not the guard (§40.2 transition table). |
+| Published articles | Archiving a published article must remove it from public routes and leave the slug in `previousSlugs` handling intact so the URL 410s or redirects rather than 500s. |
+
+## 45.4 TASK-11 — rejection and change requests
+
+| Gap | Required |
+|---|---|
+| Reason shown in one place | The acceptance criterion is **three** places without opening the editor: the article row's expanded state, the article detail header, and the author's dashboard action-required block. The editor banner is the fourth, not the first. |
+| Rejected articles reachable | Confirm the Phase 1 unified index actually lists `REJECTED` for its author. If it does not, this task is not done. |
+| Recovery paths | `reopenArticle` (editor → DRAFT) and `duplicateArticle` (author → new DRAFT) must exist, otherwise rejection is still a dead end. |
+| Legacy reasons | Reasons already stored in `ArticleRevision.notes` must still display: read `ArticleReview` first, fall back to the revision note. |
+
+## 45.5 TASK-10 — review queue
+
+| Gap | Required |
+|---|---|
+| Claiming | `claimReview` must be a **conditional update** (`updateMany` with `where: { id, reviewerId: null }`) and treat `count === 0` as a lost race returning a conflict. A read-then-write check is a race, not a claim. |
+| `/admin/submissions` | Must **redirect** to `/admin/review`, not 404. Same for any bookmarked links. |
+| Ageing | Two thresholds (>24h, >72h) each with a **text label**, never colour alone. |
+| Take-over | Must be explicit, confirmed and audited — not a silent overwrite of another reviewer's claim. |
+| Self-review | Block a reviewer from approving their own article unless they are the only editor; enforce in the action. |
+
+## 45.6 Verification additions
+
+Add to the stated plan (`tsc --noEmit`, `npm run build`, manual tests):
+
+- [ ] Update the **permission-matrix test** from Phase 1 with the new capabilities (`article.review`, `article.archive`, `article.delete`) — a widened capability must fail the build.
+- [ ] A **state-machine test**: every transition in the §40.2 table has one allowed case and one refused case, including refusal for an illegal from-state.
+- [ ] A **race test** for `claimReview`: two concurrent claims, exactly one succeeds.
+- [ ] A **stale-role test**: sign in, change the role in the database, next request reflects it.
+- [ ] Confirm **no console query** selects `contentHtml`/`contentJson` — the review decision screen is the only place allowed to load a body.
+
+## 45.7 Phase 2 exit criteria (restated)
+
+- [ ] Every status change goes through a transition action; `upsertArticle` no longer writes `status`.
+- [ ] An illegal transition returns an error; nothing is silently reinterpreted.
+- [ ] A REVIEWER can complete a full review without holding `article.edit`.
+- [ ] A rejected article is findable by its author with its reason, and can be reopened or duplicated.
+- [ ] The review queue contains only articles awaiting a decision and reaches zero.
+- [ ] Two reviewers cannot hold the same claim.
+- [ ] Deleting is possible only from ARCHIVED (ADMIN+) or an own draft.
+- [ ] A role change takes effect on the next request without sign-out.
+
+---
+
+# 46. Next After Phase 2 — Phase 3 hand-off brief
+
+`TASK-08 → TASK-09 → TASK-06`
+
+Phase 1 made articles **visible**. Phase 2 made the workflow **real**. Phase 3 makes the list **usable at scale** and closes the last CRITICAL finding (dead scheduling).
+
+## 46.1 Order and rationale
+
+| Step | Task | Why here |
+|---|---|---|
+| 1 | **TASK-08** Server-side filtering, search, sorting, pagination | The list is still unbounded and client-filtered after Phase 2. This is the single largest remaining correctness and performance gap, and TASK-09 renders into whatever row contract this task establishes. |
+| 2 | **TASK-09** Image-aware editorial row | Thumbnails, two-line rows, expandable detail, the §41.5 status treatment. Purely presentational over TASK-08's contract. |
+| 3 | **TASK-06** Scheduled publishing execution | Independent of 08 and 09 — run it in parallel if you have a second agent. Closes CRITICAL finding #3. |
+
+## 46.2 What Phase 3 delivers
+
+- `/admin/articles` becomes URL-driven: `?q=&status=&author=&category=&tag=&from=&to=&sort=&dir=&page=&per=` (§41.1), so every view is shareable and back-button correct.
+- Filters backed by the real data model — author from `authorId`, category from `categoryId`, status from the enum — with counts, removable chips and a result count.
+- Numbered pagination, 25/50/100. **No infinite scroll.**
+- Every row shows a 96×54 thumbnail from `Article.img` with a monogram placeholder, plus status by shape **and** label.
+- `SCHEDULED → PUBLISHED` actually happens, and scheduled articles are not publicly readable before their time.
+
+## 46.3 What Phase 3 does NOT deliver
+
+No visual system fix. The seven undefined CSS custom properties are still undefined at the end of Phase 3, so the list will be correct and still look wrong. That is Phase 4 (`TASK-14` first, then 13 → 12 → 15). Do not reorder — repainting on top of broken tokens means painting twice.
+
+## 46.4 Phase 3 exit criteria
+
+- [ ] All filtering, search, sorting and pagination happen in the database, not in `useMemo`.
+- [ ] List state lives entirely in the URL; reload and back-button preserve it.
+- [ ] The article list query stays under 100ms at 10,000 rows (indexes from Phase 1).
+- [ ] No unbounded `findMany` remains anywhere in the console.
+- [ ] Every row has a thumbnail or a deliberate placeholder.
+- [ ] Status is distinguishable with colour disabled.
+- [ ] A scheduled article publishes automatically and is invisible publicly beforehand.
+- [ ] `/admin/drafts` and `/admin/submissions` still redirect correctly with presets.
 
 ---
