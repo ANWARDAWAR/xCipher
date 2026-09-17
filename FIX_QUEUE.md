@@ -69,7 +69,8 @@ This is a real Supabase project reference, username and password, in a public Gi
 
 ### FIX-02 — No migrations directory exists; the database does not match the schema
 
-- [~] **PARTIALLY DONE — still open.** `prisma/schema.prisma` was reformatted by an introspection or `db push` round-trip on `main` @ `055999b`, which indicates the database was synchronised. **But `prisma/migrations/` still does not exist** (`git ls-tree origin/main prisma/` → only `schema.prisma`). See FIX-02b below.
+- [x] **DONE** — closed by FIX-02b. `prisma/migrations/0_init/` is committed and baselined.
+- [~] ~~**PARTIALLY DONE — still open.** `prisma/schema.prisma` was reformatted by an introspection or `db push` round-trip on `main` @ `055999b`, which indicates the database was synchronised. **But `prisma/migrations/` still does not exist** (`git ls-tree origin/main prisma/` → only `schema.prisma`). See FIX-02b below.
 - [ ] ~~**Severity: CRITICAL (everything below is unverified until this passes)**
 
 **Evidence:** `ls prisma/migrations` → **directory does not exist.** The Phase 2 checklist itself recorded *"Create Prisma migration for sessionVersion (skipped, generate used)"*.
@@ -135,7 +136,8 @@ Toggle the theme on any of those pages today and the light-mode colours stay.
 
 ### FIX-02b — Schema round-trip side effects (NEW, found 2026-09-18)
 
-- [ ] **Severity: HIGH**
+- [x] **DONE** — verified on `main` @ `c0a8b67`. All 7 `@db.Text` annotations restored (`refresh_token`, `access_token`, `id_token`, `Author.disclosure`, `ArticleRevision.notes`, `ArticleReview.reason`, `Notification.body`); the `REVIEW` deprecation note is back at `schema.prisma:261`; `prisma/migrations/0_init/migration.sql` exists and is committed (24 tables/indexes, all 9 `ArticleStatus` values). `migration_lock.toml` was missing and has been added.
+- [ ] ~~**Severity: HIGH**~~
 
 The `055999b` diff reformats `prisma/schema.prisma` wholesale (+375/−375 style churn). Model fields, all 7 indexes, `ArticleReview` and the three new enum values survived intact — verified field-by-field against `85ec52c` for `User`, `Article`, `ArticleReview`, `Author`, `Category`, `Notification`, `Invitation` and `Comment`, all identical. Two real regressions did slip in:
 
@@ -215,7 +217,8 @@ An EDITOR can today write an article, submit it, approve it and publish it with 
 
 ### FIX-07 — `deleteArticlePermanently` has no status guard and an empty if-block
 
-- [ ] **Severity: HIGH (data loss)**
+- [x] **DONE** — verified on `main` @ `c0a8b67`. The empty block is now a real guard returning `FORBIDDEN` unless the status is `ARCHIVED`; the audit write moved to the top of the transaction and captures title, slug, authorId and status. Bonus: `ArticleActionMenu.tsx:49` now also hides the permanent-delete item for non-archived articles.
+- [ ] ~~**Severity: HIGH (data loss)**~~
 
 **Evidence:** `app/actions/workflow.ts:475-478`
 
@@ -355,12 +358,12 @@ Run these one at a time. Verify each before starting the next.
 
 | Order | Fix | Why here |
 |---|---|---|
-| 1 | **FIX-01** rotate the leaked password | Active security exposure. Minutes, not hours. |
-| 2 | **FIX-02** migrations | Everything below is unverifiable until the database matches the schema. |
-| 3 | **FIX-03** `@custom-variant dark` | One line. Instantly un-breaks the redesign's dark mode. |
-| 4 | **FIX-04** fail-closed JWT | One line. Security. |
-| 5 | **FIX-07** delete status guard | Prevents irreversible data loss. |
-| 6 | **FIX-06** self-review guard | Editorial integrity. |
+| 1 | ~~**FIX-01** rotate the leaked password~~ ✅ | Active security exposure. Minutes, not hours. |
+| 2 | ~~**FIX-02** migrations~~ ✅ `c0a8b67` | Everything below is unverifiable until the database matches the schema. |
+| 3 | ~~**FIX-03** `@custom-variant dark`~~ ✅ `055999b` | One line. Instantly un-breaks the redesign's dark mode. |
+| 4 | ~~**FIX-04** fail-closed JWT~~ ✅ `055999b` | One line. Security. |
+| 5 | ~~**FIX-07** delete status guard~~ ✅ done `c0a8b67` | Prevents irreversible data loss. |
+| 6 | **FIX-06** self-review guard | Editorial integrity. **← NEXT** |
 | 7 | **FIX-05** take-over confirmation | Completes TASK-10 properly. |
 | 8 | **FIX-08** autosave conflict state | Stops lying to the author. |
 | 9 | **FIX-09** dashboard scope | Closes the last scope leak. |
@@ -395,3 +398,39 @@ npm run build
 ```
 
 A clean build does **not** validate FIX-03, FIX-04, FIX-06, FIX-07, FIX-08 or FIX-09 — every one of those fails silently at runtime, not at compile time. There are still **zero tests** in the repository (§38 TASK-28). The permission-matrix and state-machine tests are now more valuable than ever, because `lib/capabilities.ts` and `lib/workflow.ts` are real, table-driven and trivially testable.
+
+
+---
+
+## 7. Progress log
+
+| Fix | Status | Landed |
+|---|---|---|
+| FIX-01 leaked DB password | ✅ done | user-reported |
+| FIX-02 migrations | ✅ done | `c0a8b67` |
+| FIX-02b schema round-trip | ✅ done | `c0a8b67` |
+| FIX-03 `@custom-variant dark` | ✅ done | `055999b` |
+| FIX-04 fail-closed JWT | ✅ done | `055999b` |
+| FIX-05 take-over confirmation | open | |
+| **FIX-06 self-review guard** | **next** | |
+| FIX-07 delete status guard | ✅ done | `c0a8b67` |
+| FIX-08 autosave conflict state | open | |
+| FIX-09 dashboard scope | open | |
+| FIX-10 revalidation | open | |
+| FIX-11 duplicate Pagination | open | |
+| FIX-12 five remaining tokens | open | |
+| FIX-13 notification stubs | open | |
+| FIX-14 scheduled executor | deferred → Phase 3 TASK-06 | |
+| FIX-15a `REVIEW` backfill | open | |
+| FIX-15b duplicate plan docs | ✅ done | housekeeping |
+| FIX-15c hardcoded palette | deferred → Phase 4 TASK-14 | |
+
+### Housekeeping done alongside
+
+- `DASHBOARD.md` (stale 5,509-line copy of the plan) deleted on `main`.
+- `fixed_queue.md` and `IMPLEMENTATION_MASTER_PLAN.md` were both duplicates — `IMPLEMENTATION_MASTER_PLAN.md` had grown into a byte-identical copy of the 6,164-line master plan. Both removed. **`FIX_QUEUE.md` and `DASHBOARD_CMS_MASTER_PLAN.md` are the only two authoritative documents.**
+- `prisma/migrations/migration_lock.toml` was missing from the baseline commit and has been added. Without it Prisma cannot verify the provider and will warn on every migrate command.
+
+### Outstanding question
+
+FIX-03's verification step 4 asked for a list of white-on-white / dark-on-dark contrast gaps exposed by activating the dark variant. That list has not been reported. Several of the fifteen redesigned files hardcode `bg-white` with no dark counterpart; those are now visible defects in dark mode. Collect that list before Phase 4 TASK-14 — it is the input to FIX-15c.
