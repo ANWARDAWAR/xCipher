@@ -2,6 +2,7 @@ import Link from "next/link";
 import { fmtViews } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { buildArticleScope } from "@/lib/capabilities";
 import StatusChip from "@/components/console/StatusChip";
 import { 
   Plus, 
@@ -60,12 +61,28 @@ export default async function AdminDashboard() {
 
     const dbUser = user ? await db.user.findUnique({ where: { id: user.id }, include: { authorProfile: true } }) : null;
     const authorId = dbUser?.authorProfile?.id;
-    const wherePublished = isAuthorOnly ? { status: "PUBLISHED" as const, authorId: authorId || "none" } : { status: "PUBLISHED" as const };
-    const whereDraft = isAuthorOnly ? { status: "DRAFT" as const, authorId: authorId || "none" } : { status: "DRAFT" as const };
+    
+    const actor = {
+      id: user?.id || "",
+      role: (user?.role as any) || "CONTRIBUTOR",
+      authorId: authorId || null
+    };
 
-    publishedCount = await db.article.count({ where: wherePublished });
-    draftsCount = await db.article.count({ where: whereDraft });
-    totalArticles = publishedCount + draftsCount;
+    const scopeWhere = buildArticleScope(actor);
+    const statusCounts = await db.article.groupBy({
+      by: ['status'],
+      where: scopeWhere,
+      _count: { id: true },
+    });
+
+    for (const group of statusCounts) {
+      if (group.status === 'PUBLISHED') publishedCount = group._count.id;
+      else if (group.status === 'DRAFT') draftsCount = group._count.id;
+      totalArticles += group._count.id;
+    }
+
+    const wherePublished = { ...scopeWhere, status: "PUBLISHED" as const };
+    const whereDraft = { ...scopeWhere, status: "DRAFT" as const };
     
     const viewsAggregation = await db.article.aggregate({ _sum: { views: true }, where: wherePublished });
     totalViews = viewsAggregation._sum.views || 0;
