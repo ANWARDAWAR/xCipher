@@ -59,6 +59,7 @@
 45. Phase 2 Plan Review — gaps to close before "done"
 46. Next After Phase 2 — Phase 3 hand-off brief
 47. TASK-10 Resumption Brief (when Phase 2 stops short of the review queue)
+48. Phase 2 Sign-off and Phase 3 Go/No-Go
 
 ---
 
@@ -5846,5 +5847,136 @@ CONSTRAINTS:
 - [ ] `/admin/submissions` redirects rather than 404s.
 - [ ] A reviewer can complete approve, request-changes and reject without holding the edit capability.
 - [ ] Every remaining box in the Phase 2 exit criteria of section 45.7 is ticked.
+
+---
+
+# 48. Phase 2 Sign-off and Phase 3 Go/No-Go
+
+Phase 2's five tasks are reported complete. Before starting Phase 3, two things must happen: close the one item the checklist itself flags as unfinished, and correct a task-numbering error in the checklist.
+
+## 48.1 The blocking item: the migration was never applied
+
+The checklist records, in TASK-16:
+
+> Create Prisma migration for `sessionVersion` (skipped, generate used)
+
+`prisma generate` rebuilds the TypeScript client from `schema.prisma`. It does **not** alter the database. If no migration ran, then every column and model Phase 1 and Phase 2 introduced — `sessionVersion`, `submittedAt`, `reviewedAt`, `archivedAt`, `reviewerId`, `claimedAt`, the `ArticleReview` model, the new `ArticleStatus` values and every `@@index` — exists in the schema file and in the generated types, but **not in Postgres**.
+
+The consequence is that the code type-checks and builds, and fails at runtime on first query. This is precisely the failure mode that makes a phase look finished when it is not.
+
+**Run this before anything else:**
+
+```
+npx prisma migrate status
+```
+
+| Result | Meaning | Action |
+|---|---|---|
+| "Database schema is up to date" | Migrations were applied after all; the checklist note is stale | Correct the note, proceed to 48.2 |
+| "Following migrations have not yet been applied" | Schema file and database disagree | `npx prisma migrate dev --name phase1_phase2_workflow` on development, then deploy with `npx prisma migrate deploy` |
+| "No migration found in prisma/migrations" | No migration was ever generated | Generate one now from the current schema, review the SQL by hand, then apply |
+
+**Two things to check in the generated SQL before applying it:**
+
+1. **Enum additions.** Postgres cannot run `ALTER TYPE ... ADD VALUE` inside a transaction block on versions before 12, and Prisma wraps migrations in transactions. If `APPROVED`, `SCHEDULED` or `ARCHIVED` are added to `ArticleStatus`, confirm the migration applies against a copy of production, not only against an empty development database.
+2. **Backfill.** `sessionVersion` needs a default of 1 on existing rows. `submittedAt` is null for articles already sitting in `SUBMITTED` — backfill it from `updatedAt` in the same migration, or the review queue will order those rows unpredictably and their ageing will be wrong.
+
+**Nothing in Phase 2 can be considered verified until the database and the schema agree.**
+
+## 48.2 Checklist correction: "TASK-14: Audit Logs" is mislabelled
+
+TASK-14 in this plan is **"Fix design tokens and build the console design system"** (§38), a Phase 4 task. Audit logging is **TASK-27, "Audit-log completeness, filtering and pagination"**, a Phase 5 task.
+
+Neither belongs in Phase 2. If audit-log work was started under that heading, it was out of sequence:
+
+- **TASK-27 has a hard prerequisite that Phase 2 just created.** Every workflow transition must write exactly one audit entry naming the from-status and to-status. If the transition actions in `app/actions/workflow.ts` already call the audit helper, that part of TASK-27 is done and the rest — the shared helper, filtering, pagination, export, the missing call sites in taxonomy, invitations, comments and profile — is still Phase 5 work.
+- **TASK-14 must not start before Phase 3 finishes**, and when it does it leads Phase 4, because TASK-13, TASK-12 and TASK-15 all render into the tokens and primitives it defines.
+
+Recommendation: verify that each workflow transition writes one audit entry (that is a Phase 2 acceptance criterion, §45.7), then stop. Defer the rest of TASK-27 to Phase 5.
+
+## 48.3 Phase 2 verification — run before declaring it done
+
+Checked boxes are claims; these are tests. Run them in order and stop at the first failure.
+
+**Database**
+
+- [ ] `npx prisma migrate status` reports no pending migration.
+- [ ] `sessionVersion` exists on `User` with a default of 1 and no null rows.
+- [ ] `Article` has `submittedAt`, `reviewedAt`, `archivedAt`, `reviewerId` and `claimedAt`.
+- [ ] `ArticleReview` rows are actually being written — submit and reject one article, then query the table directly.
+- [ ] Articles already in `SUBMITTED` have a non-null `submittedAt`.
+
+**Security (TASK-16)**
+
+- [ ] Sign in as an editor in one browser; change their role to AUTHOR directly in the database; reload in the first browser. The elevated capability is gone on the **next request**, without sign-out.
+- [ ] Deactivating a user ends their session.
+- [ ] A password change invalidates other sessions.
+- [ ] A failed version lookup invalidates the token rather than falling back to the previous role.
+- [ ] No server action reads `role` from the session object; `grep -rn "session.user.role" app/ lib/` returns only display-layer uses.
+
+**Workflow (TASK-04, TASK-05)**
+
+- [ ] `grep -n "status" app/actions/article.ts` confirms `upsertArticle` no longer writes a status.
+- [ ] An unauthorised publish request returns an **error**, not a downgrade to `SUBMITTED`. This is the specific regression to look for — the old behaviour was a silent rewrite.
+- [ ] Autosave never fires a workflow action; leave the editor idle with unsaved changes for thirty seconds and confirm no transition is recorded.
+- [ ] Every illegal transition in the §40.2 table is refused.
+- [ ] `deleteArticlePermanently` refuses an article that is not `ARCHIVED`, even for an OWNER.
+- [ ] The audit entry for a permanent delete is written **before** the row is removed and captures title, slug, author and status.
+- [ ] A REVIEWER completes approve, request-changes and reject **without** holding `article.edit`. This was the original CRITICAL defect; verify it directly.
+
+**Reasons (TASK-11)**
+
+- [ ] A 5-character rejection reason is refused by the server, not just by the form.
+- [ ] A rejection without a reason code is refused.
+- [ ] The reason is visible in **three** places outside the editor: the article row's expanded state, the article detail header, and the author's dashboard action-required block. The editor banner is the fourth.
+- [ ] A rejected article is listed for its author in the unified index.
+- [ ] `reopenArticle` and `duplicateArticle` both work.
+- [ ] Reasons stored in legacy `ArticleRevision.notes` still display.
+
+**Review queue (TASK-10)**
+
+- [ ] The queue contains only articles awaiting a decision and reaches zero when all are decided.
+- [ ] Ordering is by `submittedAt`, oldest first.
+- [ ] Two concurrent claims produce exactly one winner — the claim is an `updateMany` matching `reviewerId: null`, and a zero-row result returns a conflict.
+- [ ] Take-over is explicit, confirmed and audited.
+- [ ] Ageing at 24h and 72h carries a text label, not colour alone.
+- [ ] A reviewer cannot approve their own article unless they are the only editor.
+- [ ] `/admin/submissions` redirects to `/admin/review` rather than 404ing.
+- [ ] The queue query does not select `contentHtml` or `contentJson`; only the decision screen loads a body.
+
+**Build**
+
+- [ ] `npx tsc --noEmit` clean.
+- [ ] `npm run build` clean.
+- [ ] The permission-matrix test covers `article.review`, `article.archive` and `article.delete`.
+- [ ] A state-machine test exists with one allowed and one refused case per transition.
+
+## 48.4 Go / No-Go
+
+**No-Go** while any of these is true:
+
+- `prisma migrate status` reports a pending or missing migration.
+- An unauthorised publish is still silently downgraded.
+- A REVIEWER still cannot complete a review.
+- Two reviewers can hold the same claim.
+- Rejected articles are not listed for their authors.
+
+**Go** to Phase 3 when §45.7 and §48.3 are fully ticked.
+
+## 48.5 Phase 3 — start here
+
+`TASK-08 → TASK-09 → TASK-06`
+
+The full brief is §46. In short:
+
+| Step | Task | Note |
+|---|---|---|
+| 1 | **TASK-08** Server-side filtering, search, sorting, pagination | The largest remaining correctness and performance gap. The list is still unbounded and filtered in `useMemo`. Establishes the row contract TASK-09 renders into. Full spec: §41 and the TASK-08 entry in §38. |
+| 2 | **TASK-09** Image-aware editorial row | Thumbnails, two-line rows, expandable detail, §41.5 status treatment. Purely presentational over TASK-08's contract. |
+| 3 | **TASK-06** Scheduled publishing execution | Independent of 08 and 09 — run in parallel if capacity allows. Closes the last CRITICAL finding. Note it depends on `SCHEDULED` existing in the database, so it is also blocked by §48.1. |
+
+Hand the agent this document plus **TASK-08 only**. Do not hand all three at once — TASK-09 renders into a contract that does not exist until TASK-08 lands.
+
+**Expect the list to still look wrong at the end of Phase 3.** The seven undefined custom properties from §11.2 are not repaired until TASK-14, which leads Phase 4. Correct behaviour first, appearance second.
 
 ---
