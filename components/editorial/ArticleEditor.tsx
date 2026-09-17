@@ -126,7 +126,8 @@ export default function ArticleEditor({
   const [isPending, setIsPending] = useState(false);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(Boolean(initialData?.slug));
   const [lastSaved, setLastSaved] = useState<Date | null>(initialData?.updatedAt ? new Date(initialData.updatedAt) : null);
-  const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error" | "conflict">("idle");
+  const [conflictBaseline, setConflictBaseline] = useState<Date | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
@@ -297,7 +298,7 @@ export default function ArticleEditor({
   useEffect(() => {
     const subscription = watch((value, { name, type }) => {
       // Don't autosave if the change is programmatic or if we are actively submitting a transition
-      if (isPending) return;
+      if (isPending || autosaveStatus === "conflict") return;
       setAutosaveStatus("idle");
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       
@@ -306,7 +307,7 @@ export default function ArticleEditor({
       }, 5000);
     });
     return () => subscription.unsubscribe();
-  }, [watch, isPending]);
+  }, [watch, isPending, autosaveStatus]);
 
   const fillTestData = (templateKey?: string) => {
     if (templateKey && ARTICLE_TEMPLATES[templateKey]) {
@@ -442,11 +443,12 @@ export default function ArticleEditor({
         return result.article;
       } else {
         if (isAutosave) {
-          // On autosave conflict, silently resync the baseline so subsequent autosaves succeed.
-          // The server returns the current updatedAt so we can align without a page reload.
+          // On autosave conflict, enter conflict state to prompt user.
           if (result.serverUpdatedAt) {
-            setLastSaved(new Date(result.serverUpdatedAt));
-            setAutosaveStatus("saved");
+            setConflictBaseline(new Date(result.serverUpdatedAt));
+            setAutosaveStatus("conflict");
+            showToast("Autosave conflict: article changed elsewhere.");
+
           } else {
             setAutosaveStatus("error");
             console.error("Autosave failed:", result.error);
@@ -603,6 +605,30 @@ export default function ArticleEditor({
           )}
         </div>
       </header>
+
+      {autosaveStatus === "conflict" && (
+        <div className="bg-[#fffbeb] text-[#d97706] px-6 py-3 border-b border-[#f59e0b]/30 flex flex-col sm:flex-row justify-between items-center z-50">
+          <div className="text-sm">
+            <strong className="font-semibold">Autosave Conflict:</strong> This article was changed elsewhere. Your local changes were not saved.
+          </div>
+          <div className="flex gap-3 mt-2 sm:mt-0">
+            <button type="button" onClick={() => window.location.reload()} className="text-xs font-medium px-3 py-1.5 rounded-md bg-white/50 hover:bg-white/80 border border-[#f59e0b]/20 transition-colors text-[#92400e]">
+              Reload (Discard Local)
+            </button>
+            <button type="button" onClick={() => {
+              if (conflictBaseline) {
+                setLastSaved(conflictBaseline);
+                setAutosaveStatus("idle");
+                setConflictBaseline(null);
+                showToast("Overwriting with local changes...");
+                setTimeout(() => handleSave(getValues("status") || "DRAFT", true), 0);
+              }
+            }} className="text-xs font-medium px-3 py-1.5 rounded-md bg-[#d97706] text-white hover:bg-[#b45309] transition-colors shadow-sm">
+              Overwrite
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── 2-Column Workspace ── */}
       <div className="flex flex-row flex-1 overflow-hidden w-full relative">
