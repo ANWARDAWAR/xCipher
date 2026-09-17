@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { revokeInvitation } from "@/app/actions/invitations";
 import { updateUserRole, deleteUser } from "@/app/actions/users";
 import { Role } from "@prisma/client";
+import { canViewUsersList, canManageUser } from "@/lib/permissions";
 
 export const metadata = {
   title: "User Management | xCipher",
@@ -18,7 +19,7 @@ export default async function UsersPage() {
     redirect("/admin/login");
   }
 
-  const isAuthorized = ["OWNER", "ADMIN"].includes(currentUser.role);
+  const isAuthorized = canViewUsersList(currentUser.role as Role);
 
   if (!isAuthorized) {
     return (
@@ -87,7 +88,7 @@ export default async function UsersPage() {
               <span className="m">{user.email || "N/A"}</span>
               <span className="m">{user.role}</span>
               
-              {currentUser.role === "OWNER" && user.id !== currentUser.id && (
+              {canManageUser(currentUser.role as Role, user.role as Role).success && user.id !== currentUser.id && (
                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                   <form action={async (formData) => {
                     "use server";
@@ -99,6 +100,7 @@ export default async function UsersPage() {
                       <option value="REVIEWER">REVIEWER</option>
                       <option value="EDITOR">EDITOR</option>
                       <option value="ADMIN">ADMIN</option>
+                      {currentUser.role === "OWNER" && <option value="OWNER">OWNER</option>}
                     </select>
                     <button type="submit" className="act">Save</button>
                   </form>

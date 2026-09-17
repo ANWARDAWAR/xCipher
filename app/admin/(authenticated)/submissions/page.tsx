@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { canViewReviewQueue } from "@/lib/permissions";
+import { Role } from "@prisma/client";
+import StoryDataTable from "@/components/editorial/StoryDataTable";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminSubmissions() {
   const user = await getCurrentUser();
-  const allowedRoles = ["OWNER", "ADMIN", "EDITOR", "REVIEWER"];
   
-  if (!user || !allowedRoles.includes(user.role)) {
+  if (!user || !canViewReviewQueue(user.role as Role)) {
     return (
       <div className="cs-card" style={{ maxWidth: "600px", margin: "2rem auto", textAlign: "center", padding: "2.5rem 1.5rem" }}>
         <div style={{
@@ -61,21 +63,7 @@ export default async function AdminSubmissions() {
       <h1>Review Queue</h1>
       <p className="cs-sub">{submissions.length} articles waiting for review.</p>
       
-      <div className="cs-card">
-        {submissions.length > 0 ? (
-          submissions.map(s => (
-            <div className="cs-row" key={s.id}>
-              <span className="t">{s.title || "Untitled story"}</span>
-              <span className="m">{s.category?.name || "None"}</span>
-              <span className="m">{s.status}</span>
-              <span className="m">{s.authorModel?.name || s.author || "Unknown Author"}</span>
-              <Link href={`/admin/editor/${s.id}`} className="act">Review</Link>
-            </div>
-          ))
-        ) : (
-          <p className="cs-sub" style={{ margin: 0 }}>Queue is empty.</p>
-        )}
-      </div>
+      <StoryDataTable articles={submissions} showStatusBadge={true} userRole={user?.role} emptyMessage="Queue is empty." />
     </>
   );
 }

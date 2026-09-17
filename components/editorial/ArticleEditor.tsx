@@ -6,12 +6,27 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { showToast } from "@/lib/utils";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, ReactRenderer } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
-import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
+import { CharacterCount } from "@tiptap/extension-character-count";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableCell } from "@tiptap/extension-table-cell";
+import { TableHeader } from "@tiptap/extension-table-header";
+import tippy from 'tippy.js';
+
 import { upsertArticle } from "@/app/actions/article";
+import { Role } from "@prisma/client";
+import { ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
+import SeoPreview from "./SeoPreview";
+import ReviewWorkspace from "./ReviewWorkspace";
+import { EditorToolbar } from "./EditorToolbar";
+import { Figure } from "./extensions/AdvancedImage";
+import { Callout } from "./extensions/Callout";
+import { SlashMenu } from "./extensions/SlashMenu";
+import { SlashCommandList, getSuggestionItems } from "./SlashCommandList";
 
 // Static category options for the editor dropdown
 const EDITOR_CATEGORIES: Record<string, string> = {
@@ -24,6 +39,26 @@ const EDITOR_CATEGORIES: Record<string, string> = {
   gaming: "Gaming",
 };
 
+// Templates
+const ARTICLE_TEMPLATES: Record<string, { title: string, deck: string, html: string }> = {
+  news: {
+    title: "News Template",
+    deck: "The core facts, implications, and quotes.",
+    html: "<p><strong>City, Date</strong> — Core news paragraph answering Who, What, When, Where, and Why.</p><h2>The Details</h2><p>Provide the essential context and data.</p><aside data-callout-type=\"quote\">Key quote from an expert or official goes here.</aside><h2>Why It Matters</h2><p>Explain the broader impact on the industry.</p>"
+  },
+  review: {
+    title: "Review Template",
+    deck: "Our verdict on the latest tech.",
+    html: "<h2>The Verdict</h2><aside data-callout-type=\"takeaway\"><strong>Pros:</strong><br>- Great battery life<br>- Solid build quality<br><br><strong>Cons:</strong><br>- High price point<br>- Missing key feature</aside><h2>Design & Build</h2><p>Details about the physical hardware.</p><h2>Performance</h2><p>How it handles daily tasks.</p><h2>Conclusion</h2><p>Final thoughts on whether it is worth buying.</p>"
+  },
+  guide: {
+    title: "How-To Guide",
+    deck: "Step-by-step instructions.",
+    html: "<h2>What You Need</h2><ul><li>Tool A</li><li>Tool B</li></ul><h2>Step 1: Preparation</h2><p>First step details...</p><aside data-callout-type=\"info\"><strong>Tip:</strong> Don't skip this part!</aside><h2>Step 2: Execution</h2><p>Second step details...</p>"
+  }
+};
+
+
 // Define the schema
 const articleSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -34,11 +69,21 @@ const articleSchema = z.object({
   featured: z.boolean().optional(),
   status: z.enum(["PUBLISHED", "DRAFT", "REVIEW", "SUBMITTED", "REVISION_REQUESTED", "REJECTED"]),
   deck: z.string().optional(),
-  img: z.string().optional(),
+  img: z.string().optional().refine((url) => {
+    if (!url) return true;
+    try {
+      const parsed = new URL(url);
+      if (!['http:', 'https:'].includes(parsed.protocol)) return false;
+      return ALLOWED_MEDIA_DOMAINS.includes(parsed.hostname);
+    } catch { return false; }
+  }, { message: "Invalid image URL or unapproved domain (must be from Pexels, Unsplash, etc.)" }),
   tags: z.string().optional(),
   seoTitle: z.string().optional(),
   seoDesc: z.string().optional(),
   bodyHtml: z.string().optional(),
+  notes: z.string().optional(),
+  scheduledFor: z.string().optional(),
+  homepagePlacement: z.string().optional(),
 });
 
 type ArticleFormValues = z.infer<typeof articleSchema>;
@@ -49,6 +94,9 @@ interface ArticleEditorProps {
   authorName?: string | null;
   authorRole?: string | null;
   authorId?: string | null;
+  availableCategories?: any[];
+  availableTags?: any[];
+  initialRevisions?: any[];
 }
 
 const slugify = (text: string) => {
@@ -69,9 +117,16 @@ export default function ArticleEditor({
   authorName,
   authorRole,
   authorId,
+  availableCategories = [],
+  availableTags = [],
+  initialRevisions = [],
 }: ArticleEditorProps) {
   const [isPending, setIsPending] = useState(false);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(Boolean(initialData?.slug));
+  const [lastSaved, setLastSaved] = useState<Date | null>(initialData?.updatedAt ? new Date(initialData.updatedAt) : null);
+  const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [reviewNotes, setReviewNotes] = useState("");
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
   const router = useRouter();
 
@@ -91,6 +146,8 @@ export default function ArticleEditor({
     seoTitle: initialData?.seoTitle || "",
     seoDesc: initialData?.seoDesc || "",
     bodyHtml: initialData?.contentHtml || initialData?.bodyHtml || initialData?.body || "<p>Start writing...</p>",
+    scheduledFor: initialData?.scheduledFor ? new Date(initialData.scheduledFor).toISOString().slice(0, 16) : "",
+    homepagePlacement: initialData?.homepagePlacement || "",
   };
 
   const { register, setValue, watch, getValues, reset } = useForm<ArticleFormValues>({
@@ -102,10 +159,71 @@ export default function ArticleEditor({
     extensions: [
       StarterKit,
       Underline,
-      Image,
+      Figure,
+      Callout,
       Link.configure({
         openOnClick: false,
       }),
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableCell,
+      TableHeader,
+      CharacterCount.configure({
+        limit: 50000,
+      }),
+      SlashMenu.configure({
+        suggestion: {
+          items: getSuggestionItems,
+          render: () => {
+            let component: ReactRenderer
+            let popup: any
+
+            return {
+              onStart: (props: any) => {
+                component = new ReactRenderer(SlashCommandList, {
+                  props,
+                  editor: props.editor,
+                })
+
+                if (!props.clientRect) return
+
+                popup = tippy('body', {
+                  getReferenceClientRect: props.clientRect,
+                  appendTo: () => document.body,
+                  content: component.element,
+                  showOnCreate: true,
+                  interactive: true,
+                  trigger: 'manual',
+                  placement: 'bottom-start',
+                })
+              },
+
+              onUpdate(props: any) {
+                component.updateProps(props)
+
+                if (!props.clientRect) return
+
+                popup[0].setProps({
+                  getReferenceClientRect: props.clientRect,
+                })
+              },
+
+              onKeyDown(props: any) {
+                if (props.event.key === 'Escape') {
+                  popup[0].hide()
+                  return true
+                }
+                return (component.ref as any)?.onKeyDown(props)
+              },
+
+              onExit() {
+                popup[0].destroy()
+                component.destroy()
+              },
+            }
+          },
+        }
+      })
     ],
     content: defaultValues.bodyHtml,
     onUpdate: ({ editor }) => {
@@ -147,7 +265,57 @@ export default function ArticleEditor({
     }
   };
 
-  const fillTestData = () => {
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // If there are unsaved changes (idle waiting for debounce, saving, or error)
+      if (autosaveStatus !== "saved" && (typingTimeoutRef.current !== null || autosaveStatus === "error")) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [autosaveStatus]);
+
+  useEffect(() => {
+    const subscription = watch((value, { name, type }) => {
+      // Don't autosave if the change is programmatic or if we are actively submitting a transition
+      if (isPending) return;
+      setAutosaveStatus("idle");
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      
+      typingTimeoutRef.current = setTimeout(() => {
+        handleSave(getValues("status") || "DRAFT", true);
+      }, 5000);
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, isPending]);
+
+  const fillTestData = (templateKey?: string) => {
+    if (templateKey && ARTICLE_TEMPLATES[templateKey]) {
+      const template = ARTICLE_TEMPLATES[templateKey];
+      const title = template.title + " " + Math.floor(Math.random() * 1000);
+      reset({
+        title,
+        slug: slugify(title),
+        cat: "ai",
+        author: "xCipher Staff",
+        role: "Editorial",
+        featured: false,
+        status: "DRAFT",
+        deck: template.deck,
+        img: "",
+        seoTitle: `${title} | xCipher`,
+        seoDesc: template.deck,
+        tags: templateKey,
+        bodyHtml: template.html,
+      });
+      setSlugManuallyEdited(true);
+      editor?.commands.setContent(template.html);
+      showToast(`Template "${template.title}" applied!`);
+      return;
+    }
+
     const rand = Math.floor(Math.random() * 10000);
     const title = `Next-Gen Neural Computing Breakthrough ${rand}`;
     const slug = slugify(title);
@@ -174,21 +342,38 @@ export default function ArticleEditor({
     showToast("Test data populated! You can now Save Draft, Publish, or Preview.");
   };
 
-  const handleSave = async (targetStatus: "DRAFT" | "PUBLISHED" | "SUBMITTED") => {
+  const handleSave = async (targetStatus: string, isAutosave = false, notesOverride?: string) => {
     const currentTitle = watch("title") || getValues("title");
     if (!currentTitle || !currentTitle.trim()) {
-      showToast("Please enter an article title.");
-      document.getElementById("edTitle")?.focus();
+      if (!isAutosave) showToast("Please enter an article title.");
       return null;
     }
 
     let currentSlug = watch("slug") || getValues("slug");
     if (!currentSlug || !currentSlug.trim()) {
       currentSlug = slugify(currentTitle);
-      setValue("slug", currentSlug, { shouldValidate: true });
+      if (!isAutosave) setValue("slug", currentSlug, { shouldValidate: true });
     }
 
-    setIsPending(true);
+    if (!isAutosave) {
+      if (["SUBMITTED", "PUBLISHED"].includes(targetStatus)) {
+        if (!currentTitle || !currentTitle.trim()) {
+          showToast("Pre-flight Check Failed: Title is required.");
+          return null;
+        }
+        const deck = watch("deck") || getValues("deck");
+        if (!deck || deck.trim().length < 10) {
+          showToast("Pre-flight Check Failed: A descriptive deck is required.");
+          return null;
+        }
+        if (editor.storage.characterCount.words() < 50) {
+          showToast("Pre-flight Check Failed: Article must be at least 50 words.");
+          return null;
+        }
+      }
+      setIsPending(true);
+    }
+    if (isAutosave) setAutosaveStatus("saving");
     try {
       const rawTags = watch("tags") || getValues("tags") || "";
       const tagsArray = typeof rawTags === "string" 
@@ -212,6 +397,10 @@ export default function ArticleEditor({
         seoDesc: watch("seoDesc") || getValues("seoDesc") || null,
         bodyHtml: editor?.getHTML() || "",
         bodyJson: editor?.getJSON() ? JSON.parse(JSON.stringify(editor.getJSON())) : null,
+        lastUpdatedAt: lastSaved ? lastSaved.toISOString() : undefined,
+        isAutosave: Boolean(isAutosave),
+        notes: notesOverride || null,
+        scheduledFor: watch("scheduledFor") || getValues("scheduledFor") || null,
       };
 
       // Strip any accidental client proxies
@@ -220,7 +409,14 @@ export default function ArticleEditor({
       const result = await upsertArticle(plainPayload);
 
       if (result.success && result.article) {
-        showToast(targetStatus === "PUBLISHED" ? "Story published successfully!" : "Draft saved successfully!");
+        setLastSaved(new Date(result.article.updatedAt));
+        if (isAutosave) {
+          setAutosaveStatus("saved");
+          return result.article;
+        }
+
+        showToast(targetStatus === "PUBLISHED" ? "Story published successfully!" : "Saved successfully!");
+        setValue("status", result.article.status);
         if (!initialData?.id && result.article.id) {
           router.push(`/admin/editor/${result.article.id}`);
         } else {
@@ -228,15 +424,31 @@ export default function ArticleEditor({
         }
         return result.article;
       } else {
-        showToast("Save failed: " + (result.error || "Unknown error"));
+        if (isAutosave) {
+          // On autosave conflict, silently resync the baseline so subsequent autosaves succeed.
+          // The server returns the current updatedAt so we can align without a page reload.
+          if (result.serverUpdatedAt) {
+            setLastSaved(new Date(result.serverUpdatedAt));
+            setAutosaveStatus("saved");
+          } else {
+            setAutosaveStatus("error");
+            console.error("Autosave failed:", result.error);
+          }
+        } else {
+          showToast("Save failed: " + (result.error || "Unknown error"));
+        }
         return null;
       }
     } catch (error: any) {
-      showToast("Save failed: " + (error.message || "Network or database error"));
+      if (isAutosave) {
+        setAutosaveStatus("error");
+      } else {
+        showToast("Save failed: " + (error.message || "Network or database error"));
+      }
       console.error("Save error:", error);
       return null;
     } finally {
-      setIsPending(false);
+      if (!isAutosave) setIsPending(false);
     }
   };
 
@@ -248,11 +460,13 @@ export default function ArticleEditor({
       return;
     }
 
-    // Auto-save as draft first so the article is guaranteed to exist in the database
-    showToast("Saving draft before preview...");
-    const saved = await handleSave("DRAFT");
-    if (saved && saved.slug) {
-      window.open(`/article/${saved.slug}`, "_blank");
+    // Save the current state before previewing to ensure the DB has the latest content.
+    // We use the current status so we don't accidentally unpublish a live article.
+    const currentStatus = watch("status") || getValues("status") || "DRAFT";
+    showToast("Saving before preview...");
+    const saved = await handleSave(currentStatus);
+    if (saved && saved.id) {
+      window.open(`/preview/${saved.id}`, "_blank");
     }
   };
 
@@ -260,28 +474,37 @@ export default function ArticleEditor({
     return null;
   }
 
-  const setLink = () => {
-    const previousUrl = editor.getAttributes("link").href;
-    const url = window.prompt("URL", previousUrl);
-    if (url === null) {
-      return;
-    }
-    if (url === "") {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
-    }
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
-  };
-
-  const addImage = () => {
-    const url = window.prompt("Image URL (e.g. https://images.pexels.com/...)");
-    if (url) {
-      editor.chain().focus().setImage({ src: url }).run();
-    }
-  };
+  const isEditorial = ["OWNER", "ADMIN", "EDITOR", "REVIEWER"].includes(userRole || "");
+  const canPublish = ["OWNER", "ADMIN", "EDITOR"].includes(userRole || "");
+  const currentFormStatus = watch("status") || "DRAFT";
 
   return (
-    <form className="ed-grid" onSubmit={(e) => { e.preventDefault(); handleSave("PUBLISHED"); }}>
+    <form className="ed-grid" onSubmit={(e) => { e.preventDefault(); }}>
+      <div className="ed-full" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: "var(--surface)", borderRadius: "var(--r-md)", border: "1px solid var(--line)", marginBottom: "16px" }}>
+        <div>
+          <span style={{ fontWeight: 600, color: "var(--ink)" }}>Status: </span>
+          <span className="muted" style={{ padding: "4px 8px", background: "var(--surface-2)", borderRadius: "4px", fontSize: "12px", fontWeight: "bold" }}>{currentFormStatus}</span>
+        </div>
+        <div style={{ fontSize: "12px", color: "var(--ink-muted)", display: "flex", alignItems: "center", gap: "8px" }}>
+          {autosaveStatus === "saving" && <span>⏳ Autosaving...</span>}
+          {autosaveStatus === "saved" && <span style={{ color: "var(--accent)" }}>✓ Saved</span>}
+          {autosaveStatus === "error" && <span style={{ color: "red" }}>⚠️ Save failed</span>}
+          {lastSaved && <span>Last saved: {lastSaved.toLocaleTimeString()}</span>}
+          <div style={{ marginLeft: "12px" }}>
+            <select 
+              onChange={(e) => fillTestData(e.target.value)} 
+              value=""
+              style={{ padding: "4px 8px", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "4px", fontSize: "12px" }}
+            >
+              <option value="" disabled>Apply Template...</option>
+              {Object.keys(ARTICLE_TEMPLATES).map(k => (
+                <option key={k} value={k}>{ARTICLE_TEMPLATES[k].title}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div className="ed-full">
         <label className="ed-label" htmlFor="edTitle">Article title</label>
         <input 
@@ -307,8 +530,8 @@ export default function ArticleEditor({
       <div>
         <label className="ed-label" htmlFor="edCat">Category</label>
         <select className="ed-input" id="edCat" {...register("cat")}>
-          {Object.entries(EDITOR_CATEGORIES).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
+          {availableCategories.map((c) => (
+            <option key={c.id} value={c.slug}>{c.name}</option>
           ))}
         </select>
       </div>
@@ -324,28 +547,37 @@ export default function ArticleEditor({
         <input className="ed-input" id="edRole" placeholder="e.g. Senior Tech Correspondent" {...register("role")} readOnly title="Set from profile settings" style={{ cursor: "not-allowed", backgroundColor: "var(--bg-elevated)", color: "var(--ink-muted)" }} />
       </div>
       
-      <div>
-        <label className="ed-label" htmlFor="edStatus">Publish status</label>
-        <select className="ed-input" id="edStatus" {...register("status")}>
-          <option value="DRAFT">Draft</option>
-          <option value="SUBMITTED">Submitted for review</option>
-          <option value="REVIEW">In review</option>
-          <option value="REVISION_REQUESTED">Revision requested</option>
-          <option value="REJECTED">Rejected</option>
-          <option value="PUBLISHED">Published</option>
-        </select>
-      </div>
+      {canPublish && (
+        <div>
+          <label className="ed-label" htmlFor="edScheduledFor">Schedule Publication (Optional)</label>
+          <input className="ed-input" id="edScheduledFor" type="datetime-local" {...register("scheduledFor")} />
+        </div>
+      )}
 
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "24px" }}>
-        <input 
-          type="checkbox" 
-          id="edFeatured" 
-          {...register("featured")} 
-          style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "var(--accent)" }} 
-        />
-        <label className="ed-label" htmlFor="edFeatured" style={{ margin: 0, cursor: "pointer" }}>
-          Feature on homepage / top stories
-        </label>
+      <div style={{ display: "flex", gap: "24px", marginTop: "24px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <input 
+            type="checkbox" 
+            id="edFeatured" 
+            {...register("featured")} 
+            style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "var(--accent)" }} 
+          />
+          <label className="ed-label" htmlFor="edFeatured" style={{ margin: 0, cursor: "pointer" }}>
+            Feature on homepage / top stories
+          </label>
+        </div>
+
+        {canPublish && (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <label className="ed-label" htmlFor="edHomepagePlacement" style={{ margin: 0 }}>Homepage Placement:</label>
+            <select className="ed-input" id="edHomepagePlacement" {...register("homepagePlacement")} style={{ width: "auto" }}>
+              <option value="">None (Default)</option>
+              <option value="hero">Hero Section</option>
+              <option value="featured">Featured Stories</option>
+              <option value="picks">Editor's Picks</option>
+            </select>
+          </div>
+        )}
       </div>
       
       <div className="ed-full">
@@ -364,122 +596,77 @@ export default function ArticleEditor({
         )}
       </div>
       
-      <div>
-        <label className="ed-label" htmlFor="edTags">Tags (comma separated)</label>
-        <input className="ed-input" id="edTags" placeholder="AI, policy, Europe" {...register("tags")} />
-      </div>
-      
-      <div>
-        <label className="ed-label" htmlFor="edSeoTitle">SEO title</label>
-        <input className="ed-input" id="edSeoTitle" placeholder="Defaults to article title" {...register("seoTitle")} />
-      </div>
-      
       <div className="ed-full">
-        <label className="ed-label" htmlFor="edSeoDesc">SEO description</label>
-        <input className="ed-input" id="edSeoDesc" placeholder="Defaults to excerpt" {...register("seoDesc")} />
+        <label className="ed-label" htmlFor="edTags">Tags</label>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "8px", padding: "12px", border: "1px solid var(--line)", borderRadius: "var(--r-md)", background: "var(--bg-elevated)", maxHeight: "160px", overflowY: "auto" }}>
+          {availableTags.length > 0 ? availableTags.map(tag => (
+            <label key={tag.id} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "14px", cursor: "pointer" }}>
+              <input type="checkbox" value={tag.slug} {...register("tags")} style={{ accentColor: "var(--accent)" }} />
+              {tag.name}
+            </label>
+          )) : (
+            <span className="muted text-sm">No tags available. Manage them in Taxonomy.</span>
+          )}
+        </div>
+        <input type="hidden" {...register("tags")} />
+      </div>
+      
+      <div className="ed-full" style={{ padding: "16px", border: "1px solid var(--line)", borderRadius: "var(--r-md)", background: "var(--surface-1)" }}>
+        <h3 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "16px" }}>SEO & Metadata</h3>
+        
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+          <div>
+            <label className="ed-label" htmlFor="edSeoTitle">SEO title</label>
+            <input className="ed-input" id="edSeoTitle" placeholder="Defaults to article title" {...register("seoTitle")} />
+          </div>
+          <div>
+            <label className="ed-label" htmlFor="edSeoDesc">SEO description</label>
+            <input className="ed-input" id="edSeoDesc" placeholder="Defaults to excerpt" {...register("seoDesc")} />
+          </div>
+        </div>
+
+        <SeoPreview 
+          title={watch("seoTitle") || watch("title") || ""} 
+          description={watch("seoDesc") || watch("deck") || ""}
+          slug={watch("slug") || ""}
+          image={watch("img") || ""}
+        />
       </div>
       
       <div className="ed-full">
         <label className="ed-label">Article body</label>
-        <div className="ed-toolbar" role="toolbar" aria-label="Formatting">
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleBold().run()}
-            className={editor.isActive("bold") ? "active bg-[#232a31]" : ""}
-            title="Bold"
-          >
-            <b>B</b>
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-            className={editor.isActive("italic") ? "active bg-[#232a31]" : ""}
-            title="Italic"
-          >
-            <i style={{ fontFamily: "Georgia" }}>I</i>
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
-            className={editor.isActive("underline") ? "active bg-[#232a31]" : ""}
-            title="Underline"
-          >
-            <u>U</u>
-          </button>
-          <span className="t-sep"></span>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-            className={editor.isActive("heading", { level: 2 }) ? "active bg-[#232a31]" : ""}
-            title="Heading"
-          >
-            H2
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleBlockquote().run()}
-            className={editor.isActive("blockquote") ? "active bg-[#232a31]" : ""}
-            title="Quote"
-          >
-            ❝
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            className={editor.isActive("bulletList") ? "active bg-[#232a31]" : ""}
-            title="Bullet list"
-          >
-            • List
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            className={editor.isActive("orderedList") ? "active bg-[#232a31]" : ""}
-            title="Numbered list"
-          >
-            1. List
-          </button>
-          <span className="t-sep"></span>
-          <button
-            type="button"
-            onClick={setLink}
-            className={editor.isActive("link") ? "active bg-[#232a31]" : ""}
-            title="Insert link"
-          >
-            Link
-          </button>
-          <button
-            type="button"
-            onClick={addImage}
-            title="Insert image"
-          >
-            Image
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-            className={editor.isActive("codeBlock") ? "active bg-[#232a31]" : ""}
-            title="Code block"
-          >
-            &lt;/&gt;
-          </button>
-        </div>
+        
+        <EditorToolbar editor={editor} />
         
         <div className="ed-body" id="edBody" aria-label="Article body editor">
           <EditorContent editor={editor} />
         </div>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--surface-2)', border: '1px solid var(--line)', borderTop: 'none', borderBottomLeftRadius: 'var(--r-md)', borderBottomRightRadius: 'var(--r-md)', fontSize: '12px', color: 'var(--ink-muted)' }}>
+          <span>
+            {editor.storage.characterCount.words()} words · {editor.storage.characterCount.characters()} characters
+          </span>
+          <span>
+            ~{Math.ceil(editor.storage.characterCount.words() / 200)} min read
+          </span>
+        </div>
       </div>
       
-      <div className="ed-full ed-actions">
-        <button className="btn-cs" type="button" onClick={fillTestData} disabled={isPending}>Fill Test Data</button>
-        <button 
-          className="btn-cs" 
-          type="button" 
-          disabled={isPending} 
-          onClick={() => handleSave("DRAFT")}
-        >
-          {isPending ? "Saving..." : "Save Draft"}
-        </button>
+      {initialData?.id && (
+        <div className="ed-full" style={{ marginTop: "24px" }}>
+          <ReviewWorkspace 
+            userRole={userRole || "AUTHOR"} 
+            articleId={initialData.id} 
+            currentStatus={currentFormStatus}
+            revisions={initialRevisions}
+            onDecision={async (status, notes) => {
+              await handleSave(status, false, notes);
+            }}
+          />
+        </div>
+      )}
+
+      <div className="ed-full ed-actions" style={{ flexWrap: "wrap", gap: "12px", marginTop: "32px", padding: "16px", background: "var(--surface)", borderTop: "1px solid var(--line)" }}>
         <button 
           className="btn-cs" 
           type="button" 
@@ -488,15 +675,32 @@ export default function ArticleEditor({
         >
           Preview
         </button>
-        <span className="spacer"></span>
-        <button 
-          className="btn-cs primary" 
-          type="button" 
-          disabled={isPending} 
-          onClick={() => handleSave(userRole === "AUTHOR" ? "SUBMITTED" : "PUBLISHED")}
-        >
-          {isPending ? "Saving..." : (userRole === "AUTHOR" ? "Submit for Review" : "Publish")}
-        </button>
+
+        <span className="spacer" style={{ flexGrow: 1 }}></span>
+
+        {/* Explicit Transitions based on Role and Status */}
+        {currentFormStatus === "DRAFT" || currentFormStatus === "REVISION_REQUESTED" ? (
+          <>
+            <button className="btn-cs" type="button" disabled={isPending} onClick={() => handleSave(currentFormStatus)}>
+              {isPending ? "Saving..." : "Save Draft"}
+            </button>
+            <button className="btn-cs primary" type="button" disabled={isPending} onClick={() => handleSave("SUBMITTED")}>
+              Submit for Review
+            </button>
+          </>
+        ) : null}
+
+        {currentFormStatus === "PUBLISHED" && canPublish ? (
+          <>
+            <button className="btn-cs danger" type="button" disabled={isPending} onClick={() => handleSave("DRAFT", false, "Unpublished by editor")}>
+              Unpublish
+            </button>
+            <button className="btn-cs primary" type="button" disabled={isPending} onClick={() => handleSave("PUBLISHED")}>
+              {isPending ? "Updating..." : "Update Live"}
+            </button>
+          </>
+        ) : null}
+
       </div>
     </form>
   );

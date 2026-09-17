@@ -1,18 +1,25 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { requireRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { canManageUser, canAssignRole } from "@/lib/permissions";
 import { Role } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 export async function updateUserRole(userId: string, newRole: Role) {
   try {
-    const admin = await requireRole(["OWNER", "ADMIN"]);
+    const admin = await getCurrentUser();
+    if (!admin) return { success: false, error: "Unauthenticated" };
     
-    // Prevent changing owner's role
+    const assignPolicy = canAssignRole(admin.role as Role, newRole);
+    if (!assignPolicy.success) return assignPolicy;
+
     const userToUpdate = await db.user.findUnique({ where: { id: userId } });
-    if (userToUpdate?.role === "OWNER" && admin.id !== userId) {
-      return { success: false, error: "Cannot change the role of the Owner." };
+    if (!userToUpdate) return { success: false, error: "User not found" };
+
+    if (admin.id !== userId) {
+      const managePolicy = canManageUser(admin.role as Role, userToUpdate.role as Role);
+      if (!managePolicy.success) return managePolicy;
     }
 
     await db.user.update({
@@ -40,16 +47,18 @@ export async function updateUserRole(userId: string, newRole: Role) {
 
 export async function deleteUser(userId: string) {
   try {
-    const admin = await requireRole(["OWNER", "ADMIN"]);
-
-    const userToDelete = await db.user.findUnique({ where: { id: userId } });
-    if (userToDelete?.role === "OWNER") {
-      return { success: false, error: "Cannot delete the Owner." };
-    }
+    const admin = await getCurrentUser();
+    if (!admin) return { success: false, error: "Unauthenticated" };
 
     if (admin.id === userId) {
       return { success: false, error: "Cannot delete yourself." };
     }
+
+    const userToDelete = await db.user.findUnique({ where: { id: userId } });
+    if (!userToDelete) return { success: false, error: "User not found" };
+
+    const managePolicy = canManageUser(admin.role as Role, userToDelete.role as Role);
+    if (!managePolicy.success) return managePolicy;
 
     await db.user.delete({
       where: { id: userId }

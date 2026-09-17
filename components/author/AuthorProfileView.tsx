@@ -2,6 +2,7 @@ import Link from "next/link";
 import StoryCard from "@/components/article/StoryCard";
 import Sidebar from "@/components/layout/Sidebar";
 import { fmtViews } from "@/lib/utils";
+import { sanitizeBioHtml } from "@/lib/sanitize";
 
 export function SocialIcon({ platform }: { platform: string }) {
   const p = platform.toLowerCase();
@@ -50,17 +51,31 @@ export default function AuthorProfileView({ author, articles, socials, totalView
           </div>
 
           <div className="ap-hero-info">
-            <h1 className="ap-name">{author.name}</h1>
+            <h1 className="ap-name" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              {author.name}
+              {author.verifiedTitle && (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--accent)" style={{ flexShrink: 0 }} aria-label="Verified Staff">
+                  <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1.9 14.7L6 12.6l1.5-1.5 2.6 2.6 6.4-6.4 1.5 1.5-7.9 7.9z" fill="#fff"/>
+                  <circle cx="12" cy="12" r="10" fill="var(--accent)"/>
+                  <path d="M10.1 16.7l-4.1-4.1 1.4-1.4 2.7 2.7 6.4-6.4 1.4 1.4-7.8 7.8z" fill="#fff"/>
+                </svg>
+              )}
+            </h1>
             {author.headline && <p className="ap-headline">{author.headline}</p>}
 
             <div className="ap-meta-row">
+              {author.role && (
+                <span className="ap-meta-item" style={{ fontWeight: 600, color: "var(--ink)" }}>
+                  {author.role}
+                </span>
+              )}
               {author.location && (
                 <span className="ap-meta-item">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                   {author.location}
                 </span>
               )}
-              {author.email && (
+              {author.email && author.publicContact !== false && (
                 <a href={`mailto:${author.email}`} className="ap-meta-item ap-meta-link">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
                   {author.email}
@@ -125,7 +140,17 @@ export default function AuthorProfileView({ author, articles, socials, totalView
           {author.bio && (
             <section className="ap-about" aria-label="About">
               <div className="ap-section-label">About</div>
-              <div className="ap-bio prose" dangerouslySetInnerHTML={{ __html: author.bio }} />
+              {author.expertise && (
+                <div style={{ marginBottom: "16px", fontSize: "14px", color: "var(--ink)" }}>
+                  <strong>Coverage Beats: </strong> {author.expertise}
+                </div>
+              )}
+              <div className="ap-bio prose" dangerouslySetInnerHTML={{ __html: sanitizeBioHtml(author.bio) }} />
+              {author.disclosure && (
+                <div style={{ marginTop: "16px", padding: "12px", background: "var(--surface-2)", borderRadius: "var(--r-md)", fontSize: "13px", fontStyle: "italic", color: "var(--ink-muted)" }}>
+                  <strong>Disclosure: </strong> {author.disclosure}
+                </div>
+              )}
             </section>
           )}
 

@@ -1,13 +1,46 @@
-import { requireRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { canViewAuditLogs } from "@/lib/permissions";
+import { Role } from "@prisma/client";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export const metadata = {
   title: "Audit Logs | xCipher",
 };
 
 export default async function AuditLogsPage() {
-  await requireRole(["OWNER", "ADMIN"]);
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    redirect("/admin/login");
+  }
 
+  if (!canViewAuditLogs(currentUser.role as Role)) {
+    return (
+      <div className="cs-card" style={{ maxWidth: "600px", margin: "2rem auto", textAlign: "center", padding: "2.5rem 1.5rem" }}>
+        <div style={{
+          width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "var(--accent-soft)",
+          color: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center",
+          margin: "0 auto 1.25rem"
+        }}>
+          <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h2 style={{ fontFamily: "var(--f-display)", fontSize: "1.35rem", marginBottom: "0.5rem" }}>
+          Permission Required
+        </h2>
+        <p style={{ color: "var(--muted)", fontSize: "0.875rem", fontFamily: "var(--f-ui)", marginBottom: "1.5rem", lineHeight: 1.6 }}>
+          Only <strong>ADMIN</strong> roles can view audit logs.<br />
+        </p>
+        <div style={{ display: "flex", gap: "10px", justifyContent: "center", flexWrap: "wrap" }}>
+          <Link href="/admin" className="btn-cs">
+            Return to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
   const logs = await db.auditLog.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,

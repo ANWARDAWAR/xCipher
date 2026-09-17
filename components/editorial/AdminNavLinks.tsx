@@ -2,8 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Role } from "@prisma/client";
 
-export default function AdminNavLinks() {
+interface AdminNavLinksProps {
+  userRole: Role;
+  canReview: boolean;
+  canManageUsers: boolean;
+  canViewLogs: boolean;
+  canModerateComments: boolean;
+  canViewSubscribers: boolean;
+}
+
+export default function AdminNavLinks({ userRole, canReview, canManageUsers, canViewLogs, canModerateComments, canViewSubscribers }: AdminNavLinksProps) {
   const pathname = usePathname();
 
   return (
@@ -23,7 +33,7 @@ export default function AdminNavLinks() {
           <path d="M18 8h2a1 1 0 0 1 1 1v11a2 2 0 0 1-2 2H7" />
           <path d="M8.5 8h6M8.5 12h6M8.5 16h4" />
         </svg>
-        Articles
+        {userRole === "AUTHOR" ? "My Stories" : "All Stories"}
       </Link>
       <Link href="/admin/drafts" className={pathname === "/admin/drafts" ? "on" : ""}>
         <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -32,13 +42,15 @@ export default function AdminNavLinks() {
         </svg>
         Drafts
       </Link>
-      <Link href="/admin/submissions" className={pathname === "/admin/submissions" ? "on" : ""}>
-        <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 11l3 3L22 4" />
-          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-        </svg>
-        Review Queue
-      </Link>
+      {canReview && (
+        <Link href="/admin/submissions" className={pathname === "/admin/submissions" ? "on" : ""}>
+          <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 11l3 3L22 4" />
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+          </svg>
+          Review Queue
+        </Link>
+      )}
       <Link href="/admin/editor" className={pathname === "/admin/editor" ? "on" : ""}>
         <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
           <path d="M12 5v14M5 12h14" />
@@ -52,20 +64,50 @@ export default function AdminNavLinks() {
         </svg>
         Settings
       </Link>
-      <Link href="/admin/users" className={pathname === "/admin/users" ? "on" : ""}>
-        <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-        Users
-      </Link>
-      <Link href="/admin/audit-logs" className={pathname === "/admin/audit-logs" ? "on" : ""}>
-        <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-        </svg>
-        Audit Logs
-      </Link>
+      {canReview && (
+        <Link href="/admin/taxonomy" className={pathname === "/admin/taxonomy" ? "on" : ""}>
+          <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+            <line x1="7" y1="7" x2="7.01" y2="7" />
+          </svg>
+          Taxonomy
+        </Link>
+      )}
+      {canManageUsers && (
+        <Link href="/admin/users" className={pathname === "/admin/users" ? "on" : ""}>
+          <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          Users
+        </Link>
+      )}
+      {canModerateComments && (
+        <Link href="/admin/comments" className={pathname.startsWith("/admin/comments") ? "on" : ""}>
+          <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          Comments
+        </Link>
+      )}
+      {canViewSubscribers && (
+        <Link href="/admin/subscribers" className={pathname === "/admin/subscribers" ? "on" : ""}>
+          <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+            <polyline points="22,6 12,13 2,6" />
+          </svg>
+          Subscribers
+        </Link>
+      )}
+      {canViewLogs && (
+        <Link href="/admin/audit-logs" className={pathname === "/admin/audit-logs" ? "on" : ""}>
+          <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+          </svg>
+          Audit Logs
+        </Link>
+      )}
     </>
   );
 }

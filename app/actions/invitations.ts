@@ -1,7 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getCurrentUser, requireRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { canAssignRole, canManageUser, hasRequiredRole } from "@/lib/permissions";
 import crypto from "crypto";
 import { sendInvitationEmail } from "@/lib/email";
 import bcrypt from "bcryptjs";
@@ -26,14 +27,16 @@ async function logAudit(action: string, entityType: string, entityId?: string, d
 
 export async function inviteUser(formData: FormData) {
   try {
-    const admin = await requireRole(["OWNER", "ADMIN"]);
-    
+    const admin = await getCurrentUser();
+    if (!admin) return { success: false, error: "Unauthenticated" };
     const email = formData.get("email") as string;
     const role = formData.get("role") as string;
-
     if (!email || !role) {
       return { success: false, error: "Email and role are required." };
     }
+
+    const assignPolicy = canAssignRole(admin.role as Role, role as Role);
+    if (!assignPolicy.success) return assignPolicy;
 
     // Check if user exists
     const existingUser = await db.user.findUnique({ where: { email } });
@@ -85,8 +88,15 @@ export async function inviteUser(formData: FormData) {
 
 export async function revokeInvitation(id: string) {
   try {
-    await requireRole(["OWNER", "ADMIN"]);
+    const admin = await getCurrentUser();
+    if (!admin) return { success: false, error: "Unauthenticated" };
     
+    const invitationToRevoke = await db.invitation.findUnique({ where: { id } });
+    if (!invitationToRevoke) return { success: false, error: "Invitation not found" };
+
+    const managePolicy = canManageUser(admin.role as Role, invitationToRevoke.role as Role);
+    if (!managePolicy.success) return managePolicy;
+
     const invitation = await db.invitation.update({
       where: { id },
       data: { status: "REVOKED" },

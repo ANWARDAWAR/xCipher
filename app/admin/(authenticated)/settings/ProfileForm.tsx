@@ -34,6 +34,13 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
   const [location, setLocation] = useState(author?.location || "");
   const [website, setWebsite] = useState(author?.website || "");
   const [email, setEmail] = useState(author?.email || "");
+  const [expertise, setExpertise] = useState(author?.expertise || "");
+  const [verifiedTitle, setVerifiedTitle] = useState(author?.verifiedTitle || false);
+  const [disclosure, setDisclosure] = useState(author?.disclosure || "");
+  const [publicContact, setPublicContact] = useState(author?.publicContact !== false);
+  const [slug, setSlug] = useState(author?.slug || "");
+  
+  const isAdmin = ["OWNER", "ADMIN"].includes(user?.role || "");
   const [socials, setSocials] = useState<{ platform: string; url: string }[]>(initialSocials);
 
   const addSocial = () => setSocials([...socials, { platform: "Website", url: "" }]);
@@ -68,7 +75,10 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
     setIsPending(true);
     try {
       const validSocials = socials.filter(s => s.url.trim() !== "");
-      const res = await updateProfile({ name, headline, role, overview, avatar, bio, location, website, email, socialLinks: validSocials });
+      const res = await updateProfile({ 
+        name, headline, role, overview, avatar, bio, location, website, email, 
+        socialLinks: validSocials, expertise, verifiedTitle, disclosure, publicContact, slug
+      });
       if (res.success) {
         showToast("Profile saved! Refreshing...");
         setTimeout(() => window.location.reload(), 600);
@@ -92,11 +102,33 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
     setLocation(author?.location || "");
     setWebsite(author?.website || "");
     setEmail(author?.email || "");
+    setExpertise(author?.expertise || "");
+    setVerifiedTitle(author?.verifiedTitle || false);
+    setDisclosure(author?.disclosure || "");
+    setPublicContact(author?.publicContact !== false);
+    setSlug(author?.slug || "");
     setSocials(initialSocials);
   };
 
+  // Calculate profile completeness
+  const completeness = [
+    name, avatar, headline, bio, role, expertise, email, website || socials.length > 0
+  ].filter(Boolean).length;
+  const completenessPercent = Math.round((completeness / 8) * 100);
+
   return (
     <form onSubmit={handleSubmit} className="w-full pb-12">
+      
+      {/* Profile Completeness */}
+      <div style={{ marginBottom: "24px", padding: "16px", background: "var(--surface-2)", borderRadius: "var(--r-md)", border: "1px solid var(--line)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "14px", fontWeight: 600 }}>
+          <span>Profile Completeness</span>
+          <span style={{ color: completenessPercent === 100 ? "var(--success)" : "var(--accent)" }}>{completenessPercent}%</span>
+        </div>
+        <div style={{ width: "100%", height: "8px", background: "var(--surface)", borderRadius: "4px", overflow: "hidden" }}>
+          <div style={{ width: `${completenessPercent}%`, height: "100%", background: completenessPercent === 100 ? "var(--success)" : "var(--accent)", transition: "width 0.3s ease" }} />
+        </div>
+      </div>
 
       {/* ── Section: Identity ────────────────────────── */}
       <div className="cs-settings-section">
@@ -133,8 +165,19 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
               <input type="text" className="ed-input" value={headline} onChange={e => setHeadline(e.target.value)} placeholder="Senior AI Reporter at xCipher" maxLength={100} />
             </div>
             <div>
-              <label className="ed-label">Author Role</label>
-              <input type="text" className="ed-input" value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. Senior Tech Correspondent" maxLength={100} />
+              <label className="ed-label">Profile URL Slug</label>
+              <input type="text" className="ed-input" value={slug} onChange={e => setSlug(e.target.value)} placeholder="e.g. anwar-iqbal" />
+            </div>
+            <div>
+              <label className="ed-label">
+                Author Role 
+                {!isAdmin && <span style={{ fontSize: "11px", color: "var(--warning)", marginLeft: "8px" }}>(Admin only)</span>}
+              </label>
+              <input type="text" className="ed-input" value={role} onChange={e => isAdmin && setRole(e.target.value)} readOnly={!isAdmin} placeholder="e.g. Senior Tech Correspondent" maxLength={100} style={{ cursor: !isAdmin ? "not-allowed" : "text", backgroundColor: !isAdmin ? "var(--bg-elevated)" : undefined }} />
+            </div>
+            <div>
+              <label className="ed-label">Coverage Beats (Expertise)</label>
+              <input type="text" className="ed-input" value={expertise} onChange={e => setExpertise(e.target.value)} placeholder="e.g. AI, Semiconductors, Cloud" />
             </div>
             <div>
               <label className="ed-label">Location</label>
@@ -144,9 +187,28 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
               <label className="ed-label">Public Email</label>
               <input type="email" className="ed-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
             </div>
-            <div className="cs-settings-full">
+            <div>
               <label className="ed-label">Personal Website</label>
               <input type="url" className="ed-input" value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://yoursite.com" />
+            </div>
+            {isAdmin && (
+              <div className="cs-settings-full">
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "14px", color: "var(--ink)" }}>
+                  <input type="checkbox" checked={verifiedTitle} onChange={e => setVerifiedTitle(e.target.checked)} style={{ width: "16px", height: "16px", accentColor: "var(--success)" }} />
+                  <span style={{ fontWeight: 600 }}>Verified Editorial Title</span>
+                  <span style={{ color: "var(--warning)", fontSize: "12px", marginLeft: "4px" }}>(Admin only)</span>
+                </label>
+              </div>
+            )}
+            <div className="cs-settings-full">
+              <label className="ed-label">Ethical Disclosure (Optional)</label>
+              <textarea className="ed-input" rows={2} value={disclosure} onChange={e => setDisclosure(e.target.value)} placeholder="e.g. Holds shares in XYZ Corp." />
+            </div>
+            <div className="cs-settings-full">
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "14px", color: "var(--ink)" }}>
+                <input type="checkbox" checked={publicContact} onChange={e => setPublicContact(e.target.checked)} style={{ width: "16px", height: "16px", accentColor: "var(--accent)" }} />
+                <span>Show email and contact forms on public profile</span>
+              </label>
             </div>
           </div>
         </div>

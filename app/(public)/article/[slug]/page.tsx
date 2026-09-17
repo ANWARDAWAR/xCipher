@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import type { Metadata, ResolvingMetadata } from "next";
+import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { getImgSrc, fmtViews, timeAgo } from "@/lib/utils";
 import { db } from "@/lib/db";
+import { constructMetadata, generateNewsArticleJsonLd } from "@/lib/seo";
 import { SocialIcon } from "@/components/author/AuthorProfileView";
 import ArticleBody from "@/components/article/ArticleBody";
 import ArticleSidebar from "@/components/article/ArticleSidebar";
@@ -17,25 +18,56 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: Props, parent: ResolvingMetadata): Promise<Metadata> {
   const { slug } = await params;
-  const article = await db.article.findUnique({ where: { slug } });
-  if (!article) return {};
+  const article = await db.article.findUnique({ 
+    where: { 
+      slug, 
+      status: "PUBLISHED",
+    } 
+  });
+
+  if (!article) {
+    const historicalArticle = await db.article.findFirst({
+      where: { previousSlugs: { has: slug }, status: "PUBLISHED" }
+    });
+    if (historicalArticle) return {};
+    return {};
+  }
+
+  if (article.publishedAt && article.publishedAt > new Date()) return {};
   
-  return {
-    title: `${article.title} — xCipher`,
-    description: article.deck || "",
-    authors: article.author ? [{ name: article.author }] : undefined,
-  };
+  return constructMetadata({
+    title: article.seoTitle || article.title,
+    description: article.seoDesc || article.deck || "",
+    image: article.img ? getImgSrc(article.img, 1200, 630) : undefined,
+    canonical: `/article/${article.slug}`,
+  });
 }
 
 export const dynamic = "force-dynamic";
 
 export default async function ArticlePage({ params }: Props) {
   const { slug } = await params;
-  const article = await db.article.findUnique({ where: { slug }, include: { category: true, authorModel: true } });
+  let article = await db.article.findUnique({ 
+    where: { 
+      slug, 
+      status: "PUBLISHED",
+    }, 
+    include: { category: true, authorModel: true, tags: true } 
+  });
   
   if (!article) {
+    const historicalArticle = await db.article.findFirst({
+      where: { previousSlugs: { has: slug }, status: "PUBLISHED" }
+    });
+    if (historicalArticle) {
+      redirect(`/article/${historicalArticle.slug}`);
+    }
+    notFound();
+  }
+
+  if (article.publishedAt && article.publishedAt > new Date()) {
     notFound();
   }
   
@@ -86,27 +118,10 @@ export default async function ArticlePage({ params }: Props) {
 
   return (
     <>
-      {article.status !== "PUBLISHED" && (
-        <div style={{
-          background: "var(--surface-3, #262c32)",
-          borderBottom: "1px solid var(--line, #31383f)",
-          color: "#f59e0b",
-          padding: "10px 24px",
-          fontSize: "13.5px",
-          fontWeight: 600,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          position: "sticky",
-          top: 0,
-          zIndex: 9999
-        }}>
-          <span>⚠️ Story Preview Mode ({article.status}) — This story is not live on the public index.</span>
-          <Link href={`/admin/editor/${article.id}`} style={{ color: "var(--accent, #f04552)", textDecoration: "underline" }}>
-            Edit in Console →
-          </Link>
-        </div>
-      )}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(generateNewsArticleJsonLd(article)) }}
+      />
       <ProgressBar />
       <article className="art" itemScope itemType="https://schema.org/NewsArticle">
       <header className="wrap art-head">
@@ -185,8 +200,8 @@ export default async function ArticlePage({ params }: Props) {
       <div className="wrap art-foot">
         <div className="tag-row">
           {(article.tags || []).map(t => (
-            <Link key={t} className="chip" href={`/search?q=${encodeURIComponent(t)}`}>
-              {t}
+            <Link key={t.id} className="chip" href={`/tag/${t.slug}`}>
+              {t.name}
             </Link>
           ))}
         </div>
@@ -225,7 +240,7 @@ export default async function ArticlePage({ params }: Props) {
               ) : authorName}
             </h4>
             <div className="ar">{authorHeadline}</div>
-            <p>{article.authorModel?.overview || authorBio}</p>
+            <div className="prose" style={{ marginTop: "12px", fontSize: "14px", lineHeight: 1.6, color: "var(--ink-muted)" }} dangerouslySetInnerHTML={{ __html: article.authorModel?.bio || authorBio || "" }} />
             {socials.length > 0 && (
               <div className="al">
                 {socials.map((s, i) => (
@@ -241,7 +256,7 @@ export default async function ArticlePage({ params }: Props) {
           </div>
         </section>
 
-        <CommentsSection />
+        <CommentsSection articleSlug={article.slug} />
 
         <section aria-label="Continue reading" style={{ marginTop: "48px", paddingTop: "40px", borderTop: "1px solid var(--line)" }}>
           <h2 style={{ fontFamily: "var(--f-ui)", fontSize: "16px", fontWeight: 700, letterSpacing: ".02em", marginBottom: "20px" }}>Continue reading</h2>

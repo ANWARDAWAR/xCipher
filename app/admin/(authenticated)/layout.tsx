@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import SignOutButton from "@/components/editorial/SignOutButton";
 import AdminNavLinks from "@/components/editorial/AdminNavLinks";
+import { canViewReviewQueue, canViewUsersList, canViewAuditLogs, canModerateComments, canViewSubscribers } from "@/lib/permissions";
+import { Role } from "@prisma/client";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -82,7 +84,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
           <div className="cs-nav-divider" />
 
-          <AdminNavLinks />
+          <AdminNavLinks 
+            userRole={userRole as Role}
+            canReview={canViewReviewQueue(userRole as Role)}
+            canManageUsers={canViewUsersList(userRole as Role)}
+            canViewLogs={canViewAuditLogs(userRole as Role)}
+            canModerateComments={canModerateComments(userRole as Role)}
+            canViewSubscribers={canViewSubscribers(userRole as Role)}
+          />
         </nav>
         <div className="cs-main" id="csMain">
           {children}

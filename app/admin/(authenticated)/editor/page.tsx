@@ -1,6 +1,7 @@
 import ArticleEditor from "@/components/editorial/ArticleEditor";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getCategories, getTags } from "@/app/actions/taxonomy";
 
 export default async function NewStoryPage() {
   const user = await getCurrentUser();
@@ -11,6 +12,11 @@ export default async function NewStoryPage() {
       })
     : null;
 
+  const [categories, tags] = await Promise.all([
+    getCategories(),
+    getTags()
+  ]);
+
   return (
     <div>
       <h1>New story</h1>
@@ -20,6 +26,8 @@ export default async function NewStoryPage() {
         authorName={dbUser?.authorProfile?.name || dbUser?.name}
         authorRole={dbUser?.authorProfile?.role || dbUser?.role}
         authorId={dbUser?.authorProfile?.id}
+        availableCategories={categories}
+        availableTags={tags}
       />
     </div>
   );

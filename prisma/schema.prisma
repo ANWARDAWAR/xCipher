@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ==========================================
@@ -60,6 +61,8 @@ model User {
   accounts      Account[]
   sessions      Session[]
   
+  notificationPrefs Json?
+
   // CMS relationships
   authorId      String?   @unique
   authorProfile Author?   @relation(fields: [authorId], references: [id])
@@ -67,6 +70,7 @@ model User {
   auditLogs     AuditLog[]
   notifications Notification[]
   revisions     ArticleRevision[]
+  moderatedComments Comment[]
 }
 
 model VerificationToken {
@@ -94,6 +98,11 @@ model Author {
   website     String?
   email       String?
   socialLinks Json?
+  expertise   String?
+  verifiedTitle Boolean @default(false)
+  disclosure  String?   @db.Text
+  publicContact Boolean @default(true)
+  previousSlugs String[] @default([])
   joinedAt    DateTime  @default(now())
   
   user        User?
@@ -105,6 +114,14 @@ model Category {
   slug        String    @unique
   name        String
   fullTitle   String?
+  description String?
+  articles    Article[]
+}
+
+model Tag {
+  id          String    @id @default(uuid())
+  slug        String    @unique
+  name        String
   description String?
   articles    Article[]
 }
@@ -121,6 +138,7 @@ enum ArticleStatus {
 model Article {
   id          String        @id @default(uuid())
   slug        String        @unique
+  previousSlugs String[]    @default([])
   title       String
   deck        String?
   contentHtml String?
@@ -139,16 +157,21 @@ model Article {
   
   status      ArticleStatus @default(DRAFT)
   views       Int           @default(0)
-  tags        String[]
+  legacyTags  String[]      @map("tags")
+  tags        Tag[]
   featured    Boolean       @default(false)
+  homepagePlacement String?
   img         String?
   seoTitle    String?
   seoDesc     String?
   
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  publishedAt DateTime?
+  scheduledFor DateTime?
 
   revisions   ArticleRevision[]
+  comments    Comment[]
 }
 
 // ==========================================
@@ -159,9 +182,15 @@ model ArticleRevision {
   id          String   @id @default(uuid())
   articleId   String
   article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  notes       String?  @db.Text
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  
+  title        String?
+  deck         String?
+  contentHtml  String?
+  contentJson  Json?
+  
+  notes        String?  @db.Text
   statusChange String?
   createdAt   DateTime @default(now())
 }
@@ -196,4 +225,56 @@ model Invitation {
   status    String   @default("PENDING") // PENDING, ACCEPTED, REVOKED, EXPIRED
   invitedBy String?  
   createdAt DateTime @default(now())
+}
+
+// ==========================================
+// Audience Models
+// ==========================================
+
+enum SubscriberStatus {
+  PENDING
+  ACTIVE
+  UNSUBSCRIBED
+  BOUNCED
+}
+
+model Subscriber {
+  id               String           @id @default(uuid())
+  email            String           @unique
+  status           SubscriberStatus @default(ACTIVE)
+  source           String           @default("HOMEPAGE") // HOMEPAGE, ARTICLE, FOOTER
+  consentAt        DateTime         @default(now())
+  unsubscribeToken String           @unique @default(uuid())
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+enum CommentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SPAM
+}
+
+model Comment {
+  id            String        @id @default(uuid())
+  articleId     String
+  article       Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleSlug   String
+  
+  displayName   String
+  emailHash     String        // SHA-256 of normalized email for Gravatar — never expose raw email publicly
+  email         String        // Stored server-side only, never returned to public clients
+  body          String        @db.Text
+  
+  status        CommentStatus @default(PENDING)
+  ipHash        String?       // SHA-256 of IP — for abuse tracking, never stored raw
+  userAgent     String?
+  
+  moderatorId   String?
+  moderator     User?         @relation(fields: [moderatorId], references: [id], onDelete: SetNull)
+  moderatorNote String?
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 }

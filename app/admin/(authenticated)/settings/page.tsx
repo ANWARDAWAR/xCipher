@@ -1,62 +1,43 @@
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import ProfileForm from "./ProfileForm";
+import AccountForm from "./AccountForm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import AuthorProfileView from "@/components/author/AuthorProfileView";
 
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage(props: { searchParams: Promise<{ edit?: string }> }) {
+export default async function SettingsPage(props: { searchParams: Promise<{ tab?: string, edit?: string }> }) {
   const user = await getCurrentUser();
   if (!user) {
     redirect("/admin/login");
   }
 
   const searchParams = await props.searchParams;
+  const currentTab = searchParams.tab || "profile";
+  const isEditing = searchParams.edit === "true";
 
   const dbUser = await db.user.findUnique({ where: { id: user.id } });
   const author = dbUser?.authorId 
     ? await db.author.findUnique({ where: { id: dbUser.authorId } }) 
     : null;
 
-  const isEditing = searchParams.edit === "true" || !author;
-
-  if (isEditing) {
-    return (
-      <>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-          <div>
-            <h1>Edit Profile</h1>
-            <p className="cs-sub">Update your public author profile information.</p>
-          </div>
-          {author && (
-            <Link href="/admin/settings" className="btn btn-ghost" style={{ padding: "8px 16px", borderRadius: "6px" }}>
-              Cancel
-            </Link>
-          )}
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-          <ProfileForm user={dbUser || user} author={author} />
-        </div>
-      </>
-    );
+  // Stats for preview
+  let articles: any[] = [];
+  let totalViews = 0;
+  if (author) {
+    articles = await db.article.findMany({
+      where: {
+        status: "PUBLISHED",
+        OR: [{ authorId: author.id }, { author: author.name }]
+      },
+      orderBy: { createdAt: "desc" },
+      include: { category: true }
+    });
+    totalViews = articles.reduce((sum, a) => sum + (a.views || 0), 0);
   }
 
-  // Preview Mode
-  // Stats
-  const articles = await db.article.findMany({
-    where: {
-      status: "PUBLISHED",
-      OR: [{ authorId: author.id }, { author: author.name }]
-    },
-    orderBy: { createdAt: "desc" },
-    include: { category: true }
-  });
-
-  const totalViews = articles.reduce((sum, a) => sum + (a.views || 0), 0);
-
-  // Parse socials
   let socials: { platform: string; url: string }[] = [];
   try {
     const raw = author?.socialLinks;
@@ -66,39 +47,77 @@ export default async function SettingsPage(props: { searchParams: Promise<{ edit
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", borderBottom: "1px solid var(--line)", paddingBottom: "16px" }}>
         <div>
-          <h1>Profile Settings</h1>
-          <p className="cs-sub">This is exactly how your public profile looks to readers.</p>
+          <h1>Settings</h1>
+          <p className="cs-sub">Manage your public identity and account security.</p>
         </div>
         <div style={{ display: "flex", gap: "12px" }}>
-          {author?.slug && (
-            <Link href={`/author/${author.slug}`} target="_blank" className="btn btn-ghost" style={{ padding: "8px 16px", borderRadius: "6px" }}>
-              View Public
-            </Link>
-          )}
-          <Link href="/admin/settings?edit=true" className="btn btn-primary" style={{ padding: "8px 16px", borderRadius: "6px" }}>
-            Edit Profile
+          <Link href="/admin/settings?tab=profile" className={`btn-cs ${currentTab === "profile" ? "primary" : ""}`} style={{ borderRadius: "6px" }}>
+            Public Profile
+          </Link>
+          <Link href="/admin/settings?tab=account" className={`btn-cs ${currentTab === "account" ? "primary" : ""}`} style={{ borderRadius: "6px" }}>
+            Account Security
           </Link>
         </div>
       </div>
-      
-      <div style={{
-        background: "var(--paper)",
-        border: "1px solid var(--line)",
-        borderRadius: "var(--r-lg)",
-        overflow: "hidden",
-        boxShadow: "var(--shadow-1)",
-      }}>
-        <div style={{ pointerEvents: "none", color: "var(--ink)" }}>
-          <AuthorProfileView 
-            author={author} 
-            articles={articles} 
-            socials={socials} 
-            totalViews={totalViews} 
-          />
-        </div>
-      </div>
+
+      {currentTab === "profile" && (
+        <>
+          {!isEditing && author ? (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                <h2 style={{ fontSize: "16px" }}>Profile Preview</h2>
+                <div style={{ display: "flex", gap: "12px" }}>
+                  {author.slug && (
+                    <Link href={`/author/${author.slug}`} target="_blank" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
+                      View Live
+                    </Link>
+                  )}
+                  <Link href="/admin/settings?tab=profile&edit=true" className="btn btn-primary" style={{ padding: "6px 12px", borderRadius: "6px" }}>
+                    Edit Profile
+                  </Link>
+                </div>
+              </div>
+              <div style={{
+                background: "var(--paper)",
+                border: "1px solid var(--line)",
+                borderRadius: "var(--r-lg)",
+                overflow: "hidden",
+                boxShadow: "var(--shadow-1)",
+              }}>
+                <div style={{ pointerEvents: "none", color: "var(--ink)" }}>
+                  <AuthorProfileView 
+                    author={author} 
+                    articles={articles} 
+                    socials={socials} 
+                    totalViews={totalViews} 
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                <h2 style={{ fontSize: "16px" }}>Edit Profile</h2>
+                {author && (
+                  <Link href="/admin/settings?tab=profile" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
+                    Cancel
+                  </Link>
+                )}
+              </div>
+              <ProfileForm user={dbUser || user} author={author} />
+            </>
+          )}
+        </>
+      )}
+
+      {currentTab === "account" && (
+        <>
+          <h2 style={{ fontSize: "16px", marginBottom: "16px" }}>Account Security</h2>
+          <AccountForm user={dbUser || user} />
+        </>
+      )}
     </>
   );
 }

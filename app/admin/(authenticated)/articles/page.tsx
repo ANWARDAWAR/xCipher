@@ -2,18 +2,22 @@ import Link from "next/link";
 import { fmtViews } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import DeleteArticleButton from "@/components/editorial/DeleteArticleButton";
+import StoryDataTable from "@/components/editorial/StoryDataTable";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminArticles() {
   let articles: any[] = [];
+  const user = await getCurrentUser();
+  const dbUser = user ? await db.user.findUnique({ where: { id: user.id }, include: { authorProfile: true } }) : null;
+  const authorId = dbUser?.authorProfile?.id;
+  const isAuthorOnly = user?.role === "AUTHOR";
+
   try {
-    const user = await getCurrentUser();
     articles = await db.article.findMany({
-      where: user?.role === "AUTHOR" ? { status: "PUBLISHED", authorId: user.id } : { status: "PUBLISHED" },
+      where: isAuthorOnly ? { status: "PUBLISHED", authorId: authorId || "none" } : { status: "PUBLISHED" },
       orderBy: { createdAt: "desc" },
-      include: { category: true },
+      include: { category: true, authorModel: true },
     });
   } catch (error) {
     console.error("AdminArticles fetch error:", error);
@@ -21,25 +25,9 @@ export default async function AdminArticles() {
 
   return (
     <>
-      <h1>Articles</h1>
+      <h1>{isAuthorOnly ? "My Published Stories" : "All Published Stories"}</h1>
       <p className="cs-sub">{articles.length} published stories in the live index.</p>
-      <div className="cs-card">
-        {articles.length > 0 ? (
-          articles.map(a => (
-            <div className="cs-row" key={a.id}>
-              <span className="t">{a.title}</span>
-              <span className="m">{a.category?.name || "None"}</span>
-              <span className="m">{a.createdAt ? new Date(a.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""}</span>
-              <span className="m">{fmtViews(a.views || 0)} reads</span>
-              <Link className="act" href={`/article/${a.slug}`} target="_blank">Open</Link>
-              <Link href={`/admin/editor/${a.id}`} className="act">Edit</Link>
-              <DeleteArticleButton id={a.id} title={a.title} />
-            </div>
-          ))
-        ) : (
-          <p className="cs-sub" style={{ margin: 0 }}>Nothing here yet.</p>
-        )}
-      </div>
+      <StoryDataTable articles={articles} showStatusBadge={false} userRole={user?.role} emptyMessage="No published stories found." />
     </>
   );
 }

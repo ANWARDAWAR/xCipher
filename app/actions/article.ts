@@ -2,8 +2,10 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { ArticleStatus } from "@prisma/client";
-import { getCurrentUser, requireRole } from "@/lib/auth";
+import { ArticleStatus, Role } from "@prisma/client";
+import { getCurrentUser } from "@/lib/auth";
+import { canEditArticle, canPublishArticle, canDeleteArticle } from "@/lib/permissions";
+import { sanitizeArticleHtml, isValidSafeUrl, ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
 
 async function logAudit(action: string, entityType: string, entityId?: string, details?: any) {
   try {
@@ -43,26 +45,72 @@ async function getUniqueSlug(baseSlug: string, currentId?: string): Promise<stri
 
 export async function upsertArticle(data: any) {
   try {
-    const user = await requireRole(["OWNER", "ADMIN", "EDITOR", "AUTHOR", "REVIEWER"]);
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthenticated" };
+    }
+
+    const dbUser = await db.user.findUnique({
+      where: { id: user.id },
+      include: { authorProfile: true }
+    });
+
+    if (!dbUser) {
+      return { success: false, error: "User record not found" };
+    }
+
+    const userWithAuth = {
+      id: dbUser.id,
+      role: dbUser.role as Role,
+      authorId: dbUser.authorProfile?.id || null,
+    };
+
+    let existingArticle = null;
+    if (data.id) {
+      existingArticle = await db.article.findUnique({
+        where: { id: data.id },
+        select: { id: true, authorId: true, updatedAt: true, status: true, publishedAt: true }
+      });
+      if (!existingArticle) {
+        return { success: false, error: "Article not found" };
+      }
+    }
+
+    const editPolicy = canEditArticle(userWithAuth, existingArticle || undefined);
+    if (!editPolicy.success) {
+      return { success: false, error: editPolicy.error };
+    }
+
+    // Concurrency check – skip on autosave (the editor's baseline will resync from the returned updatedAt)
+    // Only block on explicit manual saves where the user could overwrite a co-author's changes
+    if (existingArticle && data.lastUpdatedAt && !data.isAutosave) {
+      const clientDate = new Date(data.lastUpdatedAt);
+      if (existingArticle.updatedAt > clientDate) {
+        return { 
+          success: false,
+          serverUpdatedAt: existingArticle.updatedAt.toISOString(),
+          error: "Conflict: This article has been modified by someone else since you opened it. Please refresh and integrate your changes." 
+        };
+      }
+    }
 
     if (!data.title || typeof data.title !== "string" || !data.title.trim()) {
       return { success: false, error: "Article title is required." };
     }
 
+    if (data.img && !isValidSafeUrl(data.img, ALLOWED_MEDIA_DOMAINS)) {
+      return { success: false, error: "Featured image URL is invalid or from an unapproved domain." };
+    }
+
     const categorySlug = (data.cat || "technology").toLowerCase().trim();
     
-    // Find or create category fallback
+    // Find category
     let category = await db.category.findUnique({
       where: { slug: categorySlug },
     });
 
     if (!category) {
-      category = await db.category.create({
-        data: {
-          slug: categorySlug,
-          name: categorySlug.charAt(0).toUpperCase() + categorySlug.slice(1),
-        },
-      });
+      return { success: false, error: "Invalid category selected." };
     }
 
     const uniqueSlug = await getUniqueSlug(data.slug || data.title, data.id);
@@ -70,16 +118,31 @@ export async function upsertArticle(data: any) {
     let statusVal: ArticleStatus = data.status?.toUpperCase() || "DRAFT";
     
     // Role-based logic for Publishing
-    // Authors cannot publish directly; they can only submit for review
-    if (statusVal === "PUBLISHED" && user.role === "AUTHOR") {
+    const publishPolicy = canPublishArticle(dbUser.role as Role);
+    if (statusVal === "PUBLISHED" && !publishPolicy.success) {
       statusVal = "SUBMITTED";
     }
+
+    let publishedAt = existingArticle?.publishedAt || null;
+    let scheduledFor = data.scheduledFor ? new Date(data.scheduledFor) : null;
+
+    if (statusVal === "PUBLISHED" && !publishedAt) {
+      // First time publishing
+      publishedAt = new Date();
+    }
+    
+    // Clear scheduled time if published immediately or reverted to draft
+    if (statusVal === "PUBLISHED" || statusVal === "DRAFT") {
+      scheduledFor = null;
+    }
+
+    const sanitizedBodyHtml = sanitizeArticleHtml(data.bodyHtml);
 
     const payload = {
       title: data.title.trim(),
       slug: uniqueSlug,
       deck: data.deck || null,
-      contentHtml: data.bodyHtml || null,
+      contentHtml: sanitizedBodyHtml || null,
       contentJson: data.bodyJson || null,
       author: data.author?.trim() || user.name || "xCipher Staff",
       role: data.role?.trim() || user.role || null,
@@ -88,29 +151,64 @@ export async function upsertArticle(data: any) {
       img: data.img || null,
       seoTitle: data.seoTitle || null,
       seoDesc: data.seoDesc || null,
-      tags: Array.isArray(data.tags) ? data.tags : [],
+
+      homepagePlacement: data.homepagePlacement || null,
       categoryId: category.id,
-      // If the user has an author profile, link it (assume user.authorId exists if so)
-      authorId: data.authorId || null, 
+      // Strictly enforce authorId from session/DB, don't trust client payload for Authors
+      authorId: dbUser.role === "AUTHOR" ? userWithAuth.authorId : (data.authorId || userWithAuth.authorId || null), 
+      publishedAt,
+      scheduledFor,
     };
 
     let article;
     let actionType = "";
+    let existingArticleStatus = "NEW";
+
+    const tagsData = Array.isArray(data.tags) ? data.tags.filter(Boolean).map((slug: string) => ({ slug })) : [];
 
     if (data.id) {
+      const existingArticle = await db.article.findUnique({ where: { id: data.id }, select: { slug: true, status: true } });
+      existingArticleStatus = existingArticle?.status || "NEW";
+      // Compute slug history for redirect safety
+      const currentPreviousSlugs: string[] = (existingArticle as any)?.previousSlugs || [];
+      const updatedPreviousSlugs = existingArticle && existingArticle.slug !== uniqueSlug
+        ? Array.from(new Set([...currentPreviousSlugs, existingArticle.slug]))
+        : currentPreviousSlugs;
+
       article = await db.article.update({
         where: { id: data.id },
-        data: payload,
+        data: {
+          ...payload,
+          previousSlugs: updatedPreviousSlugs,
+          tags: { set: tagsData }
+        },
         include: { category: true },
       });
       actionType = `UPDATE_ARTICLE_${statusVal}`;
     } else {
       article = await db.article.create({
-        data: payload,
+        data: {
+          ...payload,
+          tags: tagsData.length > 0 ? { connect: tagsData } : undefined
+        },
         include: { category: true },
       });
       actionType = `CREATE_ARTICLE_${statusVal}`;
     }
+
+    // Always create an immutable revision snapshot
+    await db.articleRevision.create({
+      data: {
+        articleId: article.id,
+        userId: user.id,
+        title: article.title,
+        deck: article.deck,
+        contentHtml: article.contentHtml,
+        contentJson: article.contentJson ? JSON.parse(JSON.stringify(article.contentJson)) : null,
+        notes: data.notes || null,
+        statusChange: existingArticleStatus !== statusVal ? `${existingArticleStatus} -> ${statusVal}` : null,
+      }
+    });
 
     await logAudit(actionType, "Article", article.id, { title: article.title, status: statusVal });
 
@@ -139,7 +237,15 @@ export async function upsertArticle(data: any) {
 
 export async function deleteArticle(id: string) {
   try {
-    await requireRole(["OWNER", "ADMIN", "EDITOR"]);
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthenticated" };
+    }
+
+    const deletePolicy = canDeleteArticle(user.role as Role);
+    if (!deletePolicy.success) {
+      return { success: false, error: deletePolicy.error };
+    }
 
     if (!id || typeof id !== "string") {
       return { success: false, error: "Invalid article ID" };
