@@ -1,13 +1,20 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { canModerateComments } from "@/lib/permissions";
-import { Role } from "@prisma/client";
-import { getPendingComments } from "@/app/actions/comments";
+import { Role, CommentStatus } from "@prisma/client";
+import { db } from "@/lib/db";
 import CommentsQueueClient from "./CommentsQueueClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function CommentsPage() {
+export const metadata = {
+  title: "Comments Moderation | xCipher",
+};
+
+export default async function CommentsPage(props: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/admin/login");
 
@@ -15,27 +22,91 @@ export default async function CommentsPage() {
     redirect("/admin");
   }
 
-  const result = await getPendingComments(1);
-  const comments = (result.comments || []).map((c: any) => ({
+  const query = typeof searchParams.query === 'string' ? searchParams.query : undefined;
+  const tab = typeof searchParams.tab === 'string' ? searchParams.tab : 'All';
+  const page = typeof searchParams.page === 'string' ? parseInt(searchParams.page, 10) : 1;
+  const limit = typeof searchParams.limit === 'string' ? parseInt(searchParams.limit, 10) : 20;
+  const skip = (Math.max(1, page) - 1) * limit;
+
+  const where: any = {};
+
+  if (query) {
+    where.OR = [
+      { displayName: { contains: query, mode: 'insensitive' } },
+      { body: { contains: query, mode: 'insensitive' } },
+    ];
+  }
+
+  if (tab !== 'All') {
+    if (tab === 'Pending') where.status = 'PENDING';
+    if (tab === 'Approved') where.status = 'APPROVED';
+    if (tab === 'Spam') where.status = 'SPAM';
+    if (tab === 'Trash') where.status = 'REJECTED';
+  }
+
+  const [comments, totalComments, counts] = await Promise.all([
+    db.comment.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+      select: {
+        id: true,
+        articleSlug: true,
+        displayName: true,
+        email: true,
+        body: true,
+        status: true,
+        ipHash: true,
+        createdAt: true,
+        moderatorNote: true,
+        moderator: { select: { name: true } },
+      },
+    }),
+    db.comment.count({ where }),
+    db.comment.groupBy({
+      by: ['status'],
+      _count: true,
+    })
+  ]);
+
+  const stats = {
+    total: 0,
+    pending: 0,
+    approved: 0,
+    spam: 0,
+    rejected: 0,
+  };
+
+  counts.forEach((c) => {
+    stats.total += c._count;
+    if (c.status === 'PENDING') stats.pending = c._count;
+    if (c.status === 'APPROVED') stats.approved = c._count;
+    if (c.status === 'SPAM') stats.spam = c._count;
+    if (c.status === 'REJECTED') stats.rejected = c._count;
+  });
+
+  const formattedComments = comments.map(c => ({
     ...c,
-    createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : c.createdAt,
+    createdAt: c.createdAt.toISOString(),
   }));
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", borderBottom: "1px solid var(--line)", paddingBottom: "16px" }}>
+      <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1>Comment Moderation</h1>
-          <p className="cs-sub">Review and action pending reader comments before they appear publicly.</p>
+          <h1 className="text-3xl font-display font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight">Comments</h1>
+          <p className="text-neutral-500 dark:text-neutral-400 mt-2 text-[15px]">Review reader discourse, moderate comments, and manage spam.</p>
         </div>
-        {result.total !== undefined && (
-          <div style={{ fontSize: "13px", color: "var(--ink-muted)", textAlign: "right" }}>
-            {result.total} item{result.total !== 1 ? "s" : ""} in queue
-            {result.pages && result.pages > 1 && ` · Page 1 of ${result.pages}`}
-          </div>
-        )}
-      </div>
-      <CommentsQueueClient initialComments={comments} />
+      </header>
+
+      <CommentsQueueClient 
+        initialComments={formattedComments} 
+        stats={stats}
+        totalItems={totalComments}
+        currentPage={page}
+        itemsPerPage={limit}
+      />
     </>
   );
 }

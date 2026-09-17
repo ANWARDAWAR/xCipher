@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { updateProfile } from "@/app/actions/profile";
 import { showToast } from "@/lib/utils";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import LinkExtension from "@tiptap/extension-link";
+import { X } from "lucide-react";
 
 const PLATFORM_OPTIONS = ["X", "LinkedIn", "GitHub", "YouTube", "Facebook", "Instagram", "Website", "Email"];
 
@@ -34,14 +35,38 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
   const [location, setLocation] = useState(author?.location || "");
   const [website, setWebsite] = useState(author?.website || "");
   const [email, setEmail] = useState(author?.email || "");
-  const [expertise, setExpertise] = useState(author?.expertise || "");
+  const [expertise, setExpertise] = useState<string[]>(
+    author?.expertise ? author.expertise.split(',').map((s: string) => s.trim()).filter(Boolean) : []
+  );
+  const [beatInput, setBeatInput] = useState("");
   const [verifiedTitle, setVerifiedTitle] = useState(author?.verifiedTitle || false);
   const [disclosure, setDisclosure] = useState(author?.disclosure || "");
   const [publicContact, setPublicContact] = useState(author?.publicContact !== false);
   const [slug, setSlug] = useState(author?.slug || "");
-  
-  const isAdmin = ["OWNER", "ADMIN"].includes(user?.role || "");
   const [socials, setSocials] = useState<{ platform: string; url: string }[]>(initialSocials);
+  
+  const [avatarError, setAvatarError] = useState(false);
+
+  // Dirty State Tracking
+  const [isDirty, setIsDirty] = useState(false);
+  const initialDataRef = useRef({
+    name, headline, role, avatar, overview, bio, location, website, email,
+    expertise: expertise.join(', '), verifiedTitle, disclosure, publicContact, slug,
+    socials: JSON.stringify(socials)
+  });
+
+  useEffect(() => {
+    const currentData = {
+      name, headline, role, avatar, overview, bio, location, website, email,
+      expertise: expertise.join(', '), verifiedTitle, disclosure, publicContact, slug,
+      socials: JSON.stringify(socials)
+    };
+    const hasChanged = JSON.stringify(currentData) !== JSON.stringify(initialDataRef.current);
+    setIsDirty(hasChanged);
+  }, [name, headline, role, avatar, overview, bio, location, website, email, expertise, verifiedTitle, disclosure, publicContact, slug, socials]);
+
+
+  const isAdmin = ["OWNER", "ADMIN"].includes(user?.role || "");
 
   const addSocial = () => setSocials([...socials, { platform: "Website", url: "" }]);
   const updateSocial = (index: number, key: 'platform' | 'url', value: string) => {
@@ -50,6 +75,21 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
     setSocials(next);
   };
   const removeSocial = (index: number) => setSocials(socials.filter((_, i) => i !== index));
+
+  const addBeat = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const val = beatInput.trim();
+      if (val && !expertise.includes(val)) {
+        setExpertise([...expertise, val]);
+      }
+      setBeatInput("");
+    }
+  };
+
+  const removeBeat = (beat: string) => {
+    setExpertise(expertise.filter(b => b !== beat));
+  };
 
   const bioEditor = useEditor({
     extensions: [
@@ -63,21 +103,20 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
     },
   });
 
-  // Ensure content is synced if reset is called
   useEffect(() => {
     if (bioEditor && bioEditor.getHTML() !== bio) {
       bioEditor.commands.setContent(bio);
     }
   }, [bio, bioEditor]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setIsPending(true);
     try {
       const validSocials = socials.filter(s => s.url.trim() !== "");
       const res = await updateProfile({ 
         name, headline, role, overview, avatar, bio, location, website, email, 
-        socialLinks: validSocials, expertise, verifiedTitle, disclosure, publicContact, slug
+        socialLinks: validSocials, expertise: expertise.join(', '), verifiedTitle, disclosure, publicContact, slug
       });
       if (res.success) {
         showToast("Profile saved! Refreshing...");
@@ -93,129 +132,177 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
   };
 
   const handleReset = () => {
-    setName(author?.name || user?.name || "");
-    setHeadline(author?.headline || "");
-    setRole(author?.role || "");
-    setOverview(author?.overview || "");
-    setAvatar(author?.avatar || "");
-    setBio(author?.bio || "");
-    setLocation(author?.location || "");
-    setWebsite(author?.website || "");
-    setEmail(author?.email || "");
-    setExpertise(author?.expertise || "");
-    setVerifiedTitle(author?.verifiedTitle || false);
-    setDisclosure(author?.disclosure || "");
-    setPublicContact(author?.publicContact !== false);
-    setSlug(author?.slug || "");
-    setSocials(initialSocials);
+    const d = initialDataRef.current;
+    setName(d.name);
+    setHeadline(d.headline);
+    setRole(d.role);
+    setOverview(d.overview);
+    setAvatar(d.avatar);
+    setBio(d.bio);
+    setLocation(d.location);
+    setWebsite(d.website);
+    setEmail(d.email);
+    setExpertise(d.expertise ? d.expertise.split(', ') : []);
+    setVerifiedTitle(d.verifiedTitle);
+    setDisclosure(d.disclosure);
+    setPublicContact(d.publicContact);
+    setSlug(d.slug);
+    setSocials(JSON.parse(d.socials));
   };
 
-  // Calculate profile completeness
   const completeness = [
-    name, avatar, headline, bio, role, expertise, email, website || socials.length > 0
+    name, avatar, headline, bio, role, expertise.length > 0 ? "yes" : "", email, website || socials.length > 0
   ].filter(Boolean).length;
   const completenessPercent = Math.round((completeness / 8) * 100);
 
   return (
-    <form onSubmit={handleSubmit} className="w-full pb-12">
+    <form onSubmit={handleSubmit} className="w-full max-w-4xl mx-auto pb-32">
       
-      {/* Profile Completeness */}
-      <div style={{ marginBottom: "24px", padding: "16px", background: "var(--surface-2)", borderRadius: "var(--r-md)", border: "1px solid var(--line)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "14px", fontWeight: 600 }}>
-          <span>Profile Completeness</span>
-          <span style={{ color: completenessPercent === 100 ? "var(--success)" : "var(--accent)" }}>{completenessPercent}%</span>
+      {/* Profile Completeness Card */}
+      <div className="mb-8 p-6 bg-[var(--surface)] border border-[var(--line)] rounded-xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex-1">
+          <h3 className="text-[15px] font-semibold text-[var(--ink)] mb-1">Profile Completeness</h3>
+          <p className="text-[13px] text-[var(--muted)]">
+            {completenessPercent === 100 
+              ? "Your profile is fully optimized for readers."
+              : "Complete your profile to build trust and authority with your audience."}
+          </p>
         </div>
-        <div style={{ width: "100%", height: "8px", background: "var(--surface)", borderRadius: "4px", overflow: "hidden" }}>
-          <div style={{ width: `${completenessPercent}%`, height: "100%", background: completenessPercent === 100 ? "var(--success)" : "var(--accent)", transition: "width 0.3s ease" }} />
+        <div className="flex-1 max-w-xs">
+          <div className="flex justify-between text-xs font-medium mb-2">
+            <span className="text-[var(--ink-2)]">{completenessPercent}% Complete</span>
+            {completenessPercent < 100 && <span className="text-[var(--accent)]">Action Required</span>}
+          </div>
+          <div className="h-2 w-full bg-[var(--surface-3)] rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-[var(--accent)] transition-all duration-500 ease-out"
+              style={{ width: `${completenessPercent}%`, backgroundColor: completenessPercent === 100 ? 'var(--success)' : 'var(--accent)' }}
+            />
+          </div>
         </div>
       </div>
 
       {/* ── Section: Identity ────────────────────────── */}
-      <div className="cs-settings-section">
+      <div className="cs-settings-section mb-8">
         <div className="cs-settings-section-label">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          Identity
+          Public Identity
         </div>
         <div className="cs-settings-body">
           {/* Avatar preview + URL */}
-          <div className="cs-settings-avatar-row">
-            <div className="cs-settings-ava-preview">
-              {avatar ? (
-                <img src={avatar} alt="avatar preview" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} onError={(e) => (e.currentTarget.style.display = 'none')} />
-              ) : (
-                <svg width="24" height="24" fill="none" stroke="#6a7681" strokeWidth="1.8" viewBox="0 0 24 24">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                </svg>
-              )}
+          <div className="flex flex-col sm:flex-row gap-6 mb-6">
+            <div className="flex-none">
+              <div className="w-24 h-24 rounded-full bg-[var(--surface-2)] border border-[var(--line)] overflow-hidden flex items-center justify-center shadow-sm">
+                {avatar && !avatarError ? (
+                  <img src={avatar} alt="avatar preview" className="w-full h-full object-cover" onError={() => setAvatarError(true)} />
+                ) : (
+                  <svg width="32" height="32" fill="none" stroke="var(--muted)" strokeWidth="1.5" viewBox="0 0 24 24">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                  </svg>
+                )}
+              </div>
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="flex-1">
               <label className="ed-label">Avatar URL</label>
-              <input type="url" className="ed-input" value={avatar} onChange={e => setAvatar(e.target.value)} placeholder="https://example.com/your-photo.jpg" />
-              <span style={{ display: 'block', marginTop: '5px', font: '400 11.5px var(--f-ui)', color: '#4a545e' }}>Direct link to a square photo (Unsplash, Imgur, etc.)</span>
+              <input 
+                type="url" 
+                className={`ed-input ${avatarError ? 'border-[var(--bad)]' : ''}`}
+                value={avatar} 
+                onChange={e => { setAvatar(e.target.value); setAvatarError(false); }} 
+                placeholder="https://example.com/your-photo.jpg" 
+              />
+              <p className="text-[11.5px] text-[var(--muted)] mt-1.5">
+                Provide a direct link to a square photo. <br/>
+                <strong className="text-[var(--warn)]">Warning:</strong> Do not use temporary CDN links (like Instagram or Facebook) as they expire and will break your image.
+              </p>
             </div>
           </div>
 
           <div className="cs-settings-grid">
             <div>
               <label className="ed-label">Display Name *</label>
-              <input type="text" className="ed-input" value={name} onChange={e => setName(e.target.value)} required placeholder="Anwar Iqbal" />
+              <input type="text" className="ed-input" value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Jane Doe" />
             </div>
             <div>
               <label className="ed-label">Headline / Tagline</label>
-              <input type="text" className="ed-input" value={headline} onChange={e => setHeadline(e.target.value)} placeholder="Senior AI Reporter at xCipher" maxLength={100} />
+              <input type="text" className="ed-input" value={headline} onChange={e => setHeadline(e.target.value)} placeholder="e.g. Senior Tech Correspondent" maxLength={100} />
             </div>
             <div>
               <label className="ed-label">Profile URL Slug</label>
-              <input type="text" className="ed-input" value={slug} onChange={e => setSlug(e.target.value)} placeholder="e.g. anwar-iqbal" />
+              <input type="text" className="ed-input" value={slug} onChange={e => setSlug(e.target.value)} placeholder="e.g. jane-doe" />
             </div>
             <div>
               <label className="ed-label">
-                Author Role 
-                {!isAdmin && <span style={{ fontSize: "11px", color: "var(--warning)", marginLeft: "8px" }}>(Admin only)</span>}
+                Official Role 
+                {!isAdmin && <span className="text-[11px] text-[var(--warn)] ml-2">(Admin only)</span>}
               </label>
-              <input type="text" className="ed-input" value={role} onChange={e => isAdmin && setRole(e.target.value)} readOnly={!isAdmin} placeholder="e.g. Senior Tech Correspondent" maxLength={100} style={{ cursor: !isAdmin ? "not-allowed" : "text", backgroundColor: !isAdmin ? "var(--bg-elevated)" : undefined }} />
+              <input 
+                type="text" 
+                className={`ed-input ${!isAdmin ? 'bg-[var(--surface-2)] cursor-not-allowed text-[var(--muted)]' : ''}`}
+                value={role} 
+                onChange={e => isAdmin && setRole(e.target.value)} 
+                readOnly={!isAdmin} 
+                placeholder="e.g. Editor-in-Chief" 
+                maxLength={100} 
+              />
             </div>
-            <div>
-              <label className="ed-label">Coverage Beats (Expertise)</label>
-              <input type="text" className="ed-input" value={expertise} onChange={e => setExpertise(e.target.value)} placeholder="e.g. AI, Semiconductors, Cloud" />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Section: Editorial Credentials ───────────── */}
+      <div className="cs-settings-section mb-8">
+        <div className="cs-settings-section-label">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Editorial Credentials
+        </div>
+        <div className="cs-settings-body">
+          <div className="cs-settings-full mb-6">
+            <label className="ed-label">Coverage Beats (Focus Areas)</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {expertise.map((beat) => (
+                <span key={beat} className="inline-flex items-center gap-1.5 bg-[var(--surface-2)] border border-[var(--line-2)] text-[var(--ink-2)] px-2.5 py-1 rounded-md text-xs font-mono">
+                  {beat}
+                  <button type="button" onClick={() => removeBeat(beat)} className="hover:text-[var(--bad)] focus:outline-none">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
             </div>
+            <input 
+              type="text" 
+              className="ed-input" 
+              value={beatInput} 
+              onChange={e => setBeatInput(e.target.value)} 
+              onKeyDown={addBeat}
+              placeholder="Type a beat (e.g. AI, Cybersecurity) and press Enter..." 
+            />
+          </div>
+
+          <div className="cs-settings-grid">
             <div>
               <label className="ed-label">Location</label>
-              <input type="text" className="ed-input" value={location} onChange={e => setLocation(e.target.value)} placeholder="Lahore, Pakistan" />
-            </div>
-            <div>
-              <label className="ed-label">Public Email</label>
-              <input type="email" className="ed-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
-            </div>
-            <div>
-              <label className="ed-label">Personal Website</label>
-              <input type="url" className="ed-input" value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://yoursite.com" />
+              <input type="text" className="ed-input" value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. San Francisco, CA" />
             </div>
             {isAdmin && (
-              <div className="cs-settings-full">
-                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "14px", color: "var(--ink)" }}>
-                  <input type="checkbox" checked={verifiedTitle} onChange={e => setVerifiedTitle(e.target.checked)} style={{ width: "16px", height: "16px", accentColor: "var(--success)" }} />
-                  <span style={{ fontWeight: 600 }}>Verified Editorial Title</span>
-                  <span style={{ color: "var(--warning)", fontSize: "12px", marginLeft: "4px" }}>(Admin only)</span>
+              <div className="flex items-center">
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-[var(--ink)]">
+                  <input type="checkbox" checked={verifiedTitle} onChange={e => setVerifiedTitle(e.target.checked)} className="w-4 h-4 accent-[var(--success)]" />
+                  <span className="font-semibold">Verified Editorial Title</span>
+                  <span className="text-[var(--warn)] text-xs ml-1">(Admin only)</span>
                 </label>
               </div>
             )}
-            <div className="cs-settings-full">
+            <div className="cs-settings-full" style={{ gridColumn: "1 / -1" }}>
               <label className="ed-label">Ethical Disclosure (Optional)</label>
-              <textarea className="ed-input" rows={2} value={disclosure} onChange={e => setDisclosure(e.target.value)} placeholder="e.g. Holds shares in XYZ Corp." />
-            </div>
-            <div className="cs-settings-full">
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "14px", color: "var(--ink)" }}>
-                <input type="checkbox" checked={publicContact} onChange={e => setPublicContact(e.target.checked)} style={{ width: "16px", height: "16px", accentColor: "var(--accent)" }} />
-                <span>Show email and contact forms on public profile</span>
-              </label>
+              <textarea className="ed-input" rows={2} value={disclosure} onChange={e => setDisclosure(e.target.value)} placeholder="e.g. Holds shares in XYZ Corp. or advises startup ABC." />
             </div>
           </div>
         </div>
       </div>
 
       {/* ── Section: Biography ───────────────────────── */}
-      <div className="cs-settings-section">
+      <div className="cs-settings-section mb-8">
         <div className="cs-settings-section-label">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           Biography
@@ -229,57 +316,67 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
               onChange={e => setOverview(e.target.value)}
               rows={2}
               maxLength={150}
-              placeholder="e.g. Contributing writer at xCipher covering AI and software."
+              placeholder="e.g. Contributing writer covering AI and software."
             />
-            <span style={{ display: 'block', marginTop: '5px', font: '400 11.5px var(--f-ui)', color: 'var(--muted)' }}>
-              A short bio displayed at the bottom of your articles.
-            </span>
+            <span className="block mt-1.5 text-[11.5px] text-[var(--muted)]">A short bio displayed at the bottom of your articles.</span>
           </div>
 
-          <div className="cs-settings-full" style={{ marginTop: '16px' }}>
-            <label className="ed-label">About You</label>
-            
-            <div className="ed-toolbar" role="toolbar" aria-label="Formatting" style={{ borderBottom: 'none', borderBottomLeftRadius: 0, borderBottomRightRadius: 0, padding: '8px' }}>
-              <button type="button" onClick={() => bioEditor?.chain().focus().toggleBold().run()} className={bioEditor?.isActive("bold") ? "active bg-[var(--surface-2)]" : ""} title="Bold"><b>B</b></button>
-              <button type="button" onClick={() => bioEditor?.chain().focus().toggleItalic().run()} className={bioEditor?.isActive("italic") ? "active bg-[var(--surface-2)]" : ""} title="Italic"><i style={{ fontFamily: "Georgia" }}>I</i></button>
-              <button type="button" onClick={() => bioEditor?.chain().focus().toggleUnderline().run()} className={bioEditor?.isActive("underline") ? "active bg-[var(--surface-2)]" : ""} title="Underline"><u>U</u></button>
-              <span className="t-sep"></span>
-              <button type="button" onClick={() => bioEditor?.chain().focus().toggleHeading({ level: 2 }).run()} className={bioEditor?.isActive("heading", { level: 2 }) ? "active bg-[var(--surface-2)]" : ""} title="Heading">H2</button>
-              <button type="button" onClick={() => bioEditor?.chain().focus().toggleBulletList().run()} className={bioEditor?.isActive("bulletList") ? "active bg-[var(--surface-2)]" : ""} title="Bullet list">• List</button>
+          <div className="cs-settings-full mt-6">
+            <label className="ed-label">Full Biography</label>
+            <div className="ed-toolbar flex flex-wrap gap-1 p-2 border-b-0 rounded-b-none bg-[var(--surface-2)]">
+              <button type="button" onClick={() => bioEditor?.chain().focus().toggleBold().run()} className={`px-2 py-1 rounded text-sm ${bioEditor?.isActive("bold") ? "bg-[var(--surface-3)] text-[var(--ink)] font-bold" : "text-[var(--ink-2)]"}`} title="Bold">B</button>
+              <button type="button" onClick={() => bioEditor?.chain().focus().toggleItalic().run()} className={`px-2 py-1 rounded text-sm italic ${bioEditor?.isActive("italic") ? "bg-[var(--surface-3)] text-[var(--ink)] font-bold" : "text-[var(--ink-2)]"}`} title="Italic">I</button>
+              <button type="button" onClick={() => bioEditor?.chain().focus().toggleUnderline().run()} className={`px-2 py-1 rounded text-sm underline ${bioEditor?.isActive("underline") ? "bg-[var(--surface-3)] text-[var(--ink)] font-bold" : "text-[var(--ink-2)]"}`} title="Underline">U</button>
+              <span className="w-[1px] h-4 bg-[var(--line-2)] mx-1 self-center"></span>
+              <button type="button" onClick={() => bioEditor?.chain().focus().toggleHeading({ level: 2 }).run()} className={`px-2 py-1 rounded text-sm ${bioEditor?.isActive("heading", { level: 2 }) ? "bg-[var(--surface-3)] text-[var(--ink)] font-bold" : "text-[var(--ink-2)]"}`} title="Heading">H2</button>
+              <button type="button" onClick={() => bioEditor?.chain().focus().toggleBulletList().run()} className={`px-2 py-1 rounded text-sm ${bioEditor?.isActive("bulletList") ? "bg-[var(--surface-3)] text-[var(--ink)] font-bold" : "text-[var(--ink-2)]"}`} title="Bullet list">• List</button>
               <button type="button" onClick={() => {
                 const url = window.prompt("Enter link URL");
                 if (url) bioEditor?.chain().focus().setLink({ href: url }).run();
-              }} className={bioEditor?.isActive("link") ? "active bg-[var(--surface-2)]" : ""} title="Insert link">Link</button>
+              }} className={`px-2 py-1 rounded text-sm ${bioEditor?.isActive("link") ? "bg-[var(--surface-3)] text-[var(--ink)] font-bold" : "text-[var(--ink-2)]"}`} title="Insert link">Link</button>
             </div>
             
-            <div className="ed-body" style={{ minHeight: '120px', borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
+            <div className="ed-body min-h-[120px] rounded-t-none bg-[var(--surface)]">
               <EditorContent editor={bioEditor} />
             </div>
-
-            <span style={{ display: 'block', marginTop: '5px', font: '400 11.5px var(--f-ui)', color: 'var(--muted)' }}>
-              Displayed on your full public author profile page.
-            </span>
+            <span className="block mt-1.5 text-[11.5px] text-[var(--muted)]">Displayed on your full public author profile page.</span>
           </div>
         </div>
       </div>
 
-      {/* ── Section: Social Links ────────────────────── */}
-      <div className="cs-settings-section">
+      {/* ── Section: Contact & Social ────────────────── */}
+      <div className="cs-settings-section mb-8">
         <div className="cs-settings-section-label">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-          Social Links
+          Contact & Social Presence
         </div>
         <div className="cs-settings-body">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="cs-settings-grid mb-6">
+            <div>
+              <label className="ed-label">Public Email</label>
+              <input type="email" className="ed-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="public@example.com" />
+            </div>
+            <div>
+              <label className="ed-label">Personal Website</label>
+              <input type="url" className="ed-input" value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://yoursite.com" />
+            </div>
+          </div>
+          
+          <label className="flex items-center gap-2 cursor-pointer text-sm text-[var(--ink)] mb-6">
+            <input type="checkbox" checked={publicContact} onChange={e => setPublicContact(e.target.checked)} className="w-4 h-4 accent-[var(--accent)]" />
+            <span>Show email and contact forms on public profile</span>
+          </label>
+
+          <label className="ed-label">Social Links</label>
+          <div className="flex flex-col gap-3">
             {socials.map((social, index) => (
-              <div key={index} className="cs-social-row">
-                <select className="ed-input cs-social-platform" value={social.platform} onChange={e => updateSocial(index, 'platform', e.target.value)}>
+              <div key={index} className="flex gap-2 items-center">
+                <select className="ed-input w-32 shrink-0" value={social.platform} onChange={e => updateSocial(index, 'platform', e.target.value)}>
                   {PLATFORM_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
                 <input
                   type="url"
-                  className="ed-input"
-                  style={{ flex: 1, minWidth: 0 }}
+                  className="ed-input flex-1"
                   value={social.url}
                   onChange={e => updateSocial(index, 'url', e.target.value)}
                   placeholder={`https://${social.platform.toLowerCase()}.com/username`}
@@ -287,32 +384,47 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
                 <button
                   type="button"
                   onClick={() => removeSocial(index)}
-                  style={{
-                    flexShrink: 0, width: '36px', height: '38px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: '1px solid #2c333b', borderRadius: '4px',
-                    color: '#4a545e', background: 'transparent', cursor: 'pointer',
-                    transition: 'color .2s, border-color .2s',
-                  }}
+                  className="shrink-0 w-10 h-10 flex items-center justify-center border border-[var(--line-2)] rounded-md text-[var(--muted)] hover:text-[var(--bad)] hover:border-[var(--bad)] transition-colors"
                   aria-label="Remove"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             ))}
-            <button type="button" onClick={addSocial} className="btn-cs" style={{ alignSelf: 'flex-start', marginTop: '4px' }}>
+            <button type="button" onClick={addSocial} className="self-start text-sm font-medium text-[var(--ink-2)] hover:text-[var(--accent)] transition-colors py-2 px-1">
               + Add Social Link
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── Action Bar ───────────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px', paddingTop: '20px', borderTop: '1px solid #1e242b' }}>
-        <button type="button" onClick={handleReset} disabled={isPending} className="btn-cs">Reset</button>
-        <button type="submit" className="btn-cs primary" disabled={isPending}>
-          {isPending ? "Saving..." : "Save Profile"}
-        </button>
+      {/* ── Sticky Save Toolbar ──────────────────────── */}
+      <div 
+        className={`fixed bottom-0 left-0 right-0 z-50 bg-[var(--paper)]/90 backdrop-blur-md border-t border-[var(--line)] p-4 transform transition-transform duration-300 ${isDirty ? 'translate-y-0 shadow-lg' : 'translate-y-full'}`}
+      >
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+          <div className="text-sm font-medium text-[var(--ink-2)] hidden sm:block">
+            You have unsaved profile changes.
+          </div>
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+            <button 
+              type="button" 
+              onClick={handleReset} 
+              disabled={isPending} 
+              className="px-4 py-2 text-sm font-medium rounded-md text-[var(--muted)] hover:bg-[var(--surface-2)] transition-colors"
+            >
+              Reset
+            </button>
+            <button 
+              type="submit" 
+              onClick={handleSubmit}
+              disabled={isPending} 
+              className="px-6 py-2 text-sm font-medium rounded-md bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] disabled:opacity-50 transition-colors shadow-sm"
+            >
+              {isPending ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </div>
       </div>
     </form>
   );

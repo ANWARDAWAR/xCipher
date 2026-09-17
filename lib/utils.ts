@@ -28,7 +28,7 @@ export function fmtViews(n: number) {
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
-export function showToast(msg: string) {
+export function showToast(msg: string, type: 'default' | 'success' | 'error' = 'default') {
   if (typeof window === "undefined") return;
   let t = document.getElementById("toast");
   if (!t) {
@@ -38,11 +38,25 @@ export function showToast(msg: string) {
     t.setAttribute("aria-live", "polite");
     document.body.appendChild(t);
   }
-  t.innerHTML = `<svg class="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>${msg}`;
+  
+  // Set appropriate icon and class based on type
+  t.className = type !== 'default' ? type : '';
+  
+  let iconHtml = `<svg class="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>`;
+  
+  if (type === 'error') {
+    iconHtml = `<svg class="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+  }
+  
+  t.innerHTML = `${iconHtml}<span>${msg}</span>`;
+  
+  // Force reflow
+  void t.offsetWidth;
+  
   t.classList.add("show");
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     t?.classList.remove("show");
-  }, 2600);
+  }, 4000);
 }
 

@@ -4,12 +4,16 @@ import { canViewAuditLogs } from "@/lib/permissions";
 import { Role } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import AuditLogsClient from "./AuditLogsClient";
 
 export const metadata = {
   title: "Audit Logs | xCipher",
 };
 
-export default async function AuditLogsPage() {
+export default async function AuditLogsPage(props: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const searchParams = await props.searchParams;
   const currentUser = await getCurrentUser();
   if (!currentUser) {
     redirect("/admin/login");
@@ -41,64 +45,80 @@ export default async function AuditLogsPage() {
       </div>
     );
   }
-  const logs = await db.auditLog.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    include: {
-      user: {
-        select: { name: true, email: true },
+
+  const query = typeof searchParams.query === 'string' ? searchParams.query : undefined;
+  const category = typeof searchParams.category === 'string' ? searchParams.category : undefined;
+  const dateRange = typeof searchParams.dateRange === 'string' ? searchParams.dateRange : undefined;
+  
+  const page = typeof searchParams.page === 'string' ? parseInt(searchParams.page, 10) : 1;
+  const limit = typeof searchParams.limit === 'string' ? parseInt(searchParams.limit, 10) : 25;
+  const skip = (Math.max(1, page) - 1) * limit;
+
+  const where: any = {};
+
+  if (query) {
+    where.OR = [
+      { action: { contains: query, mode: 'insensitive' } },
+      { entityType: { contains: query, mode: 'insensitive' } },
+      { entityId: { contains: query, mode: 'insensitive' } },
+      { user: { name: { contains: query, mode: 'insensitive' } } },
+      { user: { email: { contains: query, mode: 'insensitive' } } },
+    ];
+  }
+
+  if (category && category !== 'All') {
+    if (category === 'Publishing') {
+      where.action = { in: ['ARTICLE_PUBLISH', 'ARTICLE_UPDATE', 'ARTICLE_CREATE', 'ARTICLE_DELETE'] };
+    } else if (category === 'Authentication') {
+      where.action = { in: ['LOGIN_SUCCESS', 'LOGIN_FAILED', 'PASSWORD_RESET', 'LOGOUT'] };
+    } else if (category === 'User Management') {
+      where.action = { in: ['USER_INVITED', 'USER_REVOKED', 'ROLE_CHANGED'] };
+    } else if (category === 'System') {
+      where.action = { in: ['CONFIG_CHANGE', 'TAXONOMY_ADD', 'TAXONOMY_REMOVE'] };
+    }
+  }
+
+  if (dateRange && dateRange !== 'All Time') {
+    const now = new Date();
+    let startDate = new Date();
+    if (dateRange === '24h') {
+      startDate.setHours(now.getHours() - 24);
+    } else if (dateRange === '7d') {
+      startDate.setDate(now.getDate() - 7);
+    } else if (dateRange === '30d') {
+      startDate.setDate(now.getDate() - 30);
+    }
+    where.createdAt = { gte: startDate };
+  }
+
+  const [logs, totalLogs] = await Promise.all([
+    db.auditLog.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+      include: {
+        user: {
+          select: { name: true, email: true },
+        },
       },
-    },
-  });
+    }),
+    db.auditLog.count({ where })
+  ]);
 
   return (
     <>
-      <header className="cs-header">
-        <div>
-          <h1 className="cs-title">Audit Logs</h1>
-          <p className="cs-deck">System-wide event tracking and access history.</p>
-        </div>
+      <header className="mb-8">
+        <h1 className="text-3xl font-display font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight">Audit Logs</h1>
+        <p className="text-neutral-500 dark:text-neutral-400 mt-2 text-[15px]">System-wide security tracking, editorial activity, and access history.</p>
       </header>
-
-      <div className="table-responsive bg-black/20 rounded-xl overflow-hidden border border-white/5">
-        <table className="cs-table w-full text-left">
-          <thead>
-            <tr className="bg-white/5">
-              <th className="p-4 border-b border-white/10 text-white/50 font-medium text-sm">Timestamp</th>
-              <th className="p-4 border-b border-white/10 text-white/50 font-medium text-sm">Actor</th>
-              <th className="p-4 border-b border-white/10 text-white/50 font-medium text-sm">Action</th>
-              <th className="p-4 border-b border-white/10 text-white/50 font-medium text-sm">Entity</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map((log) => (
-              <tr key={log.id} className="hover:bg-white/5 transition-colors border-b border-white/5 last:border-0">
-                <td className="p-4 text-white/60 text-sm whitespace-nowrap">
-                  {log.createdAt.toLocaleString()}
-                </td>
-                <td className="p-4 font-medium text-sm">
-                  {log.user?.name || log.user?.email || "System"}
-                </td>
-                <td className="p-4 text-sm">
-                  <span className="px-2 py-1 bg-white/10 rounded-md text-xs font-mono text-white/90">
-                    {log.action}
-                  </span>
-                </td>
-                <td className="p-4 text-white/60 text-sm">
-                  {log.entityType} {log.entityId && <span className="font-mono text-xs ml-1">({log.entityId.slice(0, 8)})</span>}
-                </td>
-              </tr>
-            ))}
-            {logs.length === 0 && (
-              <tr>
-                <td colSpan={4} className="p-8 text-center text-white/50">
-                  No events logged yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      
+      <AuditLogsClient 
+        logs={logs} 
+        totalLogs={totalLogs} 
+        currentPage={page} 
+        itemsPerPage={limit} 
+      />
     </>
   );
 }

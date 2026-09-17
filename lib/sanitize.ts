@@ -18,7 +18,7 @@ const ARTICLE_DOMPURIFY_CONFIG = {
     'code', 'pre', 'br', 'hr', 'span', 'div',
     'figure', 'figcaption', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'aside'
   ],
-  ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'target', 'rel', 'data-type', 'data-callout-type', 'colspan', 'rowspan', 'colwidth'],
+  ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'target', 'rel', 'data-type', 'data-callout-type', 'data-credit', 'colspan', 'rowspan', 'colwidth'],
   ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
   ADD_ATTR: ['target'],
 };

@@ -1,12 +1,19 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Editor } from '@tiptap/react';
+import { 
+  Undo, Redo, Heading1, Heading2, Heading3, Type, Bold, Italic, Underline, 
+  Strikethrough, Code, List, ListOrdered, Quote, ImagePlus, Link2, 
+  FileCode, Minus, Maximize2, RemoveFormatting 
+} from 'lucide-react';
 
 interface EditorToolbarProps {
   editor: Editor;
+  isFullscreen?: boolean;
+  toggleFullscreen?: () => void;
 }
 
-export function EditorToolbar({ editor }: EditorToolbarProps) {
-  const setLink = () => {
+export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: EditorToolbarProps) {
+  const setLink = useCallback(() => {
     const previousUrl = editor.getAttributes("link").href;
     const url = window.prompt("URL", previousUrl);
     if (url === null) {
@@ -16,10 +23,20 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
       return;
     }
+    try {
+      const parsed = new URL(url);
+      if (!['http:', 'https:', 'mailto:'].includes(parsed.protocol)) {
+        alert('Only http, https, and mailto links are allowed.');
+        return;
+      }
+    } catch {
+      alert('Please enter a valid URL.');
+      return;
+    }
     editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
-  };
+  }, [editor]);
 
-  const addImage = () => {
+  const addImage = useCallback(() => {
     const url = window.prompt("Image URL (e.g. https://images.pexels.com/...)");
     if (!url) return;
     
@@ -28,167 +45,183 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
     const credit = window.prompt("Image Credit (optional):") || "";
 
     (editor.chain().focus() as any).setFigure({ src: url, alt, caption, credit }).run();
-  };
+  }, [editor]);
 
-  const addTable = () => {
-    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
-  };
+  const ToolbarButton = ({ 
+    isActive = false, 
+    onClick, 
+    disabled = false, 
+    icon: Icon, 
+    title 
+  }: { 
+    isActive?: boolean, 
+    onClick: () => void, 
+    disabled?: boolean, 
+    icon: React.ElementType, 
+    title: string 
+  }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
+        isActive 
+          ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold shadow-sm' 
+          : 'text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)]'
+      } ${disabled ? 'opacity-50 cursor-not-allowed hover:bg-transparent hover:text-[var(--muted)]' : ''}`}
+    >
+      <Icon className="w-4 h-4" />
+    </button>
+  );
+
+  const Divider = () => <div className="h-4 w-[1px] bg-[var(--line)] mx-1" />;
 
   return (
-    <div className="ed-toolbar" role="toolbar" aria-label="Formatting">
-      <button
-        type="button"
+    <div 
+      className="sticky top-[61px] z-20 bg-[var(--bg)]/95 backdrop-blur-md border border-[var(--line)] rounded-xl p-1.5 my-6 flex flex-wrap items-center gap-1 shadow-sm"
+      role="toolbar" 
+      aria-label="Formatting"
+    >
+      {/* Group 1: History */}
+      <ToolbarButton
+        icon={Undo}
         onClick={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().undo()}
-        title="Undo"
-        aria-label="Undo"
-      >
-        ↩
-      </button>
-      <button
-        type="button"
+        title="Undo (Ctrl+Z)"
+      />
+      <ToolbarButton
+        icon={Redo}
         onClick={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().redo()}
-        title="Redo"
-        aria-label="Redo"
-      >
-        ↪
-      </button>
-      <span className="t-sep"></span>
-
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleBold().run()}
-        className={editor.isActive("bold") ? "active bg-[#232a31]" : ""}
-        title="Bold"
-        aria-label="Bold"
-      >
-        <b>B</b>
-      </button>
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleItalic().run()}
-        className={editor.isActive("italic") ? "active bg-[#232a31]" : ""}
-        title="Italic"
-        aria-label="Italic"
-      >
-        <i style={{ fontFamily: "Georgia" }}>I</i>
-      </button>
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleUnderline().run()}
-        className={editor.isActive("underline") ? "active bg-[#232a31]" : ""}
-        title="Underline"
-        aria-label="Underline"
-      >
-        <u>U</u>
-      </button>
-
-      <span className="t-sep"></span>
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-        className={editor.isActive("heading", { level: 2 }) ? "active bg-[#232a31]" : ""}
-        title="Heading 2"
-        aria-label="Heading 2"
-      >
-        H2
-      </button>
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-        className={editor.isActive("heading", { level: 3 }) ? "active bg-[#232a31]" : ""}
-        title="Heading 3"
-        aria-label="Heading 3"
-      >
-        H3
-      </button>
-
-      <span className="t-sep"></span>
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        className={editor.isActive("blockquote") ? "active bg-[#232a31]" : ""}
-        title="Quote"
-        aria-label="Quote"
-      >
-        ❝
-      </button>
-      <button
-        type="button"
-        onClick={() => (editor.chain().focus() as any).setCallout({ type: 'takeaway' }).run()}
-        className={editor.isActive("callout", { type: 'takeaway' }) ? "active bg-[#232a31]" : ""}
-        title="Key Takeaway"
-        aria-label="Key Takeaway"
-      >
-        💡
-      </button>
-
-      <span className="t-sep"></span>
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
-        className={editor.isActive("bulletList") ? "active bg-[#232a31]" : ""}
-        title="Bullet list"
-        aria-label="Bullet list"
-      >
-        • List
-      </button>
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        className={editor.isActive("orderedList") ? "active bg-[#232a31]" : ""}
-        title="Numbered list"
-        aria-label="Numbered list"
-      >
-        1. List
-      </button>
+        title="Redo (Ctrl+Shift+Z)"
+      />
       
-      <span className="t-sep"></span>
-      <button
-        type="button"
-        onClick={setLink}
-        className={editor.isActive("link") ? "active bg-[#232a31]" : ""}
-        title="Insert link"
-        aria-label="Insert link"
-      >
-        🔗
-      </button>
-      <button
-        type="button"
-        onClick={addImage}
-        title="Insert Image (with caption)"
-        aria-label="Insert Image"
-      >
-        🖼️
-      </button>
-      <button
-        type="button"
-        onClick={addTable}
-        title="Insert Table"
-        aria-label="Insert Table"
-      >
-        📊
-      </button>
+      <Divider />
 
-      <span className="t-sep"></span>
-      <button
-        type="button"
+      {/* Group 2: Hierarchy & Style */}
+      <ToolbarButton
+        icon={Heading1}
+        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+        isActive={editor.isActive('heading', { level: 1 })}
+        title="Heading 1"
+      />
+      <ToolbarButton
+        icon={Heading2}
+        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        isActive={editor.isActive('heading', { level: 2 })}
+        title="Heading 2"
+      />
+      <ToolbarButton
+        icon={Heading3}
+        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+        isActive={editor.isActive('heading', { level: 3 })}
+        title="Heading 3"
+      />
+      <ToolbarButton
+        icon={Type}
+        onClick={() => editor.chain().focus().setParagraph().run()}
+        isActive={editor.isActive('paragraph')}
+        title="Paragraph"
+      />
+      
+      <Divider />
+
+      <ToolbarButton
+        icon={Bold}
+        onClick={() => editor.chain().focus().toggleBold().run()}
+        isActive={editor.isActive('bold')}
+        title="Bold (Ctrl+B)"
+      />
+      <ToolbarButton
+        icon={Italic}
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+        isActive={editor.isActive('italic')}
+        title="Italic (Ctrl+I)"
+      />
+      <ToolbarButton
+        icon={Underline}
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        isActive={editor.isActive('underline')}
+        title="Underline (Ctrl+U)"
+      />
+      <ToolbarButton
+        icon={Strikethrough}
+        onClick={() => editor.chain().focus().toggleStrike().run()}
+        isActive={editor.isActive('strike')}
+        title="Strikethrough"
+      />
+      <ToolbarButton
+        icon={Code}
+        onClick={() => editor.chain().focus().toggleCode().run()}
+        isActive={editor.isActive('code')}
+        title="Inline Code"
+      />
+
+      <Divider />
+
+      {/* Group 3: Lists & Quotes */}
+      <ToolbarButton
+        icon={List}
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        isActive={editor.isActive('bulletList')}
+        title="Bullet List"
+      />
+      <ToolbarButton
+        icon={ListOrdered}
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        isActive={editor.isActive('orderedList')}
+        title="Ordered List"
+      />
+      <ToolbarButton
+        icon={Quote}
+        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        isActive={editor.isActive('blockquote')}
+        title="Blockquote"
+      />
+
+      <Divider />
+
+      {/* Group 4: Media & Embeds */}
+      <ToolbarButton
+        icon={ImagePlus}
+        onClick={addImage}
+        title="Insert Image"
+      />
+      <ToolbarButton
+        icon={Link2}
+        onClick={setLink}
+        isActive={editor.isActive('link')}
+        title="Insert Link"
+      />
+      <ToolbarButton
+        icon={FileCode}
+        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+        isActive={editor.isActive('codeBlock')}
+        title="Code Block"
+      />
+      <ToolbarButton
+        icon={Minus}
         onClick={() => editor.chain().focus().setHorizontalRule().run()}
         title="Horizontal Rule"
-        aria-label="Horizontal Rule"
-      >
-        —
-      </button>
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-        className={editor.isActive("codeBlock") ? "active bg-[#232a31]" : ""}
-        title="Code block"
-        aria-label="Code block"
-      >
-        &lt;/&gt;
-      </button>
+      />
+
+      <Divider />
+
+      {/* Group 5: View / Utilities */}
+      <ToolbarButton
+        icon={RemoveFormatting}
+        onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
+        title="Clear Formatting"
+      />
+      {toggleFullscreen && (
+        <ToolbarButton
+          icon={Maximize2}
+          onClick={toggleFullscreen}
+          isActive={isFullscreen}
+          title="Toggle Fullscreen"
+        />
+      )}
     </div>
   );
 }

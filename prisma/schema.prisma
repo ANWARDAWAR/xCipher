@@ -57,6 +57,8 @@ model User {
   image         String?
   password      String?   // For credentials provider
   role          Role      @default(AUTHOR)
+  isActive      Boolean   @default(true)
+  sessionVersion Int      @default(1)
   
   accounts      Account[]
   sessions      Session[]
@@ -70,6 +72,8 @@ model User {
   auditLogs     AuditLog[]
   notifications Notification[]
   revisions     ArticleRevision[]
+  articleReviews ArticleReview[]
+  claimedArticles Article[] @relation("ArticleReviewer")
   moderatedComments Comment[]
 }
 
@@ -129,10 +133,13 @@ model Tag {
 enum ArticleStatus {
   DRAFT
   SUBMITTED
-  REVIEW
+  REVIEW            // Deprecated: kept to avoid destructive migration. Backfill to SUBMITTED.
   REVISION_REQUESTED
+  APPROVED
+  SCHEDULED
   REJECTED
   PUBLISHED
+  ARCHIVED
 }
 
 model Article {
@@ -169,9 +176,25 @@ model Article {
   updatedAt   DateTime      @updatedAt
   publishedAt DateTime?
   scheduledFor DateTime?
+  submittedAt  DateTime?
+  submittedById String?
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewer     User?         @relation("ArticleReviewer", fields: [reviewedById], references: [id])
+  approvedAt   DateTime?
+  approvedById String?
+  archivedAt   DateTime?
 
   revisions   ArticleRevision[]
+  reviews     ArticleReview[]
   comments    Comment[]
+
+  @@index([status, updatedAt])
+  @@index([status, submittedAt])
+  @@index([authorId, status, updatedAt])
+  @@index([categoryId, status, publishedAt])
+  @@index([publishedAt])
+  @@index([scheduledFor])
 }
 
 // ==========================================
@@ -193,6 +216,23 @@ model ArticleRevision {
   notes        String?  @db.Text
   statusChange String?
   createdAt   DateTime @default(now())
+}
+
+model ArticleReview {
+  id          String   @id @default(uuid())
+  articleId   String
+  article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  reviewerId  String
+  reviewer    User     @relation(fields: [reviewerId], references: [id])
+  decision    String   // APPROVED, CHANGES_REQUESTED, REJECTED
+  reason      String?  @db.Text
+  reasonCode  String?
+  fromStatus  String
+  toStatus    String
+  passNumber  Int      @default(1)
+  createdAt   DateTime @default(now())
+
+  @@index([articleId, createdAt])
 }
 
 model AuditLog {
