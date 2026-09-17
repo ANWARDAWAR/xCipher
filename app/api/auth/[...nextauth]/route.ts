@@ -64,6 +64,7 @@ export const authOptions: AuthOptions = {
           token.role = dbUser.role; // keep role synced
         } catch (e) {
           console.error("JWT verification error", e);
+          return {};
         }
       }
       return token;
