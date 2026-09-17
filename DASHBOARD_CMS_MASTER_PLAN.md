@@ -5508,3 +5508,106 @@ Run this list after each phase. Every item is objectively checkable; none is a m
 ---
 
 *End of DASHBOARD_CMS_MASTER_PLAN.md*
+
+# 44. Phased Execution Roadmap
+
+The task list in §34–§38 is ordered by priority. This section orders it by **dependency**, so a coding agent can be handed one phase at a time without ever hitting a missing prerequisite.
+
+**Rule for every phase:** hand the agent this document plus the phase's task IDs. Do not start a phase until the previous phase's acceptance criteria pass.
+
+## Phase 1 — Critical foundation (in this exact order)
+
+`TASK-02 → TASK-03 → TASK-07 → TASK-01`
+
+| Step | Task | Why it must come here |
+|---|---|---|
+| 1 | **TASK-02** Capability layer | Every later task consumes `can(actor, capability, resource)` and `buildArticleScope(actor)`. Landing it first prevents 30 more `role === "X"` call sites. |
+| 2 | **TASK-03** Schema: `APPROVED`/`SCHEDULED`/`ARCHIVED`, `submittedAt`/`reviewedAt`/`archivedAt`, `ArticleReview`, indexes | TASK-01 queries against these columns and indexes. Doing it after would force the index to be rewritten. |
+| 3 | **TASK-07** Field projection (stop selecting `contentHtml`/`contentJson` in lists) | A one-file fix that must land before TASK-01 codifies the query contract, otherwise the new contract inherits the payload bug. |
+| 4 | **TASK-01** Unified server-scoped article index | Consumes all three above: scope from TASK-02, statuses and indexes from TASK-03, projection from TASK-07. |
+
+**What Phase 1 actually delivers**
+
+- Authors can finally see their own `SUBMITTED`, `REVIEW` and `REJECTED` articles — the CRITICAL finding #1 and #2 of §1 are closed.
+- One route, `/admin/articles`, lists every status within the actor's scope; `/admin/drafts` and `/admin/submissions` become redirects.
+- Scoping is decided in exactly one function, so a scope bug can no longer exist in one page and not another.
+- List payload drops from full article bodies to projected fields — typically a 10–50× reduction per page.
+- Queries are index-backed, so the list stays fast past 10,000 articles.
+- The workflow schema exists (states, timestamps, `ArticleReview`) even though nothing writes to it yet — that is Phase 2.
+
+**What Phase 1 deliberately does NOT deliver**
+
+Filtering, sorting and pagination (TASK-08), thumbnails (TASK-09), review decisions (TASK-04/10/11), scheduling execution (TASK-06), any visual change (TASK-14). Expect the list to look unchanged and still be unpaginated at the end of Phase 1. That is correct.
+
+**Ship with Phase 1:** the permission-matrix test from TASK-28. Writing it alongside TASK-02, while the matrix is fresh, costs an hour and protects every later phase.
+
+**Phase 1 exit criteria**
+
+- [ ] No `role === "..."` comparison remains outside `lib/capabilities.ts`.
+- [ ] Every article query in the console goes through `buildArticleScope(actor)`.
+- [ ] An author sees their submitted and rejected articles; a contributor sees only their own.
+- [ ] No console query selects `contentHtml` or `contentJson`.
+- [ ] `prisma migrate` applied; the new indexes exist; no existing row lost a value.
+- [ ] The permission-matrix test passes for every role × capability × ownership combination.
+
+## Phase 2 — Make the workflow real and safe
+
+`TASK-04 → TASK-05 → TASK-16 → TASK-11 → TASK-10`
+
+Phase 1 created the workflow *schema*; Phase 2 makes it *behave*.
+
+| Task | Outcome |
+|---|---|
+| **TASK-04** Dedicated transition actions | `submit`, `approve`, `requestChanges`, `reject`, `publish`, `schedule`, `unpublish`, `archive`, `restore` as discrete server-authorised actions. Ends the silent publish→submit downgrade. Fixes the REVIEWER-cannot-review defect. |
+| **TASK-05** Delete → archive | Deletion restricted to archived articles (ADMIN+) and own drafts; ownership and status enforced server-side. |
+| **TASK-16** Session invalidation + DB-sourced actor | Closes the stale-JWT privilege window. Small, security-critical, and it must land before more actions rely on the actor. |
+| **TASK-11** Rejection / change-request with enforced reasons | Reasons ≥20 chars + reason code persisted to `ArticleReview` and shown to the author. |
+| **TASK-10** Review queue + focused review screen | The queue that can actually reach zero. Depends on `submittedAt` (Phase 1) and the transition actions (TASK-04). |
+
+**Phase 2 exit criteria:** every status change goes through a transition action; an illegal transition is refused with an error, never reinterpreted; a rejected article is findable with its reason; the review queue empties.
+
+## Phase 3 — Make the list usable at scale
+
+`TASK-08 → TASK-09 → TASK-06`
+
+| Task | Outcome |
+|---|---|
+| **TASK-08** Server-side filter / search / sort / pagination | URL-driven state, author/category/status/tag/date filters, numbered pagination, result count. This is where the list becomes a real CMS surface. |
+| **TASK-09** Image-aware editorial row | Thumbnails, two-line rows, expandable detail, status treatment per §41.5. |
+| **TASK-06** Scheduled publishing execution | The cron route that flips `SCHEDULED → PUBLISHED`, plus public-route gating. Independent of 08/09 — run it in parallel if you have capacity. |
+
+## Phase 4 — Fix the surface
+
+`TASK-14 → TASK-13 → TASK-12 → TASK-15`
+
+TASK-14 must lead: it defines the tokens and primitives that 13, 12 and 15 consume. Running the dashboard or navigation rebuild before the token repair means building on top of seven undefined custom properties and repainting twice.
+
+## Phase 5 — Polish and hardening
+
+`TASK-21 (states) → TASK-22 (responsive) → TASK-26 (accessibility) → TASK-17 (notifications) → TASK-18 (article detail hub) → TASK-27 (audit completeness) → TASK-28 (full CI)`
+
+## Phase 6 — Remaining scope
+
+`TASK-19 authors · TASK-20 taxonomy · TASK-23 bulk actions · TASK-24 settings · TASK-25 revisions · TASK-29/30/31/32 cleanup · TASK-33 media (only after object storage is chosen)`
+
+## Dependency quick reference
+
+| Task | Hard prerequisites |
+|---|---|
+| TASK-01 | 02, 03, 07 |
+| TASK-04 | 02, 03 |
+| TASK-05 | 02, 04 |
+| TASK-06 | 03, 04 |
+| TASK-08 | 01, 03 |
+| TASK-09 | 01, 08 |
+| TASK-10 | 03, 04 |
+| TASK-11 | 03, 04 |
+| TASK-12 | 02, 03 |
+| TASK-13 | 02 |
+| TASK-15 | 04, 14 |
+| TASK-17 | 04 |
+| TASK-18 | 01, 03, 09 |
+| TASK-23 | 01, 04, 09 |
+| TASK-25 | 03, 18 |
+
+---
