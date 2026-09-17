@@ -9,6 +9,7 @@ import { showToast } from "@/lib/utils";
 import { useEditor, EditorContent, ReactRenderer } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
+import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import { Table } from "@tiptap/extension-table";
@@ -26,6 +27,7 @@ import { EditorToolbar } from "./EditorToolbar";
 import { Figure } from "./extensions/AdvancedImage";
 import { Callout } from "./extensions/Callout";
 import { SlashMenu } from "./extensions/SlashMenu";
+import { CodeBlockLowlight } from "./extensions/CodeBlockLowlight";
 import { SlashCommandList, getSuggestionItems } from "./SlashCommandList";
 
 // Static category options for the editor dropdown
@@ -126,6 +128,7 @@ export default function ArticleEditor({
   const [lastSaved, setLastSaved] = useState<Date | null>(initialData?.updatedAt ? new Date(initialData.updatedAt) : null);
   const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [reviewNotes, setReviewNotes] = useState("");
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
   const router = useRouter();
@@ -157,8 +160,12 @@ export default function ArticleEditor({
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        codeBlock: false, // Replaced by CodeBlockLowlight for syntax highlighting
+      }),
+      CodeBlockLowlight,
       Underline,
+      Highlight.configure({ multicolor: false }),
       Figure,
       Callout,
       Link.configure({
@@ -225,6 +232,11 @@ export default function ArticleEditor({
         }
       })
     ],
+    editorProps: {
+      attributes: {
+        class: 'prose ed-body-content',
+      },
+    },
     content: defaultValues.bodyHtml,
     onUpdate: ({ editor }) => {
       setValue("bodyHtml", editor.getHTML(), { shouldDirty: true });
@@ -633,24 +645,31 @@ export default function ArticleEditor({
         />
       </div>
       
-      <div className="ed-full">
-        <label className="ed-label">Article body</label>
-        
-        <EditorToolbar editor={editor} />
-        
-        <div className="ed-body" id="edBody" aria-label="Article body editor">
-          <EditorContent editor={editor} />
-        </div>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--surface-2)', border: '1px solid var(--line)', borderTop: 'none', borderBottomLeftRadius: 'var(--r-md)', borderBottomRightRadius: 'var(--r-md)', fontSize: '12px', color: 'var(--ink-muted)' }}>
-          <span>
-            {editor.storage.characterCount.words()} words · {editor.storage.characterCount.characters()} characters
-          </span>
-          <span>
-            ~{Math.ceil(editor.storage.characterCount.words() / 200)} min read
-          </span>
+      <div className={isFullscreen ? "ed-editor-shell is-fullscreen fixed inset-0 z-[9999] bg-[var(--bg)] flex flex-col p-4 overflow-y-auto" : "ed-full ed-editor-shell"}>
+        <div className={isFullscreen ? "ed-editor-inner w-full mx-auto" : ""}>
+          <label className="ed-label">Article body</label>
+          
+          <EditorToolbar 
+            editor={editor} 
+            isFullscreen={isFullscreen} 
+            toggleFullscreen={() => setIsFullscreen(!isFullscreen)} 
+          />
+          
+          <div className="ed-body" id="edBody" aria-label="Article body editor" style={isFullscreen ? { minHeight: "calc(100vh - 150px)", maxHeight: "none", border: "none" } : {}}>
+            <EditorContent editor={editor} />
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--surface-2)', border: '1px solid var(--line)', borderTop: 'none', borderBottomLeftRadius: 'var(--r-md)', borderBottomRightRadius: 'var(--r-md)', fontSize: '12px', color: 'var(--ink-muted)' }}>
+            <span>
+              {editor.storage.characterCount.words()} words · {editor.storage.characterCount.characters()} characters
+            </span>
+            <span>
+              ~{Math.ceil(editor.storage.characterCount.words() / 200)} min read
+            </span>
+          </div>
         </div>
       </div>
+
       
       {initialData?.id && (
         <div className="ed-full" style={{ marginTop: "24px" }}>

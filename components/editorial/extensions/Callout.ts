@@ -7,8 +7,8 @@ export interface CalloutOptions {
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     callout: {
-      setCallout: (options?: { type?: 'info' | 'takeaway' | 'quote' }) => ReturnType
-      toggleCallout: (options?: { type?: 'info' | 'takeaway' | 'quote' }) => ReturnType
+      setCallout: (options?: { type?: 'info' | 'takeaway' | 'quote' | 'warning' }) => ReturnType
+      toggleCallout: (options?: { type?: 'info' | 'takeaway' | 'quote' | 'warning' }) => ReturnType
     }
   }
 }
