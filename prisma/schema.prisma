@@ -14,12 +14,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String?
-  access_token      String?
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?
+  id_token          String? @db.Text
   session_state     String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -79,7 +79,7 @@ model Author {
   location      String?
   website       String?
   overview      String?
-  disclosure    String?
+  disclosure    String?   @db.Text
   expertise     String?
   previousSlugs String[]  @default([])
   publicContact Boolean   @default(true)
@@ -156,7 +156,7 @@ model ArticleRevision {
   id           String   @id @default(uuid())
   articleId    String
   userId       String
-  notes        String?
+  notes        String?  @db.Text
   statusChange String?
   createdAt    DateTime @default(now())
   contentHtml  String?
@@ -172,7 +172,7 @@ model ArticleReview {
   articleId  String
   reviewerId String
   decision   String
-  reason     String?
+  reason     String?  @db.Text
   reasonCode String?
   fromStatus String
   toStatus   String
@@ -234,7 +234,7 @@ model Comment {
   displayName   String
   emailHash     String
   email         String
-  body          String
+  body          String        @db.Text
   status        CommentStatus @default(PENDING)
   ipHash        String?
   userAgent     String?
@@ -258,7 +258,7 @@ enum Role {
 
 enum ArticleStatus {
   DRAFT
-  REVIEW
+  REVIEW            // Deprecated: kept to avoid destructive migration. Backfill to SUBMITTED.
   PUBLISHED
   SUBMITTED
   REVISION_REQUESTED
