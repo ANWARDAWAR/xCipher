@@ -23,6 +23,7 @@ interface AdminNavLinksProps {
   canModerateComments: boolean;
   canViewSubscribers: boolean;
   canViewTaxonomy: boolean;
+  canManageAuthors: boolean;
   reviewCount?: number;
 }
 
@@ -34,6 +35,7 @@ export default function AdminNavLinks({
   canModerateComments,
   canViewSubscribers,
   canViewTaxonomy,
+  canManageAuthors,
   reviewCount = 0,
 }: AdminNavLinksProps) {
   const pathname = usePathname();
@@ -61,6 +63,8 @@ export default function AdminNavLinks({
         </svg>
         Dashboard
       </Link>
+
+      <div className="cs-nav-group">Content</div>
 
       <Link
         href="/admin/articles"
@@ -111,13 +115,19 @@ export default function AdminNavLinks({
         New Story
       </Link>
 
-      <Link href="/admin/settings" className={isActive("/admin/settings") ? "on" : ""}>
-        <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.4 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.4-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.2-1.2z" />
-        </svg>
-        Settings
-      </Link>
+      {(canViewTaxonomy || canManageAuthors) && (
+        <div className="cs-nav-group">Newsroom</div>
+      )}
+
+      {canManageAuthors && (
+        <Link href="/admin/authors" className={isActive("/admin/authors") ? "on" : ""}>
+          <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          Authors
+        </Link>
+      )}
 
       {canViewTaxonomy && (
         <Link href="/admin/taxonomy" className={isActive("/admin/taxonomy") ? "on" : ""}>
@@ -127,6 +137,10 @@ export default function AdminNavLinks({
           </svg>
           Taxonomy
         </Link>
+      )}
+
+      {(canManageUsers || canViewLogs) && (
+        <div className="cs-nav-group">Administration</div>
       )}
 
       {canManageUsers && (
@@ -167,6 +181,16 @@ export default function AdminNavLinks({
           Audit Logs
         </Link>
       )}
+
+      <div className="cs-nav-group">You</div>
+
+      <Link href="/admin/settings" className={isActive("/admin/settings") ? "on" : ""}>
+        <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.4 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.4-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.2-1.2z" />
+        </svg>
+        Settings
+      </Link>
     </>
   );
 }

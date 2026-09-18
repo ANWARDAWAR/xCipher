@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { buildArticleScope, authorize } from "@/lib/capabilities";
 import { redirect } from "next/navigation";
+import { Role } from "@prisma/client";
 import StatusChip from "@/components/console/StatusChip";
 import { 
   Plus, 
@@ -51,6 +52,12 @@ export default async function AdminDashboard() {
   let totalViews = 0;
   let topStories: any[] = [];
   let latestDrafts: any[] = [];
+  // Role-specific attention counts. Zero is a meaningful value here (an empty
+  // queue), so these stay numbers rather than being left undefined.
+  let awaitingReview = 0;
+  let unclaimedReview = 0;
+  let changesRequested = 0;
+  let scheduledCount = 0;
 
   // Resolved outside the try below: redirect() signals by throwing NEXT_REDIRECT,
   // so calling it inside a try/catch swallows the redirect and renders the page
@@ -65,7 +72,10 @@ export default async function AdminDashboard() {
   // Depends only on the role, so it must not be left at a default if the
   // queries below fail -- otherwise a DB error silently relabels an owner's
   // dashboard as a personal one.
-  const canViewAll = authorize(user.role as any, "article.view.all");
+  const actorRole = user.role as Role;
+  const canViewAll = authorize(actorRole, "article.view.all");
+  const canReview = authorize(actorRole, "article.review");
+  const canWrite = authorize(actorRole, "article.create");
 
   try {
     const dbUser = await db.user.findUnique({ where: { id: user.id }, include: { authorProfile: true } });
@@ -88,6 +98,24 @@ export default async function AdminDashboard() {
       if (group.status === 'PUBLISHED') publishedCount = group._count.id;
       else if (group.status === 'DRAFT') draftsCount = group._count.id;
       totalArticles += group._count.id;
+    }
+
+    // The status breakdown above is already scoped, so the attention counts can
+    // be read straight out of it rather than issued as extra queries.
+    for (const group of statusCounts) {
+      if (group.status === 'SUBMITTED') awaitingReview = group._count.id;
+      else if (group.status === 'REVISION_REQUESTED') changesRequested = group._count.id;
+      else if (group.status === 'SCHEDULED') scheduledCount = group._count.id;
+    }
+
+    // Unclaimed submissions are the one figure the grouped query cannot give,
+    // and it is the number a reviewer actually acts on: a queue of 20 with 20
+    // already claimed needs nobody, a queue of 3 with 0 claimed needs someone
+    // now.
+    if (canReview) {
+      unclaimedReview = await db.article.count({
+        where: { status: "SUBMITTED", reviewedById: null },
+      });
     }
 
     const wherePublished = { ...scopeWhere, status: "PUBLISHED" as const };
@@ -162,6 +190,89 @@ export default async function AdminDashboard() {
           </Link>
         </div>
       </div>
+
+      {/* ── Needs your attention ─────────────────────────────────────
+          Role-aware, and deliberately placed above the KPI cards: counts of
+          total articles are interesting, but what a person opens the console
+          to find out is whether anything is waiting on *them*. A reviewer and
+          an author need different answers to that, which is why this strip is
+          built from capabilities rather than shown to everyone.
+
+          The whole block is omitted when nothing is outstanding. An empty
+          "nothing to do" panel is noise that trains people to scroll past the
+          place their work appears. */}
+      {(() => {
+        const items: { href: string; label: string; count: number; tone: "urgent" | "normal" }[] = [];
+
+        if (canReview) {
+          if (unclaimedReview > 0) {
+            items.push({
+              href: "/admin/review",
+              label: unclaimedReview === 1 ? "submission unclaimed" : "submissions unclaimed",
+              count: unclaimedReview,
+              tone: "urgent",
+            });
+          }
+          const claimed = awaitingReview - unclaimedReview;
+          if (claimed > 0) {
+            items.push({
+              href: "/admin/review",
+              label: claimed === 1 ? "review in progress" : "reviews in progress",
+              count: claimed,
+              tone: "normal",
+            });
+          }
+        }
+
+        if (canWrite && changesRequested > 0) {
+          items.push({
+            href: "/admin/articles?status=REVISION_REQUESTED",
+            label: changesRequested === 1 ? "story needs changes" : "stories need changes",
+            count: changesRequested,
+            tone: "urgent",
+          });
+        }
+
+        if (scheduledCount > 0) {
+          items.push({
+            href: "/admin/articles?status=SCHEDULED",
+            label: scheduledCount === 1 ? "story scheduled" : "stories scheduled",
+            count: scheduledCount,
+            tone: "normal",
+          });
+        }
+
+        if (items.length === 0) return null;
+
+        return (
+          <div className="border-l-2 border-accent pl-4 sm:pl-5 py-1">
+            <h2 className="text-[11px] font-bold tracking-wider uppercase text-muted mb-2.5">
+              Needs your attention
+            </h2>
+            <ul className="flex flex-wrap items-center gap-x-6 gap-y-2.5">
+              {items.map((item) => (
+                <li key={item.label}>
+                  <Link
+                    href={item.href}
+                    className="group inline-flex items-baseline gap-2 hover:underline underline-offset-4 decoration-line"
+                  >
+                    <span
+                      className={`text-2xl font-bold tabular-nums font-[var(--f-display)] ${
+                        item.tone === "urgent" ? "text-accent" : "text-ink"
+                      }`}
+                    >
+                      {item.count}
+                    </span>
+                    <span className="text-sm text-ink-2 group-hover:text-ink transition-colors">
+                      {item.label}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
 
       {/* ── High-Contrast KPI Metric Cards ──────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">

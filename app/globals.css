@@ -3063,6 +3063,24 @@ body {
             .cs-nav-divider { display: block }
         }
 
+        /* Sidebar group label.
+           Hidden below 900px: the mobile nav is a horizontal scroller, where
+           section headings would break the row rather than organise it. */
+        .cs-nav-group {
+            display: none;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            color: var(--faint);
+            padding: 14px 10px 6px;
+            user-select: none;
+        }
+
+        @media(min-width:900px) {
+            .cs-nav-group { display: block }
+        }
+
         /* override default cs-nav a/button hover to not apply to profile card */
         .cs-nav button,
         .cs-nav a:not(.cs-profile-card) {

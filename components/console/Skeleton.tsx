@@ -110,3 +110,54 @@ export function SkeletonPage({
     </div>
   );
 }
+
+/**
+ * Form skeleton for the settings, taxonomy and invite screens.
+ *
+ * Deliberately not a table: those pages are stacked label-and-field pairs, and
+ * reusing SkeletonTable there would flash a grid that never appears.
+ */
+export function SkeletonForm({ fields = 5 }: { fields?: number }) {
+  return (
+    <div className="bg-surface border border-line rounded-xl shadow-xs mt-4 p-6 space-y-6 max-w-2xl">
+      {Array.from({ length: fields }).map((_, i) => (
+        <div key={i} className="space-y-2">
+          <SkeletonBlock className="h-3 w-28" />
+          <SkeletonBlock className="h-9 w-full rounded-lg" />
+        </div>
+      ))}
+      <div className="flex justify-end gap-2 pt-2">
+        <SkeletonBlock className="h-9 w-24 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Editor skeleton: a title line, a toolbar and a tall body area beside a
+ * sidebar. The article editor is the slowest console route to reach, so its
+ * placeholder is worth shaping properly.
+ */
+export function SkeletonEditor() {
+  return (
+    <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
+      <div className="space-y-4">
+        <SkeletonBlock className="h-10 w-full max-w-2xl rounded-lg" />
+        <div className="flex gap-1.5">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <SkeletonBlock key={i} className="h-8 w-8 rounded" />
+          ))}
+        </div>
+        <SkeletonBlock className="h-[420px] w-full rounded-xl" />
+      </div>
+      <div className="space-y-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="space-y-2">
+            <SkeletonBlock className="h-3 w-20" />
+            <SkeletonBlock className="h-9 w-full rounded-lg" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

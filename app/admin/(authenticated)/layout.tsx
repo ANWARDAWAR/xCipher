@@ -8,12 +8,23 @@ import ThemeToggle from "@/components/layout/ThemeToggle";
 import NotificationBell from "@/components/console/NotificationBell";
 import { getNotifications } from "@/app/actions/notifications";
 import { canViewReviewQueue, canViewUsersList, canViewAuditLogs, canModerateComments, canViewSubscribers, canViewTaxonomy } from "@/lib/permissions";
+import { authorize } from "@/lib/capabilities";
 import { Role } from "@prisma/client";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) {
     redirect("/admin/login");
+  }
+
+  // Being signed in is not the same as being allowed into the console.
+  // STAFF deliberately has no `console.access` capability -- they are
+  // public-site-only accounts (lib/capabilities.ts) -- but nothing was
+  // enforcing that, so a STAFF session reached the console shell and every
+  // child route that only checks a narrower permission. This is the gate the
+  // capability was written for.
+  if (!authorize(user.role as Role, "console.access")) {
+    redirect("/");
   }
 
   const dbUser = await db.user.findUnique({
@@ -123,6 +134,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             canModerateComments={canModerateComments(userRole as Role)}
             canViewSubscribers={canViewSubscribers(userRole as Role)}
             canViewTaxonomy={canViewTaxonomy(userRole as Role)}
+            canManageAuthors={authorize(userRole as Role, "author.manage.all")}
             reviewCount={reviewCount}
           />
         </nav>
