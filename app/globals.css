@@ -2042,6 +2042,81 @@ body {
             font-optical-sizing: auto
         }
 
+        /* Long-token containment
+         *
+         * Editorial copy in a tech publication routinely contains things the
+         * browser will not break on its own: bare URLs, package names,
+         * file paths, hashes, stack traces. Nothing in this stylesheet told it
+         * to, so a single such token set the width of the whole column and the
+         * text ran under the right edge of the screen. body{overflow-x:hidden}
+         * meant the reader could not even scroll to the clipped words -- they
+         * were simply gone.
+         *
+         * overflow-wrap:break-word breaks only tokens that cannot otherwise
+         * fit, so ordinary prose keeps wrapping at spaces and reads normally.
+         * min-width:0 is what actually lets the box shrink: a block's automatic
+         * minimum size is its content size, which is why the container grew
+         * instead of constraining the text.
+         *
+         * Applied to the editor surfaces too, so what an author sees while
+         * writing matches what a reader gets. */
+        .prose,
+        .ed-body,
+        .tiptap-content {
+            min-width: 0;
+            overflow-wrap: break-word;
+        }
+
+        /* Elements whose content is most often one unbroken run. `anywhere`
+         * rather than `break-word` so the break can also happen at the start of
+         * a line, which is the case for a URL that is itself longer than the
+         * column. */
+        .prose a,
+        .prose code,
+        .ed-body a,
+        .ed-body code,
+        .tiptap-content a,
+        .tiptap-content code {
+            overflow-wrap: anywhere;
+        }
+
+        /* Code blocks scroll rather than break: wrapping a shell command or a
+         * line of source changes what it means, and a horizontal scrollbar on a
+         * fenced block is the familiar convention. min-width:0 keeps the scroll
+         * container from being widened by its own content. */
+        .prose pre,
+        .ed-body pre,
+        .tiptap-content pre {
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .prose pre code,
+        .ed-body pre code,
+        .tiptap-content pre code {
+            overflow-wrap: normal;
+            white-space: pre;
+        }
+
+        /* Media and tables cannot be broken at all, so they are capped instead.
+         * A table gets its own scroll container for the same reason as <pre>. */
+        .prose img,
+        .prose video,
+        .prose iframe,
+        .ed-body img,
+        .tiptap-content img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .prose table,
+        .ed-body table,
+        .tiptap-content table {
+            display: block;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+
         .prose p, .ed-body p, .tiptap-content p {
             margin: 0 0 1.45em;
             font-size: inherit;
