@@ -69,7 +69,18 @@ const OWNER_CAPS: ReadonlySet<Capability> = new Set<Capability>([
   "article.create", "article.edit.own", "article.edit.any",
   "article.submit", "article.review",
   "article.publish", "article.schedule", "article.unpublish", "article.archive",
-  "article.delete", "article.delete.own.draft", "article.feature",
+  // No "article.delete". The owner governs the publication -- roles, settings,
+  // billing, the audit trail -- but permanent destruction of published work is
+  // deliberately not part of that. Removing the archive is an editorial
+  // operations task, and it belongs to ADMIN, who answers to the owner.
+  //
+  // This is the one capability where OWNER is intentionally narrower than
+  // ADMIN. It is a policy decision, not an oversight: an account that can
+  // grant itself any role should not also be the account that can erase the
+  // evidence. Escalating to ADMIN to delete leaves an audit-logged trail.
+  //
+  // Own unpublished drafts are still fair game -- that is cleanup, not erasure.
+  "article.delete.own.draft", "article.feature",
   "taxonomy.create", "taxonomy.rename", "taxonomy.delete", "taxonomy.merge",
   "author.manage.all", "author.manage.own",
   "comment.moderate",
@@ -99,7 +110,15 @@ const EDITOR_CAPS: ReadonlySet<Capability> = new Set<Capability>([
   "console.access",
   "article.view.all", "article.view.own", "article.view.published",
   "article.create", "article.edit.own", "article.edit.any",
-  "article.submit", "article.review",
+  // No "article.review". An editor ships their own work directly -- they hold
+  // article.publish and need no approval queue -- but they do not adjudicate
+  // other people's submissions. Approve/reject/request-changes is a separate
+  // duty held by REVIEWER, ADMIN and OWNER.
+  //
+  // Consequence: EDITOR no longer sees the review queue or the decision
+  // actions on a submitted article. They can still open, edit and publish any
+  // article, so nothing they could previously ship becomes unreachable.
+  "article.submit",
   "article.publish", "article.schedule", "article.unpublish", "article.archive",
   "article.delete.own.draft", "article.feature",
   "taxonomy.create", "taxonomy.rename",

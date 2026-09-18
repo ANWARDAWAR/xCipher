@@ -32,14 +32,31 @@ const ALL_ROLES: Role[] = [
 ];
 
 describe("authorize", () => {
-  it("grants the owner every declared capability", () => {
+  it("grants the owner every declared capability except permanent deletion", () => {
+    // OWNER is the top role in every respect but one: permanent deletion is
+    // deliberately withheld and left to ADMIN. An account that can grant
+    // itself any role should not also be the account that can erase the
+    // archive. Anything else missing here is a bug, not a policy.
+    const OWNER_EXCLUDED: ReadonlySet<Capability> = new Set<Capability>([
+      "article.delete",
+    ]);
+
     const every = new Set<Capability>();
     for (const caps of Object.values(ROLE_CAPABILITIES)) {
       for (const c of caps) every.add(c);
     }
     for (const c of every) {
-      expect(authorize("OWNER", c), `OWNER should hold ${c}`).toBe(true);
+      const expected = !OWNER_EXCLUDED.has(c);
+      expect(authorize("OWNER", c), `OWNER should ${expected ? "hold" : "not hold"} ${c}`).toBe(
+        expected
+      );
     }
+  });
+
+  it("withholds permanent article deletion from OWNER", () => {
+    expect(authorize("OWNER", "article.delete")).toBe(false);
+    // Cleaning up your own unpublished draft is not erasure, so it stays.
+    expect(authorize("OWNER", "article.delete.own.draft")).toBe(true);
   });
 
   it("denies an unknown role rather than defaulting to permissive", () => {
@@ -118,9 +135,23 @@ describe("authorize", () => {
       expect(authorize("MODERATOR", "article.view.all")).toBe(false);
     });
 
-    it("reserves permanent deletion for OWNER and ADMIN", () => {
+    it("reserves permanent deletion for ADMIN alone", () => {
       const canDelete = ALL_ROLES.filter((r) => authorize(r, "article.delete"));
-      expect(canDelete.sort()).toEqual(["ADMIN", "OWNER"]);
+      expect(canDelete.sort()).toEqual(["ADMIN"]);
+    });
+
+    it("does not let an EDITOR adjudicate submissions", () => {
+      // Editors publish their own work without an approval queue, but they do
+      // not approve, reject or request changes on other people's submissions.
+      expect(authorize("EDITOR", "article.review")).toBe(false);
+      // What they keep: they can still ship anything.
+      expect(authorize("EDITOR", "article.publish")).toBe(true);
+      expect(authorize("EDITOR", "article.edit.any")).toBe(true);
+    });
+
+    it("reserves review decisions for REVIEWER, ADMIN and OWNER", () => {
+      const canReview = ALL_ROLES.filter((r) => authorize(r, "article.review"));
+      expect(canReview.sort()).toEqual(["ADMIN", "OWNER", "REVIEWER"]);
     });
 
     it("reserves publication settings for OWNER and ADMIN", () => {
