@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import SignOutButton from "@/components/editorial/SignOutButton";
 import AdminNavLinks from "@/components/editorial/AdminNavLinks";
 import ThemeToggle from "@/components/layout/ThemeToggle";
+import NotificationBell from "@/components/console/NotificationBell";
+import { getNotifications } from "@/app/actions/notifications";
 import { canViewReviewQueue, canViewUsersList, canViewAuditLogs, canModerateComments, canViewSubscribers, canViewTaxonomy } from "@/lib/permissions";
 import { Role } from "@prisma/client";
 
@@ -33,6 +35,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     });
   }
 
+  const { items: notifications, unreadCount } = await getNotifications();
+
   return (
     <div className="console open" id="console" role="dialog" aria-modal="true" aria-label="xCipher editorial console" style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
       <div className="cs-top">
@@ -48,6 +52,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <span className="cs-tag">Editorial Console</span>
         <span className="spacer"></span>
         <div className="flex items-center gap-2">
+          <NotificationBell items={notifications} unreadCount={unreadCount} />
           <ThemeToggle />
           <Link 
             className="btn-cs" 
