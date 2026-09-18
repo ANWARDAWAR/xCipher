@@ -41,7 +41,7 @@ export default function AdminError({
 
       {isDbError && (
         <div className="bg-surface-2 p-4 rounded-lg text-sm text-left border border-line mb-8 w-full overflow-auto max-h-40">
-          <code className="text-ink-muted whitespace-pre-wrap font-mono">
+          <code className="text-muted whitespace-pre-wrap font-mono">
             {error.message}
           </code>
         </div>
