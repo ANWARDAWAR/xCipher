@@ -1,6 +1,51 @@
 import type { NextConfig } from "next";
+import { networkInterfaces } from "node:os";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dev-only: allow this machine's LAN addresses to load /_next/* resources.
+//
+// Next.js 16 blocks cross-origin requests to dev resources by default. Opening
+// the dev server from a phone on the same Wi-Fi (http://192.168.x.x:3000) counts
+// as a different origin than localhost, so the HTML renders but every
+// /_next/static/chunks/* request comes back 403. The result is a page that looks
+// almost right and is quietly broken: React never hydrates, so anything driven
+// by client state does nothing -- the date in the utility bar stays empty, the
+// theme toggle and hamburger menu do not respond, and syntax highlighting never
+// runs. Nothing logs in the page itself; the refusal is only visible in the dev
+// server output and the device's network tab.
+//
+// Addresses are read from the machine's own interfaces rather than hardcoded,
+// because a LAN IP is handed out by DHCP and a pinned value goes stale. Both the
+// bare hostname and a wildcard for the /24 are included: the wildcard keeps the
+// allowlist valid when the router reassigns a nearby address in the same subnet.
+//
+// This is ignored in production builds -- `next build` never reads it -- so it
+// widens nothing in a deployed environment.
+// ─────────────────────────────────────────────────────────────────────────────
+function localNetworkOrigins(): string[] {
+  const origins = new Set<string>();
+
+  for (const addresses of Object.values(networkInterfaces())) {
+    for (const address of addresses ?? []) {
+      // `family` is "IPv4" on Node 18+ but was 4 on older majors; accept both
+      // so this does not silently return nothing on a different runtime.
+      const isIPv4 = address.family === "IPv4" || (address.family as unknown as number) === 4;
+      if (!isIPv4 || address.internal) continue;
+
+      origins.add(address.address);
+
+      // Cover the rest of the subnet so a DHCP reassignment does not require
+      // editing this file and restarting.
+      const octets = address.address.split(".");
+      if (octets.length === 4) origins.add(`${octets[0]}.${octets[1]}.${octets[2]}.*`);
+    }
+  }
+
+  return [...origins];
+}
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: localNetworkOrigins(),
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.pexels.com" },

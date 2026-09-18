@@ -11,6 +11,26 @@ export default function ScrollReveal() {
 
     const isReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    // Arm the hidden-until-revealed styles only now that this effect is running.
+    // The CSS keys off this class, so if the bundle never loads the stories stay
+    // visible instead of sitting at opacity:0 behind a section heading.
+    const root = document.documentElement;
+
+    // Reduced motion never hides anything, so the gate would only add a class
+    // with no styles behind it.
+    if (!isReduced) {
+      // Mark what is already on screen as revealed *before* arming the gate.
+      // Otherwise the hidden state applies for a frame and everything above the
+      // fold — the lead story included — visibly blinks out and fades back in.
+      document.querySelectorAll("[data-reveal]").forEach((el) => {
+        const box = el.getBoundingClientRect();
+        if (box.top < window.innerHeight && box.bottom > 0) {
+          el.classList.add("revealed");
+        }
+      });
+      root.classList.add("reveal-ready");
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -51,6 +71,8 @@ export default function ScrollReveal() {
     return () => {
       observer.disconnect();
       mutationObserver.disconnect();
+      // Drop the gate on teardown so nothing can be left hidden by a stale class.
+      root.classList.remove("reveal-ready");
     };
   }, [pathname]);
 

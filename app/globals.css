@@ -3956,14 +3956,26 @@ body {
             color: #fff
         }
 
-        /* reveal */
-        [data-reveal] {
+        /* reveal
+         *
+         * Scoped to .reveal-ready, which ScrollReveal puts on <html> once it is
+         * running. Without that gate the hidden state is the default, so any
+         * failure to hydrate leaves every story stuck at opacity:0 -- the markup
+         * is in the page, the reader just sees an empty column under the section
+         * heading. That is not hypothetical: over a LAN IP the dev server
+         * refuses /_next/* as cross-origin, the client bundle never boots, and
+         * the homepage renders its headings above nothing at all.
+         *
+         * Opt-in instead of opt-out means the animation is a progressive
+         * enhancement: content is visible by default and only animates when
+         * there is JavaScript to animate it. */
+        .reveal-ready [data-reveal] {
             opacity: 0;
             transform: translateY(14px);
             transition: opacity .55s ease, transform .55s ease
         }
 
-        [data-reveal].revealed {
+        .reveal-ready [data-reveal].revealed {
             opacity: 1;
             transform: none
         }
