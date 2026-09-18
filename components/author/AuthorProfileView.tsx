@@ -138,11 +138,18 @@ export default function AuthorProfileView({ author, articles, socials, totalView
               </>
             )}
           </div>
-          <div className="ap-stat-divider" />
-          <div className="ap-stat">
-            <span className="ap-stat-val">{new Date(author.joinedAt || Date.now()).getFullYear()}</span>
-            <span className="ap-stat-label">Joined xSypher</span>
-          </div>
+          {author.joinedAt && (
+            <>
+              <div className="ap-stat-divider" />
+              <div className="ap-stat">
+                {/* Rendered only when there is a real join date. It previously
+                    fell back to Date.now(), which quietly claimed the author
+                    joined this year whenever the field was missing. */}
+                <span className="ap-stat-val">{new Date(author.joinedAt).getFullYear()}</span>
+                <span className="ap-stat-label">Joined xSypher</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

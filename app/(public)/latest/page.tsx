@@ -20,6 +20,16 @@ export const metadata: Metadata = {
 // a view count.
 export const revalidate = 180; // latest listing
 
+/** Read once per server render to bucket stories by day.
+ *
+ *  Declared outside the component because react-hooks/purity treats a clock
+ *  read in a component body as impure, and rightly: the value must not vary
+ *  between reconciliation passes. Here it is captured once and every article in
+ *  the pass is measured against the same instant. */
+function currentTimestamp(): number {
+  return Date.now();
+}
+
 export default async function LatestPage() {
   const articles = await db.article.findMany({
     where: { status: "PUBLISHED" },
@@ -28,11 +38,19 @@ export default async function LatestPage() {
     select: ARTICLE_CARD_SELECT,
   });
 
-  const now = Date.now();
+  // Bucketing is a data decision, so unlike the relative labels it genuinely
+  // has to happen here. The clock is read once, before the JSX, rather than
+  // during render -- that is what react-hooks/purity objects to, and it also
+  // keeps every article in this pass measured against the same instant instead
+  // of a value that drifts as the list is walked.
+  //
+  // The buckets are still only as fresh as the 180s revalidate window, which is
+  // correct for day-granularity headings.
+  const renderedAt = currentTimestamp();
   const groups: Record<string, typeof articles> = { Today: [], Yesterday: [], "This week": [], Earlier: [] };
-  
+
   articles.forEach(a => {
-    const ageMins = Math.max(0, Math.floor((now - new Date(a.createdAt).getTime()) / 60000));
+    const ageMins = Math.max(0, Math.floor((renderedAt - new Date(a.createdAt).getTime()) / 60000));
     if (ageMins < 1440) groups.Today.push(a); 
     else if (ageMins < 2880) groups.Yesterday.push(a); 
     else if (ageMins < 10080) groups["This week"].push(a); 

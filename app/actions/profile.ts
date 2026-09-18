@@ -74,7 +74,7 @@ export async function updateProfile(data: any) {
     const safeBio = sanitizeBioHtml(bio);
 
     // Validate social links
-    let safeSocialLinks = socialLinks;
+    const safeSocialLinks = socialLinks;
     if (socialLinks) {
       let parsedLinks = [];
       try {

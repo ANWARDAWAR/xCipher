@@ -25,11 +25,11 @@ async function main() {
 
   console.log(`Found ${articles.length} articles to migrate.`);
 
-  let authorCache: Record<string, string> = {};
-  let tagCache: Record<string, string> = {};
+  const authorCache: Record<string, string> = {};
+  const tagCache: Record<string, string> = {};
 
   for (const article of articles) {
-    let updates: any = {};
+    const updates: any = {};
 
     // 1. Author Migration
     if (article.author) {
@@ -55,7 +55,7 @@ async function main() {
 
     // 2. Tags Migration
     if (article.legacyTags && article.legacyTags.length > 0) {
-      let tagIds = [];
+      const tagIds = [];
       for (const t of article.legacyTags) {
         const tagName = t.trim();
         if (!tagName) continue;

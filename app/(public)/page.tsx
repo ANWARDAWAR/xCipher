@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getImgSrc, timeAgo, fmtViews } from "@/lib/utils";
+import { getImgSrc, fmtViews } from "@/lib/utils";
+import RelativeTime from "@/components/common/RelativeTime";
 import { db } from "@/lib/db";
 import { ARTICLE_CARD_SELECT, HOME_ARTICLE_LIMIT } from "@/lib/queries";
 import StoryCard from "@/components/article/StoryCard";
@@ -44,7 +45,11 @@ export default async function Home() {
   // before.
   const mappedArticles = dbArticles.map((a) => ({
     ...a,
-    age: Math.floor((Date.now() - a.createdAt.getTime()) / 60000),
+    // No Date.now() here: this page is cached for 300s, so a relative age
+    // computed at render time is frozen into the cached HTML and served stale
+    // to everyone in that window. The absolute createdAt is passed through and
+    // <RelativeTime> does the arithmetic in the browser.
+    age: 0,
     mins: 5,
     alt: a.title,
     breaking: a.homepagePlacement === "featured",
@@ -133,7 +138,7 @@ export default async function Home() {
           <div className="byline">
             <div className="ava lg">{(lead.author || "xSypher").charAt(0)}</div>
             <span>
-              <b>{lead.author || "xSypher Staff"}</b>, {lead.role || ""} <span className="dot">·</span> {timeAgo(lead.age)} <span className="dot">·</span> {lead.mins} min read
+              <b>{lead.author || "xSypher Staff"}</b>, {lead.role || ""} <span className="dot">·</span> {<RelativeTime dateTime={new Date(lead.createdAt).toISOString()} />} <span className="dot">·</span> {lead.mins} min read
             </span>
           </div>
         </article>
@@ -141,7 +146,7 @@ export default async function Home() {
         <aside className="briefing" aria-label="The briefing">
           <div className="briefing-title">
             <h2>The Briefing</h2>
-            <span>Updated {timeAgo(briefing[0]?.age || 0)}</span>
+            <span>Updated {briefing[0]?.createdAt ? <RelativeTime dateTime={new Date(briefing[0].createdAt).toISOString()} /> : null}</span>
           </div>
           {briefing.map(a => (
             <StoryRow key={a.id} article={a} showDeck={false} />
@@ -327,7 +332,7 @@ export default async function Home() {
                 <p className="story-deck">{pickFeat.deck}</p>
                 <div className="byline">
                   <div className="ava">{(pickFeat.author || "xSypher").charAt(0)}</div>
-                  <span><b>{pickFeat.author || "xSypher Staff"}</b> <span className="dot">·</span> {timeAgo(pickFeat.age)}</span>
+                  <span><b>{pickFeat.author || "xSypher Staff"}</b> <span className="dot">·</span> {<RelativeTime dateTime={new Date(pickFeat.createdAt).toISOString()} />}</span>
                 </div>
               </article>
             )}
@@ -408,7 +413,7 @@ function CatSplit({ cat, articles, reverse = false }: { cat: string, articles: a
               <p className="story-deck">{feat.deck}</p>
               <div className="byline" style={{ marginTop: "12px" }}>
                 <div className="ava sm">{feat.author.charAt(0)}</div>
-                <span><b>{feat.author}</b> <span className="dot">·</span> {timeAgo(feat.age)} <span className="dot">·</span> {feat.mins} min read</span>
+                <span><b>{feat.author}</b> <span className="dot">·</span> {<RelativeTime dateTime={new Date(feat.createdAt).toISOString()} />} <span className="dot">·</span> {feat.mins} min read</span>
               </div>
             </div>
           </article>

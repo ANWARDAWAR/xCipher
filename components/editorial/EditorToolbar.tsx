@@ -85,6 +85,16 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
   // prompt chain could not be cancelled partway, validated nothing, showed no
   // preview, and was unusable on touch.
   const [mediaKind, setMediaKind] = useState<MediaKind | null>(null);
+  // Bumped each time the dialog opens so it remounts with empty fields. This is
+  // what lets InsertMediaDialog drop its reset-on-open effect: React discards
+  // the previous instance's state instead of the component clearing it by hand
+  // and forcing an extra render.
+  const [mediaSession, setMediaSession] = useState(0);
+
+  const openMedia = (kind: MediaKind) => {
+    setMediaSession((n) => n + 1);
+    setMediaKind(kind);
+  };
 
   const insertImage = useCallback(
     (v: { src: string; alt: string; caption: string; credit: string }) => {
@@ -232,12 +242,12 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
       {/* Group 4: Media & Embeds */}
       <ToolbarButton
         icon={ImagePlus}
-        onClick={() => setMediaKind('image')}
+        onClick={() => openMedia('image')}
         title="Insert image"
       />
       <ToolbarButton
         icon={MonitorPlay}
-        onClick={() => setMediaKind('video')}
+        onClick={() => openMedia('video')}
         title="Insert YouTube video"
       />
       <ToolbarButton
@@ -282,6 +292,7 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
       )}
 
       <InsertMediaDialog
+        key={mediaSession}
         kind={mediaKind ?? 'image'}
         open={mediaKind !== null}
         onClose={() => setMediaKind(null)}

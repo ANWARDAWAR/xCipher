@@ -7,7 +7,8 @@ import { ARTICLE_CARD_SELECT, LISTING_ARTICLE_LIMIT } from "@/lib/queries";
 import { CATS } from "@/lib/mockData";
 import StoryRow from "@/components/article/StoryRow";
 import Sidebar from "@/components/layout/Sidebar";
-import { getImgSrc, timeAgo } from "@/lib/utils";
+import { getImgSrc } from "@/lib/utils";
+import RelativeTime from "@/components/common/RelativeTime";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -70,7 +71,6 @@ export default async function CategoryPage({ params }: Props) {
 
   const feat = articles[0];
   const rest = articles.slice(1);
-  const featAgeMins = feat ? Math.max(0, Math.floor((Date.now() - new Date(feat.createdAt).getTime()) / 60000)) : 0;
 
   return (
     <div className="wrap">
@@ -80,7 +80,7 @@ export default async function CategoryPage({ params }: Props) {
         <p>{catDesc}</p>
         <div className="ch-meta">
           <span>{articles.length} {articles.length === 1 ? "story" : "stories"}</span>
-          <span>Updated {feat ? timeAgo(featAgeMins) : "recently"}</span>
+          <span>Updated {feat ? <RelativeTime dateTime={new Date(feat.createdAt).toISOString()} /> : "recently"}</span>
         </div>
       </section>
       
@@ -112,7 +112,7 @@ export default async function CategoryPage({ params }: Props) {
                 <p className="story-deck" style={{ fontSize: "15.5px" }}>{feat.deck}</p>
                 <div className="byline" style={{ marginTop: "12px" }}>
                   <div className="ava sm">{(feat.author || "xSypher").charAt(0)}</div>
-                  <span><b>{feat.author || "xSypher Staff"}</b> <span className="dot">·</span> {timeAgo(featAgeMins)} <span className="dot">·</span> 5 min read</span>
+                  <span><b>{feat.author || "xSypher Staff"}</b> <span className="dot">·</span> {<RelativeTime dateTime={new Date(feat.createdAt).toISOString()} />} <span className="dot">·</span> 5 min read</span>
                 </div>
               </div>
             </article>

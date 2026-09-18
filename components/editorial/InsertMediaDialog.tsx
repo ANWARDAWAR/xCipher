@@ -65,19 +65,24 @@ export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsert
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
 
-  // Reset between openings, otherwise the previous URL is still sitting there.
+  // Focus handling only. The fields are no longer cleared here: this component
+  // is mounted with a key that changes per opening, so React discards the old
+  // state and the form starts empty by construction. Clearing six pieces of
+  // state inside an effect triggered a second render pass on every open, which
+  // is what react-hooks/set-state-in-effect objects to.
   useEffect(() => {
-    if (open) {
-      setSrc(""); setAlt(""); setCaption(""); setCredit("");
-      setError(null); setTouched(false);
-      returnFocusRef.current = document.activeElement as HTMLElement | null;
-      // After paint, or the field is not yet in the document to focus.
-      requestAnimationFrame(() => firstFieldRef.current?.focus());
-    } else {
-      // Put focus back where it came from; losing it to <body> strands anyone
-      // navigating by keyboard.
+    if (!open) return;
+
+    // Remember where focus came from so it can be restored on close.
+    returnFocusRef.current = document.activeElement as HTMLElement | null;
+    // After paint, or the field is not yet in the document to focus.
+    const raf = requestAnimationFrame(() => firstFieldRef.current?.focus());
+
+    return () => {
+      cancelAnimationFrame(raf);
+      // Losing focus to <body> strands anyone navigating by keyboard.
       returnFocusRef.current?.focus?.();
-    }
+    };
   }, [open]);
 
   // Escape to close, and keep Tab inside the dialog while it is open.

@@ -59,7 +59,7 @@ export const revalidate = 300; // article
 
 export default async function ArticlePage({ params }: Props) {
   const { slug } = await params;
-  let article = await db.article.findUnique({ 
+  const article = await db.article.findUnique({ 
     where: { 
       slug, 
       status: "PUBLISHED",

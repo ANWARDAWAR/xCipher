@@ -105,7 +105,7 @@ export async function upsertArticle(data: any) {
     const categorySlug = (data.cat || "technology").toLowerCase().trim();
     
     // Find category
-    let category = await db.category.findUnique({
+    const category = await db.category.findUnique({
       where: { slug: categorySlug },
     });
 
@@ -115,7 +115,7 @@ export async function upsertArticle(data: any) {
 
     const uniqueSlug = await getUniqueSlug(data.slug || data.title, data.id);
 
-    let scheduledFor = data.scheduledFor ? new Date(data.scheduledFor) : null;
+    const scheduledFor = data.scheduledFor ? new Date(data.scheduledFor) : null;
 
 
     const sanitizedBodyHtml = sanitizeArticleHtml(data.bodyHtml);
