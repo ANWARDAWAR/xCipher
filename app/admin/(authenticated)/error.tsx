@@ -20,8 +20,8 @@ export default function AdminError({
     error.message?.includes("connect to the database");
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center bg-surface border border-line rounded-xl max-w-2xl mx-auto mt-12">
-      <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-500 rounded-full flex items-center justify-center mb-6">
+    <div role="alert" className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center bg-surface border border-line rounded-xl max-w-2xl mx-auto mt-12">
+      <div className="w-16 h-16 bg-bad/10 text-bad rounded-full flex items-center justify-center mb-6">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
           <line x1="12" y1="9" x2="12" y2="13" />
@@ -50,12 +50,12 @@ export default function AdminError({
       <div className="flex gap-4">
         <button
           onClick={() => reset()}
-          className="px-6 py-2 bg-accent text-white rounded-md font-medium hover:bg-accent-hover transition-colors"
+          className="px-6 py-2 bg-accent text-white rounded-md font-medium hover:bg-accent-deep transition-colors"
         >
           Try again
         </button>
         <Link 
-          href="/admin/drafts"
+          href="/admin"
           className="px-6 py-2 bg-surface-2 text-ink border border-line rounded-md font-medium hover:bg-surface-3 transition-colors"
         >
           Return to Dashboard
