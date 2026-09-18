@@ -117,8 +117,8 @@ export default async function AuditLogsPage(props: {
   return (
     <>
       <header className="mb-8">
-        <h1 className="text-3xl font-display font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight">Audit Logs</h1>
-        <p className="text-neutral-500 dark:text-neutral-400 mt-2 text-[15px]">System-wide security tracking, editorial activity, and access history.</p>
+        <h1 className="text-3xl font-display font-semibold text-ink tracking-tight">Audit Logs</h1>
+        <p className="text-muted mt-2 text-[15px]">System-wide security tracking, editorial activity, and access history.</p>
       </header>
       
       <AuditLogsClient 

@@ -42,7 +42,7 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
       case "PENDING":
         return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">Pending</span>;
       case "SPAM":
-        return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 border border-neutral-500/20">Spam</span>;
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted/10 text-muted border border-muted/25">Spam</span>;
       case "REJECTED":
         return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">Trash</span>;
       default:
@@ -51,14 +51,14 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
   };
 
   return (
-    <tr className="hover:bg-neutral-50/80 dark:hover:bg-white/5 transition-colors group">
+    <tr className="hover:bg-paper/80 dark:hover:bg-surface/5 transition-colors group">
       {/* Commenter (20%) */}
       <td className="py-4 px-4 align-top w-[20%]">
         <div className="flex flex-col">
-          <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate">{comment.displayName}</span>
-          <span className="text-xs text-neutral-500 dark:text-neutral-400 truncate mt-0.5">{comment.email || "No email"}</span>
+          <span className="text-sm font-medium text-ink truncate">{comment.displayName}</span>
+          <span className="text-xs text-muted truncate mt-0.5">{comment.email || "No email"}</span>
           <span className="inline-block mt-1">
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-neutral-300">
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-2 text-ink-2">
               IP: {comment.ipHash ? comment.ipHash.slice(0, 8) : "Unknown"}
             </span>
           </span>
@@ -67,7 +67,7 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
 
       {/* Content (45%) */}
       <td className="py-4 px-4 align-top w-[45%]">
-        <div className="text-sm text-neutral-700 dark:text-neutral-300 break-words mb-1 leading-relaxed">
+        <div className="text-sm text-ink-2 break-words mb-1 leading-relaxed">
           {expanded || comment.body.length <= 150 ? comment.body : `${comment.body.slice(0, 150)}...`}
           {comment.body.length > 150 && (
             <button 
@@ -78,7 +78,7 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
             </button>
           )}
         </div>
-        <div className="text-xs text-neutral-500 dark:text-neutral-500">
+        <div className="text-xs text-muted">
           on <a href={`/article/${comment.articleSlug}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-medium">/{comment.articleSlug}</a>
         </div>
         {comment.moderatorNote && (
@@ -93,10 +93,10 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
 
       {/* Date & Time (15%) */}
       <td className="py-4 px-4 align-top w-[15%]">
-        <div className="text-sm text-neutral-900 dark:text-neutral-100">
+        <div className="text-sm text-ink">
           {new Date(comment.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
         </div>
-        <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+        <div className="text-xs text-muted mt-0.5">
           {new Date(comment.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
         </div>
       </td>
@@ -146,7 +146,7 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 maxLength={200}
-                className="opacity-0 group-hover/actions:opacity-100 focus:opacity-100 absolute top-full right-0 mt-1 w-32 p-1.5 text-xs bg-white dark:bg-[#111317] border border-neutral-200 dark:border-white/10 rounded shadow-sm z-10 transition-opacity focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent text-neutral-900 dark:text-neutral-100"
+                className="opacity-0 group-hover/actions:opacity-100 focus:opacity-100 absolute top-full right-0 mt-1 w-32 p-1.5 text-xs bg-surface border border-line rounded shadow-sm z-10 transition-opacity focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent text-ink"
               />
             </div>
           ) : (
@@ -156,7 +156,7 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
                 <button
                   onClick={() => act("REJECTED")}
                   disabled={isPending}
-                  className="p-1.5 rounded-md text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 disabled:opacity-50 transition-colors"
+                  className="p-1.5 rounded-md text-faint hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 disabled:opacity-50 transition-colors"
                   aria-label="Move to Trash"
                   title="Move to Trash"
                 >

@@ -95,8 +95,8 @@ export default async function CommentsPage(props: {
     <>
       <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-display font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight">Comments</h1>
-          <p className="text-neutral-500 dark:text-neutral-400 mt-2 text-[15px]">Review reader discourse, moderate comments, and manage spam.</p>
+          <h1 className="text-3xl font-display font-semibold text-ink tracking-tight">Comments</h1>
+          <p className="text-muted mt-2 text-[15px]">Review reader discourse, moderate comments, and manage spam.</p>
         </div>
       </header>
 

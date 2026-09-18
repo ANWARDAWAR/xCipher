@@ -98,15 +98,15 @@ export default function CommentsQueueClient({
                 onClick={() => setTab(tab.param || "All")}
                 className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-full transition-colors whitespace-nowrap ${
                   isActive
-                    ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
-                    : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-white/5"
+                    ? "bg-ink text-paper"
+                    : "text-muted hover:bg-surface-2 dark:text-faint dark:hover:bg-surface/5"
                 }`}
               >
                 {tab.name}
                 <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
                   isActive 
-                    ? "bg-white/20 text-white dark:bg-black/20 dark:text-neutral-900" 
-                    : "bg-neutral-100 text-neutral-500 dark:bg-white/10 dark:text-neutral-400"
+                    ? "bg-surface/20 text-white dark:bg-black/20 dark:text-ink" 
+                    : "bg-surface-2 text-muted dark:bg-surface/10 dark:text-faint"
                 }`}>
                   {tab.count}
                 </span>
@@ -117,30 +117,30 @@ export default function CommentsQueueClient({
 
         {/* Search */}
         <form onSubmit={handleSearch} className="relative w-full md:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-faint" />
           <input
             type="text"
             placeholder="Search comments..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 text-sm bg-white dark:bg-[#111317] border border-neutral-200/80 dark:border-white/10 rounded-full focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent text-neutral-900 dark:text-neutral-100"
+            className="w-full pl-9 pr-4 py-1.5 text-sm bg-surface border border-line rounded-full focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent text-ink"
           />
         </form>
       </div>
 
-      <div className="bg-white dark:bg-[#111317] border border-neutral-200/80 dark:border-white/10 rounded-xl shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-surface border border-line rounded-xl shadow-sm overflow-hidden flex flex-col">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[900px]">
             <thead>
-              <tr className="border-b border-neutral-200/80 dark:border-white/10 bg-neutral-50/50 dark:bg-white/[0.02]">
-                <th className="py-3 px-4 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider w-[20%]">Commenter</th>
-                <th className="py-3 px-4 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider w-[45%]">Comment Content</th>
-                <th className="py-3 px-4 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider w-[15%]">Date & Time</th>
-                <th className="py-3 px-4 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider w-[10%]">Status</th>
-                <th className="py-3 px-4 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider w-[10%] text-right">Actions</th>
+              <tr className="border-b border-line bg-paper/50 dark:bg-surface/[0.02]">
+                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[20%]">Commenter</th>
+                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[45%]">Comment Content</th>
+                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[15%]">Date & Time</th>
+                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[10%]">Status</th>
+                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[10%] text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-200/80 dark:divide-white/10">
+            <tbody className="divide-y divide-line">
               {comments.length > 0 ? (
                 comments.map((c) => (
                   <CommentModerationRow key={c.id} comment={c} onUpdate={handleUpdate} />
@@ -148,7 +148,7 @@ export default function CommentsQueueClient({
               ) : (
                 <tr>
                   <td colSpan={5} className="py-12 text-center">
-                    <p className="text-neutral-500 dark:text-neutral-400 font-medium">No comments awaiting moderation.</p>
+                    <p className="text-muted font-medium">No comments awaiting moderation.</p>
                   </td>
                 </tr>
               )}

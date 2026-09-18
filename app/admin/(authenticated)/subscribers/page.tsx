@@ -62,8 +62,8 @@ export default async function SubscribersPage(props: {
     <>
       <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-display font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight">Subscribers</h1>
-          <p className="text-neutral-500 dark:text-neutral-400 mt-2 text-[15px]">Audience growth, newsletter distribution, and subscriber status.</p>
+          <h1 className="text-3xl font-display font-semibold text-ink tracking-tight">Subscribers</h1>
+          <p className="text-muted mt-2 text-[15px]">Audience growth, newsletter distribution, and subscriber status.</p>
         </div>
       </header>
 

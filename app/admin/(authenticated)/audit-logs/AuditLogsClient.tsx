@@ -104,21 +104,21 @@ export default function AuditLogsClient({
     <>
       <div className="mb-6 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
         <form onSubmit={handleSearch} className="relative w-full md:w-96">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-faint" />
           <input
             type="text"
             placeholder="Search actor, IP, or resource..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm bg-white dark:bg-[#111317] border border-neutral-200/80 dark:border-white/10 rounded-md focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent text-neutral-900 dark:text-neutral-100"
+            className="w-full pl-9 pr-4 py-2 text-sm bg-surface border border-line rounded-md focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent text-ink"
           />
         </form>
 
         <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-          <div className="flex items-center bg-white dark:bg-[#111317] border border-neutral-200/80 dark:border-white/10 rounded-md px-3 py-1.5 h-[38px]">
-            <Filter className="w-4 h-4 text-neutral-400 mr-2" />
+          <div className="flex items-center bg-surface border border-line rounded-md px-3 py-1.5 h-[38px]">
+            <Filter className="w-4 h-4 text-faint mr-2" />
             <select
-              className="bg-transparent text-sm focus:outline-none text-neutral-700 dark:text-neutral-300 min-w-[120px]"
+              className="bg-transparent text-sm focus:outline-none text-ink-2 min-w-[120px]"
               value={searchParams.get("category") || "All"}
               onChange={(e) => handleFilterChange("category", e.target.value)}
             >
@@ -130,9 +130,9 @@ export default function AuditLogsClient({
             </select>
           </div>
 
-          <div className="flex items-center bg-white dark:bg-[#111317] border border-neutral-200/80 dark:border-white/10 rounded-md px-3 py-1.5 h-[38px]">
+          <div className="flex items-center bg-surface border border-line rounded-md px-3 py-1.5 h-[38px]">
             <select
-              className="bg-transparent text-sm focus:outline-none text-neutral-700 dark:text-neutral-300 min-w-[100px]"
+              className="bg-transparent text-sm focus:outline-none text-ink-2 min-w-[100px]"
               value={searchParams.get("dateRange") || "All Time"}
               onChange={(e) => handleFilterChange("dateRange", e.target.value)}
             >
@@ -143,44 +143,44 @@ export default function AuditLogsClient({
             </select>
           </div>
 
-          <button className="flex items-center justify-center h-[38px] px-3 gap-2 text-sm font-medium border border-neutral-200/80 dark:border-white/10 bg-white dark:bg-[#111317] text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-white/5 rounded-md transition-colors whitespace-nowrap">
+          <button className="flex items-center justify-center h-[38px] px-3 gap-2 text-sm font-medium border border-line bg-surface text-ink-2 hover:bg-surface-2 rounded-md transition-colors whitespace-nowrap">
             <Download className="w-4 h-4" />
             Export Log
           </button>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-[#111317] border border-neutral-200/80 dark:border-white/10 rounded-xl shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-surface border border-line rounded-xl shadow-sm overflow-hidden flex flex-col">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
-              <tr className="border-b border-neutral-200/80 dark:border-white/10 bg-neutral-50/50 dark:bg-white/[0.02]">
-                <th className="py-3 px-4 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider w-[18%]">Timestamp</th>
-                <th className="py-3 px-4 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider w-[22%]">Actor</th>
-                <th className="py-3 px-4 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider w-[22%]">Action / Event</th>
-                <th className="py-3 px-4 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider w-[26%]">Resource / Target</th>
-                <th className="py-3 px-4 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider w-[12%] text-right">Details</th>
+              <tr className="border-b border-line bg-paper/50 dark:bg-surface/[0.02]">
+                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[18%]">Timestamp</th>
+                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[22%]">Actor</th>
+                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[22%]">Action / Event</th>
+                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[26%]">Resource / Target</th>
+                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[12%] text-right">Details</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-200/80 dark:divide-white/10">
+            <tbody className="divide-y divide-line">
               {logs.length > 0 ? (
                 logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-neutral-50/80 dark:hover:bg-white/5 transition-colors group">
+                  <tr key={log.id} className="hover:bg-paper/80 dark:hover:bg-surface/5 transition-colors group">
                     <td className="py-3 px-4 align-top">
-                      <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                      <div className="text-sm font-medium text-ink">
                         {getRelativeTime(log.createdAt)}
                       </div>
-                      <div className="text-xs text-neutral-500 dark:text-neutral-500 font-mono mt-0.5">
+                      <div className="text-xs text-muted font-mono mt-0.5">
                         {formatExactDate(log.createdAt)}
                       </div>
                     </td>
                     <td className="py-3 px-4 align-top">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center text-[10px] font-bold text-neutral-600 dark:text-neutral-400 uppercase flex-shrink-0">
+                        <div className="w-6 h-6 rounded-full bg-surface-3 flex items-center justify-center text-[10px] font-bold text-muted uppercase flex-shrink-0">
                           {log.user?.name ? log.user.name.slice(0, 2) : (log.user?.email ? log.user.email.slice(0, 2) : "SY")}
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate max-w-[160px]">
+                          <span className="text-sm font-medium text-ink truncate max-w-[160px]">
                             {log.user?.name || log.user?.email || "System"}
                           </span>
                         </div>
@@ -192,11 +192,11 @@ export default function AuditLogsClient({
                       </span>
                     </td>
                     <td className="py-3 px-4 align-top">
-                      <div className="text-sm text-neutral-700 dark:text-neutral-300">
+                      <div className="text-sm text-ink-2">
                         {log.entityType}
                       </div>
                       {log.entityId && (
-                        <div className="text-xs font-mono text-neutral-500 dark:text-neutral-500 mt-0.5">
+                        <div className="text-xs font-mono text-muted mt-0.5">
                           {log.entityId}
                         </div>
                       )}
@@ -204,7 +204,7 @@ export default function AuditLogsClient({
                     <td className="py-3 px-4 align-top text-right">
                       <button
                         onClick={() => setSelectedLog(log)}
-                        className="inline-flex items-center justify-center p-1.5 rounded-md text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors"
+                        className="inline-flex items-center justify-center p-1.5 rounded-md text-muted hover:text-ink dark:hover:text-ink hover:bg-surface-2 transition-colors"
                         aria-label="View Details"
                         title="View Details"
                       >
@@ -217,8 +217,8 @@ export default function AuditLogsClient({
                 <tr>
                   <td colSpan={5} className="py-12 text-center">
                     <div className="flex flex-col items-center justify-center">
-                      <Search className="w-8 h-8 text-neutral-300 dark:text-neutral-600 mb-3" />
-                      <p className="text-neutral-500 dark:text-neutral-400 font-medium">No audit logs found matching your criteria.</p>
+                      <Search className="w-8 h-8 text-faint mb-3" />
+                      <p className="text-muted font-medium">No audit logs found matching your criteria.</p>
                       <button 
                         onClick={() => router.push(pathname)}
                         className="mt-2 text-sm text-accent hover:underline"

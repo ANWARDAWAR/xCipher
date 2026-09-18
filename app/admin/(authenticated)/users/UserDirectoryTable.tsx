@@ -88,7 +88,7 @@ function RoleBadge({ role }: { role: Role }) {
     case "AUTHOR":
     default:
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium uppercase bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 border border-neutral-500/20">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium uppercase bg-muted/10 text-muted border border-muted/25">
           <PenTool className="w-3.5 h-3.5 shrink-0" />
           {role}
         </span>
