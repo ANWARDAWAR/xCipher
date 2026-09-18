@@ -202,7 +202,7 @@ export function buildArticleScope(actor: Actor): Record<string, unknown> {
     if (role === "REVIEWER") {
       return {
         OR: [
-          { status: { in: ["SUBMITTED", "REVIEW", "REVISION_REQUESTED", "APPROVED"] } },
+          { status: { in: ["SUBMITTED", "REVISION_REQUESTED", "APPROVED"] } },
           { status: "PUBLISHED" },
           { authorId: actor.authorId || "__none__" },
         ],

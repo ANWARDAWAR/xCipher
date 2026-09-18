@@ -69,7 +69,18 @@ const articleSchema = z.object({
   author: z.string().min(1, "Author is required"),
   role: z.string().optional(),
   featured: z.boolean().optional(),
-  status: z.enum(["PUBLISHED", "DRAFT", "REVIEW", "SUBMITTED", "REVISION_REQUESTED", "REJECTED"]),
+  // Mirrors ArticleStatus in prisma/schema.prisma, minus the deprecated REVIEW
+  // value, which is backfilled to SUBMITTED and never written.
+  status: z.enum([
+    "DRAFT",
+    "SUBMITTED",
+    "REVISION_REQUESTED",
+    "REJECTED",
+    "APPROVED",
+    "SCHEDULED",
+    "PUBLISHED",
+    "ARCHIVED",
+  ]),
   deck: z.string().optional(),
   img: z.string().optional().refine((url) => {
     if (!url) return true;

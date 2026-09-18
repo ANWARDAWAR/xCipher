@@ -258,7 +258,10 @@ enum Role {
 
 enum ArticleStatus {
   DRAFT
-  REVIEW            // Deprecated: kept to avoid destructive migration. Backfill to SUBMITTED.
+  REVIEW            // Deprecated: superseded by SUBMITTED. Backfilled by migration
+                    // 20260918000000_backfill_review_to_submitted. No row holds it and
+                    // no code writes it; the value stays only because dropping an enum
+                    // value in Postgres requires a destructive type rewrite.
   PUBLISHED
   SUBMITTED
   REVISION_REQUESTED
