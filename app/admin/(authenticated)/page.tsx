@@ -52,17 +52,22 @@ export default async function AdminDashboard() {
   let topStories: any[] = [];
   let latestDrafts: any[] = [];
 
-  let canViewAll = false;
-  let userFirstName = "Editor";
+  // Resolved outside the try below: redirect() signals by throwing NEXT_REDIRECT,
+  // so calling it inside a try/catch swallows the redirect and renders the page
+  // anyway. The layout already guards this route; this is defence in depth.
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/admin/login");
+  }
+
+  const userFirstName = user.name?.split(" ")[0] || "Editor";
+
+  // Depends only on the role, so it must not be left at a default if the
+  // queries below fail -- otherwise a DB error silently relabels an owner's
+  // dashboard as a personal one.
+  const canViewAll = authorize(user.role as any, "article.view.all");
 
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      redirect("/admin/login");
-    }
-
-    userFirstName = user.name?.split(" ")[0] || "Editor";
-
     const dbUser = await db.user.findUnique({ where: { id: user.id }, include: { authorProfile: true } });
     const authorId = dbUser?.authorProfile?.id;
     
@@ -71,8 +76,6 @@ export default async function AdminDashboard() {
       role: user.role as any,
       authorId: authorId || null
     };
-
-    canViewAll = authorize(actor.role, "article.view.all");
 
     const scopeWhere = buildArticleScope(actor);
     const statusCounts = await db.article.groupBy({
