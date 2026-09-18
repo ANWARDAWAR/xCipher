@@ -190,7 +190,7 @@ export default function LoginPage() {
               <path d="M15.5 15.5 24.5 24.5M24.5 15.5l-9 9" stroke="#f04552" strokeWidth="3.2" strokeLinecap="round" />
             </svg>
             <span className="text-2xl font-bold tracking-tight text-white font-[var(--f-ui)]">
-              x<span className="text-[#f04552]">Cipher</span>
+              x<span className="text-[#f04552]">Sypher</span>
             </span>
             <span className="px-2 py-0.5 text-[10px] font-semibold tracking-widest uppercase bg-white/5 border border-white/10 text-neutral-400 rounded">
               Console

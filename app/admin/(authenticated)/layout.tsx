@@ -68,7 +68,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <rect x="1" y="15" width="10" height="10" fill="currentColor" opacity=".35" />
             <path d="M15.5 15.5 24.5 24.5M24.5 15.5l-9 9" stroke="var(--accent)" strokeWidth="3.2" strokeLinecap="round" />
           </svg>
-          <span className="wm">x<span className="wm-x">Cipher</span></span>
+          <span className="wm">x<span className="wm-x">Sypher</span></span>
         </Link>
         <span className="cs-tag">Editorial Console</span>
         <span className="spacer"></span>

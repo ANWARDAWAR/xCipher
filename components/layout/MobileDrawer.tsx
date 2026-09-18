@@ -76,7 +76,7 @@ export default function MobileDrawer() {
               <rect x="1" y="15" width="10" height="10" fill="currentColor" opacity=".32" />
               <path d="M15.5 15.5 24.5 24.5M24.5 15.5l-9 9" stroke="var(--accent)" strokeWidth="3.2" strokeLinecap="round" />
             </svg>
-            <span className="wm" style={{ fontSize: "22px" }}>x<span className="wm-x">Cipher</span></span>
+            <span className="wm" style={{ fontSize: "22px" }}>x<span className="wm-x">Sypher</span></span>
           </Link>
           <button className="icon-btn" aria-label="Close menu" onClick={() => setIsOpen(false)}>
             <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round">

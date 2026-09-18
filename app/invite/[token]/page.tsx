@@ -45,7 +45,7 @@ export default async function InviteAcceptancePage({
               />
             </svg>
             <span className="wm">
-              x<span className="wm-x">Cipher</span>
+              x<span className="wm-x">Sypher</span>
             </span>
           </Link>
           <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] font-[family:var(--f-ui)] font-semibold mt-2">

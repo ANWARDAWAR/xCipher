@@ -115,7 +115,7 @@ export default function SiteHeader() {
               <rect x="1" y="15" width="10" height="10" fill="currentColor" opacity=".32" />
               <path d="M15.5 15.5 24.5 24.5M24.5 15.5l-9 9" stroke="var(--accent)" strokeWidth="3.2" strokeLinecap="round" />
             </svg>
-            <span className="wm">x<span className="wm-x">Cipher</span></span>
+            <span className="wm">x<span className="wm-x">Sypher</span></span>
             <span className="logo-sub">Tech · Reported<br />Daily since 2019</span>
           </Link>
           <nav className="primary-nav" id="primaryNav" aria-label="Primary"></nav>

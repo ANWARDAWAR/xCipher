@@ -40,7 +40,7 @@ export async function sendInvitationEmail({ to, role, inviteUrl }: SendInvitatio
       subject: "You have been invited to join xSypher",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #111; color: #fff; padding: 20px; border-radius: 8px;">
-          <h1 style="color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px;">x<span style="color: #666;">Cipher</span></h1>
+          <h1 style="color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px;">x<span style="color: #666;">Sypher</span></h1>
           <p style="font-size: 16px; color: #ccc;">Hello,</p>
           <p style="font-size: 16px; color: #ccc;">You have been invited to join the xSypher newsroom as a <strong>${role}</strong>.</p>
           <p style="font-size: 16px; color: #ccc;">Click the link below to set up your account. This link will expire in 48 hours.</p>
@@ -121,7 +121,7 @@ export async function sendNotificationEmail({
       subject: message.length > 90 ? `${message.slice(0, 87)}...` : message,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #111; color: #fff; padding: 20px; border-radius: 8px;">
-          <h1 style="color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px;">x<span style="color: #666;">Cipher</span></h1>
+          <h1 style="color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px;">x<span style="color: #666;">Sypher</span></h1>
           <p style="font-size: 16px; color: #ccc;">${greeting}</p>
           <p style="font-size: 16px; color: #ccc;">${safeMessage}</p>
           ${
