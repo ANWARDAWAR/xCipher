@@ -2,6 +2,7 @@ import { getCategories, getTags } from "@/app/actions/taxonomy";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { canViewTaxonomy } from "@/lib/permissions";
+import { authorize } from "@/lib/capabilities";
 import { Role } from "@prisma/client";
 import TaxonomyManager from "./TaxonomyManager";
 
@@ -48,9 +49,14 @@ export default async function TaxonomyPage() {
       </div>
 
       {/* Structured Two-Column Manager */}
+      {/* Merge is resolved here, on the server, from the same capability the
+          action itself checks. The client cannot grant it to itself by editing
+          a prop -- hiding the button is a courtesy, mergeCategories/mergeTags
+          re-authorize independently. */}
       <TaxonomyManager
         initialCategories={categories}
         initialTags={tags}
+        canMerge={authorize(user.role as Role, "taxonomy.merge")}
       />
     </div>
   );

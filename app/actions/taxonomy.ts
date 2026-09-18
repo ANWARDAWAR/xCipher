@@ -211,3 +211,175 @@ export async function deleteTag(id: string) {
     return { success: false, error: message };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Merge
+// ---------------------------------------------------------------------------
+// Deletion refuses to run while a term still has articles, which is correct --
+// it stops a category silently taking its articles' classification with it.
+// But it leaves no way out: the only remedy offered is "reassign them first",
+// and there is no bulk reassign. So duplicate terms ("AI", "A.I.",
+// "Artificial Intelligence") accumulate permanently, splitting archive pages
+// and category feeds between spellings.
+//
+// Merge is that missing exit. Move every article from the source onto the
+// target, then delete the now-empty source, as one transaction.
+
+async function logTaxonomyAudit(
+  action: string,
+  entityType: string,
+  entityId: string,
+  details: Record<string, unknown>
+) {
+  try {
+    const user = await getCurrentUser();
+    await db.auditLog.create({
+      data: { userId: user?.id || null, action, entityType, entityId, details },
+    });
+  } catch (e) {
+    // Never fail the merge because the audit write failed -- the merge is the
+    // user's intent, the log is a side effect.
+    console.error("Failed to log taxonomy audit event:", e);
+  }
+}
+
+export async function mergeCategories(sourceId: string, targetId: string) {
+  const user = await getCurrentUser();
+  // Merge is destructive in a way rename is not: it deletes a term and
+  // silently relabels every article under it. The capability map already
+  // declares taxonomy.merge separately and grants it to OWNER/ADMIN only --
+  // EDITOR holds create and rename but not this. Gated on that, not on
+  // taxonomy.create, so an editor cannot collapse the site's taxonomy.
+  if (!user || !authorize(user.role as Role, "taxonomy.merge")) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  if (sourceId === targetId) {
+    return { success: false, error: "Cannot merge a category into itself." };
+  }
+
+  try {
+    const [source, target] = await Promise.all([
+      db.category.findUnique({
+        where: { id: sourceId },
+        include: { _count: { select: { articles: true } } },
+      }),
+      db.category.findUnique({ where: { id: targetId } }),
+    ]);
+
+    if (!source) return { success: false, error: "Source category not found" };
+    if (!target) return { success: false, error: "Target category not found" };
+
+    const moved = source._count.articles;
+
+    // One transaction: a partial merge would leave articles split across a
+    // category the editor believes no longer exists.
+    await db.$transaction([
+      db.article.updateMany({
+        where: { categoryId: sourceId },
+        data: { categoryId: targetId },
+      }),
+      db.category.delete({ where: { id: sourceId } }),
+    ]);
+
+    await logTaxonomyAudit("taxonomy.category.merge", "Category", targetId, {
+      sourceId,
+      sourceName: source.name,
+      sourceSlug: source.slug,
+      targetName: target.name,
+      articlesMoved: moved,
+    });
+
+    revalidatePath("/admin/taxonomy");
+    revalidatePath("/admin/articles");
+    // The source slug is now a dead URL and the target's listing has grown.
+    revalidatePath(`/category/${source.slug}`);
+    revalidatePath(`/category/${target.slug}`);
+
+    return {
+      success: true,
+      movedCount: moved,
+      message: `Merged "${source.name}" into "${target.name}". ${moved} article${
+        moved === 1 ? "" : "s"
+      } reassigned.`,
+    };
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Failed to merge categories";
+    return { success: false, error: message };
+  }
+}
+
+export async function mergeTags(sourceId: string, targetId: string) {
+  const user = await getCurrentUser();
+  if (!user || !authorize(user.role as Role, "taxonomy.merge")) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  if (sourceId === targetId) {
+    return { success: false, error: "Cannot merge a tag into itself." };
+  }
+
+  try {
+    const [source, target] = await Promise.all([
+      db.tag.findUnique({
+        where: { id: sourceId },
+        include: { articles: { select: { id: true } } },
+      }),
+      db.tag.findUnique({
+        where: { id: targetId },
+        include: { articles: { select: { id: true } } },
+      }),
+    ]);
+
+    if (!source) return { success: false, error: "Source tag not found" };
+    if (!target) return { success: false, error: "Target tag not found" };
+
+    // Tags are many-to-many, so unlike categories this is not a field update.
+    // An article can already carry both tags; connecting it again would break
+    // the join table's unique constraint, so only connect the difference.
+    const alreadyTagged = new Set(target.articles.map((a) => a.id));
+    const toConnect = source.articles
+      .filter((a) => !alreadyTagged.has(a.id))
+      .map((a) => ({ id: a.id }));
+
+    await db.$transaction([
+      ...(toConnect.length > 0
+        ? [
+            db.tag.update({
+              where: { id: targetId },
+              data: { articles: { connect: toConnect } },
+            }),
+          ]
+        : []),
+      // Deleting the tag drops its join rows, which is what detaches the
+      // articles that were already on both.
+      db.tag.delete({ where: { id: sourceId } }),
+    ]);
+
+    await logTaxonomyAudit("taxonomy.tag.merge", "Tag", targetId, {
+      sourceId,
+      sourceName: source.name,
+      sourceSlug: source.slug,
+      targetName: target.name,
+      articlesMoved: toConnect.length,
+      articlesAlreadyTagged: source.articles.length - toConnect.length,
+    });
+
+    revalidatePath("/admin/taxonomy");
+    revalidatePath("/admin/articles");
+    revalidatePath(`/tag/${source.slug}`);
+    revalidatePath(`/tag/${target.slug}`);
+
+    return {
+      success: true,
+      movedCount: toConnect.length,
+      message: `Merged "${source.name}" into "${target.name}". ${
+        toConnect.length
+      } article${toConnect.length === 1 ? "" : "s"} reassigned.`,
+    };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to merge tags";
+    return { success: false, error: message };
+  }
+}

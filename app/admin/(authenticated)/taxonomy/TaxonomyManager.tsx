@@ -11,7 +11,8 @@ import {
   FileText, 
   Loader2, 
   X, 
-  Hash
+  Hash,
+  GitMerge,
 } from "lucide-react";
 import { 
   createCategory, 
@@ -19,7 +20,9 @@ import {
   deleteCategory, 
   createTag, 
   updateTag, 
-  deleteTag 
+  deleteTag,
+  mergeCategories,
+  mergeTags
 } from "@/app/actions/taxonomy";
 import { showToast } from "@/lib/utils";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -47,6 +50,7 @@ interface TagItem {
 interface TaxonomyManagerProps {
   initialCategories: CategoryItem[];
   initialTags: TagItem[];
+  canMerge: boolean;
 }
 
 function slugify(text: string) {
@@ -62,6 +66,7 @@ function slugify(text: string) {
 export default function TaxonomyManager({
   initialCategories,
   initialTags,
+  canMerge,
 }: TaxonomyManagerProps) {
   const [categories, setCategories] = useState<CategoryItem[]>(initialCategories);
   const [tags, setTags] = useState<TagItem[]>(initialTags);
@@ -94,6 +99,14 @@ export default function TaxonomyManager({
   // Delete dialog states
   const [deletingCat, setDeletingCat] = useState<CategoryItem | null>(null);
   const [deletingTag, setDeletingTag] = useState<TagItem | null>(null);
+
+  // Merge -- the term being merged AWAY is the source; the editor then picks
+  // the target it should be folded into.
+  const [mergingCat, setMergingCat] = useState<CategoryItem | null>(null);
+  const [mergeCatTarget, setMergeCatTarget] = useState("");
+  const [mergingTag, setMergingTag] = useState<TagItem | null>(null);
+  const [mergeTagTarget, setMergeTagTarget] = useState("");
+  const [isMerging, setIsMerging] = useState(false);
 
   // Filtered lists
   const filteredCategories = useMemo(() => {
@@ -300,6 +313,79 @@ export default function TaxonomyManager({
     }
   };
 
+  const closeMergeCat = () => {
+    setMergingCat(null);
+    setMergeCatTarget("");
+  };
+
+  const closeMergeTag = () => {
+    setMergingTag(null);
+    setMergeTagTarget("");
+  };
+
+  const handleConfirmMergeCat = async () => {
+    if (!mergingCat || !mergeCatTarget) return;
+    setIsMerging(true);
+    try {
+      const res = await mergeCategories(mergingCat.id, mergeCatTarget);
+      if (res.success) {
+        // The source is gone and its articles now sit under the target, so
+        // update both rows rather than re-fetching the whole page.
+        const moved = mergingCat._count?.articles ?? 0;
+        setCategories((prev) =>
+          prev
+            .filter((c) => c.id !== mergingCat.id)
+            .map((c) =>
+              c.id === mergeCatTarget
+                ? { ...c, _count: { articles: (c._count?.articles ?? 0) + moved } }
+                : c
+            )
+        );
+        showToast(res.message || `Merged "${mergingCat.name}".`);
+        closeMergeCat();
+      } else {
+        showToast(`Error: ${res.error || "Failed to merge categories"}`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to merge categories";
+      showToast(`Error: ${msg}`);
+    } finally {
+      setIsMerging(false);
+    }
+  };
+
+  const handleConfirmMergeTag = async () => {
+    if (!mergingTag || !mergeTagTarget) return;
+    setIsMerging(true);
+    try {
+      const res = await mergeTags(mergingTag.id, mergeTagTarget);
+      if (res.success) {
+        // Unlike categories the moved count is not the source's total --
+        // articles already carrying both tags are not added twice -- so trust
+        // the number the server actually reassigned.
+        const moved = res.movedCount ?? 0;
+        setTags((prev) =>
+          prev
+            .filter((t) => t.id !== mergingTag.id)
+            .map((t) =>
+              t.id === mergeTagTarget
+                ? { ...t, _count: { articles: (t._count?.articles ?? 0) + moved } }
+                : t
+            )
+        );
+        showToast(res.message || `Merged "${mergingTag.name}".`);
+        closeMergeTag();
+      } else {
+        showToast(`Error: ${res.error || "Failed to merge tags"}`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to merge tags";
+      showToast(`Error: ${msg}`);
+    } finally {
+      setIsMerging(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* 2-Column Responsive Layout */}
@@ -483,6 +569,17 @@ export default function TaxonomyManager({
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
+                              {canMerge && (
+                                <button
+                                  type="button"
+                                  onClick={() => setMergingCat(cat)}
+                                  className="p-1.5 text-muted hover:text-ink hover:bg-surface-2 rounded-md transition-colors"
+                                  title="Merge into another category"
+                                  aria-label={`Merge category ${cat.name} into another category`}
+                                >
+                                  <GitMerge className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => setDeletingCat(cat)}
@@ -685,6 +782,17 @@ export default function TaxonomyManager({
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
+                              {canMerge && (
+                                <button
+                                  type="button"
+                                  onClick={() => setMergingTag(tag)}
+                                  className="p-1.5 text-muted hover:text-ink hover:bg-surface-2 rounded-md transition-colors"
+                                  title="Merge into another tag"
+                                  aria-label={`Merge tag ${tag.name} into another tag`}
+                                >
+                                  <GitMerge className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => setDeletingTag(tag)}
@@ -899,6 +1007,157 @@ export default function TaxonomyManager({
         onConfirm={handleConfirmDeleteTag}
         onCancel={() => setDeletingTag(null)}
       />
+
+      {/* Merge dialogs.
+          Deliberately not ConfirmDialog: that component asks a yes/no question,
+          and a merge needs the editor to choose a destination first. The
+          confirm button stays disabled until they have. */}
+      {mergingCat && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="merge-cat-title"
+          onClick={closeMergeCat}
+        >
+          <div
+            className="w-full max-w-md bg-surface border border-line rounded-lg p-6 space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="space-y-1.5">
+              <h2
+                id="merge-cat-title"
+                className="text-lg font-bold text-ink font-[var(--f-ui)]"
+              >
+                Merge &ldquo;{mergingCat.name}&rdquo;
+              </h2>
+              <p className="text-sm text-muted font-[var(--f-ui)]">
+                Every article in this category moves to the one you choose, and
+                &ldquo;{mergingCat.name}&rdquo; is deleted. This cannot be undone.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label
+                htmlFor="merge-cat-target"
+                className="block text-xs font-semibold uppercase tracking-wide text-muted"
+              >
+                Move {mergingCat._count?.articles ?? 0} article
+                {(mergingCat._count?.articles ?? 0) === 1 ? "" : "s"} into
+              </label>
+              <select
+                id="merge-cat-target"
+                value={mergeCatTarget}
+                onChange={(e) => setMergeCatTarget(e.target.value)}
+                className="w-full px-3 py-2 bg-surface-2 border border-line rounded-md text-sm text-ink"
+              >
+                <option value="">Select a category&hellip;</option>
+                {categories
+                  .filter((c) => c.id !== mergingCat.id)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c._count?.articles ?? 0})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={closeMergeCat}
+                disabled={isMerging}
+                className="px-4 py-2 text-sm font-semibold text-muted hover:text-ink transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmMergeCat}
+                disabled={!mergeCatTarget || isMerging}
+                className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {isMerging && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {isMerging ? "Merging…" : "Merge & Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mergingTag && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="merge-tag-title"
+          onClick={closeMergeTag}
+        >
+          <div
+            className="w-full max-w-md bg-surface border border-line rounded-lg p-6 space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="space-y-1.5">
+              <h2
+                id="merge-tag-title"
+                className="text-lg font-bold text-ink font-[var(--f-ui)]"
+              >
+                Merge &ldquo;{mergingTag.name}&rdquo;
+              </h2>
+              <p className="text-sm text-muted font-[var(--f-ui)]">
+                Every article tagged &ldquo;{mergingTag.name}&rdquo; gains the tag
+                you choose, and &ldquo;{mergingTag.name}&rdquo; is deleted.
+                Articles already carrying both keep a single tag. This cannot be
+                undone.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label
+                htmlFor="merge-tag-target"
+                className="block text-xs font-semibold uppercase tracking-wide text-muted"
+              >
+                Merge into
+              </label>
+              <select
+                id="merge-tag-target"
+                value={mergeTagTarget}
+                onChange={(e) => setMergeTagTarget(e.target.value)}
+                className="w-full px-3 py-2 bg-surface-2 border border-line rounded-md text-sm text-ink"
+              >
+                <option value="">Select a tag&hellip;</option>
+                {tags
+                  .filter((t) => t.id !== mergingTag.id)
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t._count?.articles ?? 0})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={closeMergeTag}
+                disabled={isMerging}
+                className="px-4 py-2 text-sm font-semibold text-muted hover:text-ink transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmMergeTag}
+                disabled={!mergeTagTarget || isMerging}
+                className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {isMerging && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {isMerging ? "Merging…" : "Merge & Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
