@@ -3,9 +3,14 @@
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { authorize } from "@/lib/capabilities";
+import type { Role } from "@prisma/client";
 
+// Derived from the capability map rather than a hardcoded list, so it cannot
+// drift from the page guard or the sidebar link that gate the same feature.
 function canManageTaxonomy(role?: string) {
-  return ["OWNER", "ADMIN", "EDITOR"].includes(role || "");
+  if (!role) return false;
+  return authorize(role as Role, "taxonomy.create");
 }
 
 function slugify(text: string) {

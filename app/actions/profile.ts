@@ -2,6 +2,8 @@
 
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { authorize } from "@/lib/capabilities";
+import type { Role } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { sanitizeBioHtml, isValidSafeUrl, ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
 
@@ -23,7 +25,7 @@ export async function updateProfile(data: any) {
     const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || `user-${user.id.substring(0, 6)}`;
     
     // Only OWNER and ADMIN can edit `role` and `verifiedTitle`
-    const isEditorialAdmin = ["OWNER", "ADMIN"].includes(user.role);
+    const isEditorialAdmin = authorize(user.role as Role, "user.manage");
     let finalRole = role;
     let finalVerifiedTitle = verifiedTitle;
     

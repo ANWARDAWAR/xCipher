@@ -1,4 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
+import { authorize } from "@/lib/capabilities";
+import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import InviteForm from "./InviteForm";
@@ -14,7 +16,7 @@ export default async function InvitePage() {
     redirect("/admin/login");
   }
 
-  const isAuthorized = ["OWNER", "ADMIN"].includes(user.role);
+  const isAuthorized = authorize(user.role as Role, "user.invite");
 
   if (!isAuthorized) {
     return (

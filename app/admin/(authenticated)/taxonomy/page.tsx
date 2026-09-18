@@ -1,6 +1,8 @@
 import { getCategories, getTags } from "@/app/actions/taxonomy";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { canViewTaxonomy } from "@/lib/permissions";
+import { Role } from "@prisma/client";
 import TaxonomyManager from "./TaxonomyManager";
 
 export const metadata = {
@@ -9,7 +11,10 @@ export const metadata = {
 
 export default async function TaxonomyPage() {
   const user = await getCurrentUser();
-  if (!user || !["OWNER", "ADMIN", "EDITOR"].includes(user.role)) {
+  // Derived from the capability map, which is what the sidebar link already
+  // uses. A hardcoded list here would be a second source of truth, and the two
+  // drifting means either a dead nav link or an unguarded page.
+  if (!user || !canViewTaxonomy(user.role as Role)) {
     redirect("/admin");
   }
 
