@@ -32,14 +32,10 @@ const ALL_ROLES: Role[] = [
 ];
 
 describe("authorize", () => {
-  it("grants the owner every declared capability except permanent deletion", () => {
-    // OWNER is the top role in every respect but one: permanent deletion is
-    // deliberately withheld and left to ADMIN. An account that can grant
-    // itself any role should not also be the account that can erase the
-    // archive. Anything else missing here is a bug, not a policy.
-    const OWNER_EXCLUDED: ReadonlySet<Capability> = new Set<Capability>([
-      "article.delete",
-    ]);
+  it("grants the owner every declared capability", () => {
+    // OWNER now holds every capability including permanent deletion, by
+    // explicit product decision. Anything missing here is a bug, not a policy.
+    const OWNER_EXCLUDED: ReadonlySet<Capability> = new Set<Capability>([]);
 
     const every = new Set<Capability>();
     for (const caps of Object.values(ROLE_CAPABILITIES)) {
@@ -53,9 +49,11 @@ describe("authorize", () => {
     }
   });
 
-  it("withholds permanent article deletion from OWNER", () => {
-    expect(authorize("OWNER", "article.delete")).toBe(false);
-    // Cleaning up your own unpublished draft is not erasure, so it stays.
+  it("grants permanent article deletion to OWNER", () => {
+    // Reversal of an earlier restriction: the owner is accountable for the
+    // publication and needs takedown authority without escalating to another
+    // account. The audit trail, not the permission, is the control here.
+    expect(authorize("OWNER", "article.delete")).toBe(true);
     expect(authorize("OWNER", "article.delete.own.draft")).toBe(true);
   });
 
@@ -135,9 +133,11 @@ describe("authorize", () => {
       expect(authorize("MODERATOR", "article.view.all")).toBe(false);
     });
 
-    it("reserves permanent deletion for ADMIN alone", () => {
+    it("reserves permanent deletion for ADMIN and OWNER", () => {
+      // The list is asserted whole rather than per-role: that is what catches
+      // a capability being added to EDITOR or AUTHOR by accident.
       const canDelete = ALL_ROLES.filter((r) => authorize(r, "article.delete"));
-      expect(canDelete.sort()).toEqual(["ADMIN"]);
+      expect(canDelete.sort()).toEqual(["ADMIN", "OWNER"]);
     });
 
     it("does not let an EDITOR adjudicate submissions", () => {

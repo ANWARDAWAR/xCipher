@@ -845,14 +845,34 @@ body {
             color: var(--accent)
         }
 
+        /* The selected section reads as a solid chip, matching the Subscribe
+           button, rather than the tinted wash it used before. At 12px uppercase
+           a soft background was easy to mistake for hover, so the current
+           section was not reliably legible at a glance.
+
+           --on-accent is a flipping token (white on the light accent, near-black
+           on the brighter dark-mode accent), so the label keeps its contrast in
+           both themes instead of being pinned to white. */
         .navrow a.on {
-            color: var(--accent);
-            background: var(--accent-soft)
+            color: var(--on-accent);
+            background: var(--accent)
+        }
+
+        .navrow a.on:hover {
+            color: var(--on-accent);
+            background: var(--accent-deep)
         }
 
         .navrow .nr-home {
             color: var(--ink);
             font-weight: 700
+        }
+
+        /* Home carries its own colour, so it needs the fill restated or the
+           more specific rule above would lose to it when Home is selected. */
+        .navrow .nr-home.on {
+            color: var(--on-accent);
+            background: var(--accent)
         }
 
         .menu-btn {
@@ -3396,23 +3416,35 @@ body {
             color: var(--ink);
         }
 
+        /* Selected console section: solid fill, same language as the public
+           nav and the Subscribe button.
+
+           The two hardcoded rgba() values this replaces restated the accent per
+           theme, so the dark-mode variant had to be kept in sync by hand.
+           --accent and --on-accent already flip, so one rule now covers both
+           and cannot drift. */
         .cs-nav button.on,
         .cs-nav a.on:not(.cs-profile-card) {
-            background: rgba(217, 35, 50, 0.08);
-            color: var(--accent);
-            border-left: 3px solid var(--accent);
+            background: var(--accent);
+            color: var(--on-accent);
+            border-left: 3px solid var(--accent-deep);
             padding-left: 11px;
             font-weight: 600;
         }
 
-        [data-theme="dark"] .cs-nav button.on,
-        [data-theme="dark"] .cs-nav a.on:not(.cs-profile-card) {
-            background: rgba(240, 69, 82, 0.12);
-            color: var(--accent);
-            border-left: 3px solid var(--accent);
-            padding-left: 11px;
-            font-weight: 600;
+        .cs-nav button.on:hover,
+        .cs-nav a.on:not(.cs-profile-card):hover {
+            background: var(--accent-deep);
+            color: var(--on-accent);
         }
+
+        /* Icons inherit the on-accent foreground rather than staying accent
+           coloured, which would leave them invisible against the new fill. */
+        .cs-nav button.on svg,
+        .cs-nav a.on:not(.cs-profile-card) svg {
+            color: currentColor;
+        }
+
 
         .cs-main {
             overflow-y: auto;
@@ -5892,4 +5924,157 @@ select.ed-rail-input {
 @media (pointer: coarse) {
   .imd-btn { height: 42px; }
   .imd-input { min-height: 44px; }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Article media containment (desktop)
+   ───────────────────────────────────────────────────────────────────────────
+   On desktop the article is a grid whose text track is a fixed --w-prose. A
+   grid item's automatic minimum size is its content, so a wide image or a
+   many-column table widened the track and the block ran out past the column --
+   visibly right-shifted against the text above it. Mobile was unaffected
+   because .art-cols becomes display:block there, which is why this only showed
+   on the wide layout.
+
+   min-width:0 lets the track hold its declared width; the per-element rules
+   then make the content fit inside it rather than overflow.
+   ─────────────────────────────────────────────────────────────────────────── */
+.art-cols > * {
+  min-width: 0;
+}
+
+/* Every block that can carry intrinsic width, scaled to the column.
+   .tiptap-content is the wrapper the published article actually uses -- the
+   earlier rules named .prose and .ed-body but missed it, so none of them
+   applied to a reader's page. */
+.prose img,
+.prose video,
+.prose iframe,
+.prose figure,
+.prose figure img,
+.ed-body img,
+.ed-body figure,
+.ed-body figure img,
+.tiptap-content img,
+.tiptap-content video,
+.tiptap-content iframe,
+.tiptap-content figure,
+.tiptap-content figure img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Images fill the measure rather than sitting at their natural pixel width,
+   so a 400px screenshot and a 1600px one present at the same scale instead of
+   looking like two different design decisions. */
+.prose figure img,
+.tiptap-content figure img,
+.ed-body figure img {
+  display: block;
+  width: 100%;
+}
+
+/* Tables cannot be scaled down without becoming unreadable, so they scroll
+   inside their own box. The wrapper is what scrolls; the table keeps its
+   natural width so columns do not collapse.
+
+   display:block on a table is what makes overflow-x work at all -- a
+   table-layout box ignores it. The tradeoff is that the table no longer
+   stretches to fill, hence width:100% to restore that. */
+.prose table,
+.ed-body table,
+.tiptap-content table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  /* Momentum scrolling on touch, and a scrollbar that does not overlay the
+     last row on platforms that reserve space. */
+  scrollbar-gutter: stable;
+}
+
+/* Inside the scroll container the table behaves normally again. */
+.prose table > tbody,
+.prose table > thead,
+.tiptap-content table > tbody,
+.tiptap-content table > thead,
+.ed-body table > tbody,
+.ed-body table > thead {
+  width: 100%;
+}
+
+/* Cells need a floor or a long unbroken cell value collapses its neighbours
+   into unreadable slivers. */
+.prose th, .prose td,
+.tiptap-content th, .tiptap-content td,
+.ed-body th, .ed-body td {
+  min-width: 8ch;
+}
+
+/* Code blocks: same containment reasoning as tables. */
+.prose pre,
+.ed-body pre,
+.tiptap-content pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Loading skeletons
+   ───────────────────────────────────────────────────────────────────────────
+   Shaped like the content they stand in for, so the page does not reflow when
+   real data arrives. The shimmer is slow and low-contrast on purpose: a fast,
+   bright pulse reads as an error state, and this is usually on screen for well
+   under a second.
+   ─────────────────────────────────────────────────────────────────────────── */
+.sk {
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.sk::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--ink) 6%, transparent),
+    transparent
+  );
+  animation: sk-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes sk-sweep {
+  to { transform: translateX(100%); }
+}
+
+.sk-row {
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+@media (min-width: 700px) {
+  .sk-row { grid-template-columns: 180px 1fr; gap: 22px; }
+}
+
+.sk-thumb { aspect-ratio: 16 / 10; }
+
+.sk-lines { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+
+.sk-kicker { height: 9px; width: 34%; }
+.sk-title  { height: 15px; width: 100%; }
+.sk-short  { width: 62%; }
+.sk-meta   { height: 9px; width: 45%; margin-top: 3px; }
+
+/* Honour the same motion preference the rest of the site does: the shape still
+   communicates loading without anything moving. */
+@media (prefers-reduced-motion: reduce) {
+  .sk::after { animation: none; }
 }

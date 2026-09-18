@@ -18,6 +18,10 @@ const ARTICLE_DOMPURIFY_CONFIG = {
     'a', 'img', 'ul', 'ol', 'li', 'blockquote', 
     'code', 'pre', 'br', 'hr', 'span', 'div',
     'figure', 'figcaption', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'aside',
+    // Highlight. The editor has offered this mark all along, but it was absent
+    // here, so every highlight was silently dropped on save -- visible while
+    // writing, gone once published.
+    'mark', 's', 'strike', 'del', 'sup', 'sub',
     // Video embeds. Permitted only in the narrow sense enforced by the
     // afterSanitizeElements hook below, which drops any iframe whose src this
     // application did not generate. Allowing the tag here is necessary but not
@@ -28,6 +32,12 @@ const ARTICLE_DOMPURIFY_CONFIG = {
     'href', 'src', 'alt', 'title', 'class', 'target', 'rel',
     'data-type', 'data-callout-type', 'data-credit', 'data-youtube-video', 'data-youtube-id',
     'colspan', 'rowspan', 'colwidth',
+    // `style` is permitted only so text alignment survives: TextAlign renders
+    // as style="text-align: center", and without this every alignment was
+    // stripped on save. The afterSanitizeAttributes hook below rewrites the
+    // attribute down to the single alignment declaration, so no other CSS --
+    // position, background images, url() and so on -- can ride in with it.
+    'style',
     // iframe geometry and permissions. `allow` is restricted by the hook to a
     // fixed string; it is never taken from the input.
     'allow', 'allowfullscreen', 'frameborder', 'loading', 'width', 'height'
@@ -82,6 +92,31 @@ export function sanitizeArticleHtml(html: string | null | undefined): string {
     el.setAttribute?.('frameborder', '0');
     el.removeAttribute?.('srcdoc'); // never legitimate here
     el.removeAttribute?.('sandbox'); // ours to decide, not the document's
+  });
+
+  // Reduce `style` to at most a single text-align declaration.
+  //
+  // The attribute is allowed purely so TextAlign round-trips. Everything else a
+  // style attribute can carry -- positioning, url() references, custom
+  // properties -- is discarded here rather than trusted, so widening the
+  // allow-list for alignment does not widen it for anything else.
+  DOMPurify.addHook('afterSanitizeAttributes', function (node) {
+    const el = node as unknown as {
+      getAttribute?: (n: string) => string | null;
+      setAttribute?: (n: string, v: string) => void;
+      removeAttribute?: (n: string) => void;
+    };
+    if (typeof el?.getAttribute !== 'function') return;
+
+    const style = el.getAttribute('style');
+    if (style === null) return;
+
+    const match = /(?:^|;)\s*text-align\s*:\s*(left|right|center|justify)\s*(?:;|$)/i.exec(style);
+    if (match) {
+      el.setAttribute?.('style', `text-align: ${match[1].toLowerCase()}`);
+    } else {
+      el.removeAttribute?.('style');
+    }
   });
 
   // Custom hook to ensure all external links have target="_blank" and rel="noopener noreferrer"

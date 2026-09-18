@@ -69,17 +69,19 @@ const OWNER_CAPS: ReadonlySet<Capability> = new Set<Capability>([
   "article.create", "article.edit.own", "article.edit.any",
   "article.submit", "article.review",
   "article.publish", "article.schedule", "article.unpublish", "article.archive",
-  // No "article.delete". The owner governs the publication -- roles, settings,
-  // billing, the audit trail -- but permanent destruction of published work is
-  // deliberately not part of that. Removing the archive is an editorial
-  // operations task, and it belongs to ADMIN, who answers to the owner.
+  // "article.delete" was previously withheld here, on the reasoning that an
+  // account which can grant itself any role should not also be able to erase
+  // the archive. That restriction was reversed by explicit product decision:
+  // the owner is accountable for the publication and needs takedown authority
+  // without first escalating to another account.
   //
-  // This is the one capability where OWNER is intentionally narrower than
-  // ADMIN. It is a policy decision, not an oversight: an account that can
-  // grant itself any role should not also be the account that can erase the
-  // evidence. Escalating to ADMIN to delete leaves an audit-logged trail.
-  //
-  // Own unpublished drafts are still fair game -- that is cleanup, not erasure.
+  // The mitigation is the audit trail rather than the permission boundary --
+  // deleteArticlePermanently writes an AuditLog entry naming the actor, the
+  // article and the time, and that record survives the deletion. Note the
+  // limit of that: an owner can also grant themselves audit.export and has
+  // database access in practice, so this deters and documents rather than
+  // prevents.
+  "article.delete",
   "article.delete.own.draft", "article.feature",
   "taxonomy.create", "taxonomy.rename", "taxonomy.delete", "taxonomy.merge",
   "author.manage.all", "author.manage.own",
