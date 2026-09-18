@@ -29,17 +29,45 @@ export default async function Home() {
 
   if (!dbArticles.length) return <div className="wrap py-20 text-center">No articles published yet.</div>;
 
-  const mappedArticles = dbArticles.map((a, i) => ({
+  // homepagePlacement decides these, not array position.
+  //
+  // Previously `breaking` was `i === 1 || i === 2` and `pick` was
+  // `i === 0 || i === 3` -- the second and third newest articles were
+  // "breaking" purely by virtue of being second and third. Meanwhile the
+  // editor has offered a Homepage Placement select (Hero / Featured Stories /
+  // Editor's Picks) all along, the save action wrote it and the query selected
+  // it, and absolutely nothing read it. Editors were setting a control that
+  // did nothing, which is worse than not offering the control.
+  //
+  // Each section falls back to recency when no article carries that placement,
+  // so a newsroom that never touches the field sees the homepage it saw
+  // before.
+  const mappedArticles = dbArticles.map((a) => ({
     ...a,
     age: Math.floor((Date.now() - a.createdAt.getTime()) / 60000),
     mins: 5,
     alt: a.title,
-    breaking: i === 1 || i === 2,
-    pick: i === 0 || i === 3,
+    breaking: a.homepagePlacement === "featured",
+    pick: a.homepagePlacement === "picks",
   }));
 
-  const lead = mappedArticles.find((a) => a.featured) || mappedArticles[0];
-  const briefing = mappedArticles.filter((a) => a.breaking && a.slug !== lead.slug).slice(0, 4);
+  // Hero: an explicit hero placement wins, then the legacy `featured` flag,
+  // then the newest story.
+  const lead =
+    mappedArticles.find((a) => a.homepagePlacement === "hero") ||
+    mappedArticles.find((a) => a.featured) ||
+    mappedArticles[0];
+
+  // Featured strip: explicitly placed stories, topped up with recent ones if
+  // fewer than four are placed, so the row never renders half-empty.
+  const placedBriefing = mappedArticles.filter((a) => a.breaking && a.slug !== lead.slug);
+  const briefing = [
+    ...placedBriefing,
+    ...mappedArticles.filter(
+      (a) => a.slug !== lead.slug && !placedBriefing.some((p) => p.slug === a.slug)
+    ),
+  ].slice(0, 4);
+
   const latest = mappedArticles.filter((a) => a.slug !== lead.slug).slice(0, 7);
   
   const byCat = (slug: string) => mappedArticles.filter(a => a.category?.slug === slug);
@@ -53,13 +81,27 @@ export default async function Home() {
   
   const mostRead = [...mappedArticles].sort((a, b) => b.views - a.views).slice(0, 5).map((a, i) => ({ ...a, most: i + 1 }));
   const trending = mostRead.map((a, i) => ({ ...a, trend: i + 1 }));
-  const picks = mappedArticles.filter(a => a.pick);
+  // Same top-up rule as the featured strip: placement first, recency to fill.
+  const placedPicks = mappedArticles.filter((a) => a.pick);
+  const picks =
+    placedPicks.length >= 4
+      ? placedPicks
+      : [
+          ...placedPicks,
+          ...mappedArticles.filter(
+            (a) => a.slug !== lead.slug && !placedPicks.some((p) => p.slug === a.slug)
+          ),
+        ].slice(0, 4);
   const pickFeat = picks[0];
   const pickRest = picks.slice(1, 4);
 
   return (
     <>
-      <BreakingTicker articles={mappedArticles.filter(a => a.breaking)} />
+      {/* Uses the topped-up briefing list rather than the raw placement
+          filter: BreakingTicker returns null on an empty array, so keying it
+          off placement alone would make the ticker disappear entirely on any
+          site that has not set the field. */}
+      <BreakingTicker articles={briefing} />
       
       {/* Top Ad */}
       <div className="ad-wrap">
