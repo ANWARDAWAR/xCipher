@@ -284,3 +284,25 @@ enum CommentStatus {
   REJECTED
   SPAM
 }
+
+// A deliberately single-row table: the publication has one identity, so there
+// is no natural key and nothing to look up by. The id is pinned to a constant
+// so every read and write targets the same row and no second one can appear.
+//
+// Every field is nullable with a code-side fallback to the existing hardcoded
+// siteConfig. That means an install that never visits the settings page -- and
+// a database that has not been seeded -- behaves exactly as it does today.
+model PublicationSettings {
+  id              String   @id @default("singleton")
+  siteName        String?
+  tagline         String?
+  description     String?  @db.Text
+  logoUrl         String?
+  faviconUrl      String?
+  twitterHandle   String?
+  publisherName   String?
+  defaultOgImage  String?
+  footerText      String?  @db.Text
+  updatedAt       DateTime @updatedAt
+  updatedById     String?
+}

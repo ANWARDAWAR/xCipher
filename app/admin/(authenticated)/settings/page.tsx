@@ -6,6 +6,10 @@ import AccountForm from "./AccountForm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import AuthorProfileView from "@/components/author/AuthorProfileView";
+import PublicationForm from "./PublicationForm";
+import { getPublicationSettings, SETTINGS_ID } from "@/lib/settings";
+import { authorize } from "@/lib/capabilities";
+import type { Role } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +24,18 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
   const isEditing = searchParams.edit === "true";
 
   const dbUser = await db.user.findUnique({ where: { id: user.id } });
+
+  // Publication settings are OWNER/ADMIN only. Resolved here so the tab is not
+  // even rendered for an editor; the action re-checks independently.
+  const canEditPublication = authorize(user.role as Role, "settings.publication");
+  const publicationSettings = canEditPublication ? await getPublicationSettings() : null;
+  const storedPublication = canEditPublication
+    ? await db.publicationSettings
+        .findUnique({ where: { id: SETTINGS_ID } })
+        // The table is created empty by the migration and the row may genuinely
+        // not exist yet, so a miss is normal rather than an error.
+        .catch(() => null)
+    : null;
   const author = dbUser?.authorId 
     ? await db.author.findUnique({ where: { id: dbUser.authorId } }) 
     : null;
@@ -69,6 +85,11 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
           <Link href="/admin/settings?tab=account" className={`btn-cs ${currentTab === "account" ? "primary" : ""}`} style={{ borderRadius: "6px" }}>
             Account Security
           </Link>
+          {canEditPublication && (
+            <Link href="/admin/settings?tab=publication" className={`btn-cs ${currentTab === "publication" ? "primary" : ""}`} style={{ borderRadius: "6px" }}>
+              Publication
+            </Link>
+          )}
         </div>
       </div>
 
@@ -127,6 +148,13 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
           <h2 style={{ fontSize: "16px", marginBottom: "16px" }}>Account Security</h2>
           <AccountForm user={dbUser || user} />
         </>
+      )}
+
+      {currentTab === "publication" && canEditPublication && publicationSettings && (
+        <PublicationForm
+          settings={publicationSettings}
+          stored={storedPublication ?? {}}
+        />
       )}
     </>
   );

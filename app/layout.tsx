@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getPublicationSettings } from "@/lib/settings";
 import { Fraunces, Space_Grotesk, Newsreader } from 'next/font/google';
 import "./globals.css";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
@@ -21,10 +22,18 @@ const newsreader = Newsreader({
   display: 'swap',
 });
 
-export const metadata: Metadata = {
-  title: "xCipher — Independent Technology News, Analysis and Reviews",
-  description: "xCipher is an independent technology publication covering AI, cybersecurity, gadgets, software, programming, startups, gaming and the tech business — with original reporting, reviews and analysis.",
-};
+// Resolved per request from the settings row, falling back to the values that
+// used to be hardcoded here. generateMetadata rather than a static object
+// because the publication name is now editable without a deploy.
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getPublicationSettings();
+  return {
+    title: settings.tagline
+      ? `${settings.siteName} — ${settings.tagline}`
+      : settings.siteName,
+    description: settings.description,
+  };
+}
 
 export default function RootLayout({
   children,
