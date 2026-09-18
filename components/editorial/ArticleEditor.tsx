@@ -623,7 +623,7 @@ export default function ArticleEditor({
                 showToast("Overwriting with local changes...");
                 setTimeout(() => handleSave(getValues("status") || "DRAFT", true), 0);
               }
-            }} className="text-xs font-medium px-3 py-1.5 rounded-md bg-warn text-white hover:opacity-90 transition-colors shadow-sm">
+            }} className="text-xs font-medium px-3 py-1.5 rounded-md bg-warn text-on-status hover:opacity-90 transition-colors shadow-sm">
               Overwrite
             </button>
           </div>

@@ -17,9 +17,14 @@
   --accent: #d92332;
   --accent-deep: #b01726;
   --accent-soft: rgba(217, 35, 50, .07);
+  /* Status tokens. Each meets 4.5:1 against --surface, --paper and --surface-2,
+     and supports white foreground text when used as a solid fill. */
   --ok: #1a7f4e;
-  --warn: #b07818;
+  --warn: #845a12;
   --bad: #c0392b;
+  /* Foreground for text placed ON a solid status fill. Flips per theme because
+     the status tokens themselves flip from dark-on-light to light-on-dark. */
+  --on-status: #ffffff;
   --ink-panel: #14171b;
   --ink-panel-2: #1b1f24;
   --ink-panel-line: #2c323a;
@@ -67,6 +72,13 @@
   --accent: #f04552;
   --accent-deep: #ff6973;
   --accent-soft: rgba(240, 69, 82, .1);
+  /* Status tokens must be re-stated for dark: the light values are mid-tone and
+     fall to ~3.3:1 against the dark surfaces. These are lifted to read on dark
+     and are dark enough to carry black text when used as a solid fill. */
+  --ok: #3fbf7f;
+  --warn: #e0a53a;
+  --bad: #f2685c;
+  --on-status: #0c0d10;
   --grid-line: rgba(233, 231, 225, .05);
   
   --shadow-1: 0 1px 3px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .3);
@@ -92,6 +104,7 @@
   --color-ok: var(--ok);
   --color-warn: var(--warn);
   --color-bad: var(--bad);
+  --color-on-status: var(--on-status);
   --color-ink-panel: var(--ink-panel);
   --color-ink-panel-2: var(--ink-panel-2);
   --color-ink-panel-line: var(--ink-panel-line);
