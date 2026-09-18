@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Search, Filter, Download, Eye } from "lucide-react";
-import Pagination from "@/components/ui/Pagination";
+import Pagination from "@/components/console/Pagination";
 import AuditLogDetailsDialog from "./AuditLogDetailsDialog";
 
 interface AuditLog {
@@ -224,11 +224,11 @@ export default function AuditLogsClient({
           </table>
         </div>
         <Pagination
-          currentPage={currentPage}
-          totalPages={Math.ceil(totalLogs / itemsPerPage)}
-          totalItems={totalLogs}
-          itemsPerPage={itemsPerPage}
+          totalCount={totalLogs}
+          page={currentPage}
+          perPage={itemsPerPage}
           itemName="logs"
+          sizeParam="limit"
         />
       </div>
 

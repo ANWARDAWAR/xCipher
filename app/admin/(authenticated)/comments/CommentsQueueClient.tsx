@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import CommentModerationRow from "./CommentModerationRow";
-import Pagination from "@/components/ui/Pagination";
+import Pagination from "@/components/console/Pagination";
 
 interface Comment {
   id: string;
@@ -156,11 +156,12 @@ export default function CommentsQueueClient({
           </table>
         </div>
         <Pagination
-          currentPage={currentPage}
-          totalPages={Math.ceil(totalItems / itemsPerPage)}
-          totalItems={totalItems}
-          itemsPerPage={itemsPerPage}
+          totalCount={totalItems}
+          page={currentPage}
+          perPage={itemsPerPage}
           itemName="comments"
+          sizeParam="limit"
+          pageSizes={[20, 50, 100]}
         />
       </div>
     </div>

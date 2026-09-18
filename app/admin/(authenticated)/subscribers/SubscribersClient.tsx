@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Search, Plus, Download, MoreHorizontal, RefreshCw, Trash2, MailX } from "lucide-react";
-import Pagination from "@/components/ui/Pagination";
+import Pagination from "@/components/console/Pagination";
 import { showToast } from "@/lib/utils"; // Assuming you have a toast helper
 
 interface Subscriber {
@@ -217,11 +217,11 @@ export default function SubscribersClient({
         {/* Pagination stick to bottom */}
         <div className="mt-auto">
           <Pagination
-            currentPage={currentPage}
-            totalPages={Math.ceil(totalItems / itemsPerPage)}
-            totalItems={totalItems}
-            itemsPerPage={itemsPerPage}
+            totalCount={totalItems}
+            page={currentPage}
+            perPage={itemsPerPage}
             itemName="subscribers"
+            sizeParam="limit"
           />
         </div>
       </div>

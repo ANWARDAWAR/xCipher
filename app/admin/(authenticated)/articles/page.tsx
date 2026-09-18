@@ -236,6 +236,7 @@ export default async function AdminArticles({ searchParams }: PageProps) {
           totalCount={totalCount}
           page={pageParam}
           perPage={perPage}
+          itemName="articles"
         />
       </Suspense>
     </div>

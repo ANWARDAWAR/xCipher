@@ -13,11 +13,25 @@ interface PaginationProps {
   totalCount: number;
   page: number;
   perPage: number;
+  /** Plural noun for the result count, e.g. "articles", "subscribers". */
+  itemName?: string;
+  /** Query param carrying the page size. The article index uses "per"; the
+   *  audit-log, comments and subscriber pages read "limit". */
+  sizeParam?: string;
+  /** Page sizes offered in the selector. */
+  pageSizes?: number[];
 }
 
-const PAGE_SIZES = [25, 50, 100];
+const DEFAULT_PAGE_SIZES = [25, 50, 100];
 
-export default function Pagination({ totalCount, page, perPage }: PaginationProps) {
+export default function Pagination({
+  totalCount,
+  page,
+  perPage,
+  itemName = "results",
+  sizeParam = "per",
+  pageSizes = DEFAULT_PAGE_SIZES,
+}: PaginationProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -47,7 +61,7 @@ export default function Pagination({ totalCount, page, perPage }: PaginationProp
   };
 
   const changePageSize = (size: number) => {
-    updateParams({ per: String(size), page: "" });
+    updateParams({ [sizeParam]: String(size), page: "" });
   };
 
   // Generate page numbers to display (always show first, last, and 2 around current)
@@ -81,7 +95,7 @@ export default function Pagination({ totalCount, page, perPage }: PaginationProp
       {/* Result count */}
       <div>
         Showing <strong className="text-ink font-semibold">{start}–{end}</strong> of{" "}
-        <strong className="text-ink font-semibold">{totalCount.toLocaleString()}</strong> articles
+        <strong className="text-ink font-semibold">{totalCount.toLocaleString()}</strong> {itemName}
       </div>
 
       {/* Page navigation buttons */}
@@ -163,9 +177,9 @@ export default function Pagination({ totalCount, page, perPage }: PaginationProp
           value={perPage}
           onChange={(e) => changePageSize(Number(e.target.value))}
           className="bg-surface border border-line rounded-lg text-xs font-medium text-ink px-2.5 py-1.5 focus:outline-none focus:border-accent transition-colors cursor-pointer"
-          aria-label="Articles per page"
+          aria-label={`${itemName} per page`}
         >
-          {PAGE_SIZES.map((s) => (
+          {pageSizes.map((s) => (
             <option key={s} value={s}>
               {s}
             </option>
