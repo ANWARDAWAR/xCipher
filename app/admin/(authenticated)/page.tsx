@@ -309,7 +309,7 @@ export default async function AdminDashboard() {
                         </Link>
                         {story.slug && (
                           <Link
-                            href={`/${story.slug}`}
+                            href={`/article/${story.slug}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1 text-muted hover:text-ink rounded hover:bg-surface-3 transition-colors"

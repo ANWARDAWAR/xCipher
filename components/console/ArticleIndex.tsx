@@ -5,7 +5,7 @@ import { authorize } from "@/lib/capabilities";
 import StatusChip from "./StatusChip";
 import { fmtViews } from "@/lib/utils";
 import ArticleActionMenu from "../editorial/ArticleActionMenu";
-import { Eye, ExternalLink, Edit3, FileText, Plus } from "lucide-react";
+import { Eye, ExternalLink, Edit3, FileText, Plus, Clock } from "lucide-react";
 
 interface ArticleRow {
   id: string;
@@ -66,6 +66,16 @@ function relativeTime(date: Date | string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+/** Absolute date for scheduled/published times, where "in 3 days" is not enough. */
+function absoluteDateTime(date: Date | string): string {
+  return new Date(date).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export default function ArticleIndex({
   articles,
   actor,
@@ -96,8 +106,11 @@ export default function ArticleIndex({
   }
 
   return (
-    <div className="overflow-x-auto bg-surface border border-line rounded-xl shadow-xs mt-4">
-      <table className="w-full border-collapse text-left text-sm" aria-label="Articles">
+    <div className="bg-surface border border-line rounded-xl shadow-xs mt-4 overflow-hidden">
+      {/* Table from md up. Below that the same data renders as stacked rows:
+          a five-column table on a 375px screen forces horizontal scrolling,
+          which hides the actions column exactly where it is hardest to find. */}
+      <table className="w-full border-collapse text-left text-sm hidden md:table" aria-label="Articles">
         <caption className="sr-only">Article list</caption>
         <thead>
           <tr className="border-b border-line bg-surface-2/60">
@@ -169,10 +182,20 @@ export default function ArticleIndex({
                       <span className="text-faint">·</span>
                       <span className="text-[11px]">{relativeTime(a.updatedAt)}</span>
 
-                      {/* Mobile status — rendered ONLY on mobile screens */}
-                      <span className="md:hidden ml-auto">
-                        <StatusChip status={a.status} />
-                      </span>
+                      {/* A scheduled article's whole point is the date it goes
+                          live, and "in 3 days" is not precise enough to trust a
+                          publication slot to. Shown absolute, and only for the
+                          one status where it matters. */}
+                      {a.status === "SCHEDULED" && a.scheduledFor && (
+                        <>
+                          <span className="text-faint">·</span>
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-warn">
+                            <Clock className="w-3 h-3" aria-hidden="true" />
+                            <span>Goes live {absoluteDateTime(a.scheduledFor)}</span>
+                          </span>
+                        </>
+                      )}
+
                     </div>
                   </div>
                 </td>
@@ -200,7 +223,7 @@ export default function ArticleIndex({
                     {a.status === "PUBLISHED" && (
                       <Link
                         className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-surface-3 border border-transparent hover:border-line transition-colors"
-                        href={`/${a.slug}`}
+                        href={`/article/${a.slug}`}
                         target="_blank"
                         title="View on site"
                         aria-label={`View "${a.title}" on site`}
@@ -231,6 +254,93 @@ export default function ArticleIndex({
           })}
         </tbody>
       </table>
+
+      {/* ── Stacked rows, below md ──────────────────────────────────────────
+          Same data, same actions, no horizontal scroll. Thumbnail and title sit
+          on one line; status and metadata wrap beneath. */}
+      <ul className="md:hidden divide-y divide-line">
+        {articles.map((a) => {
+          const authorName = a.authorModel?.name || a.author || "Unknown";
+          const categoryName = a.category?.name || "";
+
+          return (
+            <li key={a.id} className="p-3.5">
+              <div className="flex gap-3">
+                {a.img ? (
+                  <div className="w-16 h-11 rounded-lg overflow-hidden border border-line bg-surface-2 shrink-0 relative">
+                    <Image src={a.img} alt="" fill className="object-cover" sizes="64px" />
+                  </div>
+                ) : (
+                  <div className="w-16 h-11 rounded-lg border border-line bg-surface-2 flex items-center justify-center font-bold text-sm text-muted shrink-0">
+                    {(a.title || "?").charAt(0).toUpperCase()}
+                  </div>
+                )}
+
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/admin/editor/${a.id}`}
+                    className="text-sm font-semibold text-ink hover:text-accent transition-colors line-clamp-2 block leading-snug"
+                  >
+                    {a.title || "Untitled article"}
+                  </Link>
+
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-xs text-muted">
+                    <StatusChip status={a.status} />
+                    <span className="font-medium text-ink-2">{authorName}</span>
+                    {categoryName && (
+                      <>
+                        <span className="text-faint">·</span>
+                        <span className="text-[11px]">{categoryName}</span>
+                      </>
+                    )}
+                    <span className="text-faint">·</span>
+                    <span className="text-[11px]">{relativeTime(a.updatedAt)}</span>
+                    {a.status === "PUBLISHED" && (
+                      <>
+                        <span className="text-faint">·</span>
+                        <span className="inline-flex items-center gap-1 text-[11px] tabular-nums">
+                          <Eye className="w-3 h-3" aria-hidden="true" />
+                          {fmtViews(a.views || 0)}
+                        </span>
+                      </>
+                    )}
+                  </div>
+
+                  {a.status === "SCHEDULED" && a.scheduledFor && (
+                    <div className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-medium text-warn">
+                      <Clock className="w-3 h-3" aria-hidden="true" />
+                      <span>Goes live {absoluteDateTime(a.scheduledFor)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-start gap-1 shrink-0">
+                  {a.status === "PUBLISHED" && (
+                    <Link
+                      className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-surface-3 border border-transparent hover:border-line transition-colors"
+                      href={`/article/${a.slug}`}
+                      target="_blank"
+                      aria-label={`View "${a.title}" on site`}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </Link>
+                  )}
+                  <ArticleActionMenu
+                    id={a.id}
+                    title={a.title}
+                    status={a.status}
+                    canArchive={authorize(actor.role, "article.archive")}
+                    canDeletePermanently={authorize(actor.role, "article.delete")}
+                    canDeleteOwnDraft={
+                      authorize(actor.role, "article.delete.own.draft") && a.authorId === actor.authorId
+                    }
+                  />
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
