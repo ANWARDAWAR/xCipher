@@ -123,7 +123,7 @@ function UserAvatar({ user }: { user: UserProfile }) {
         <img
           src={avatarUrl}
           alt={user.name || user.email || "User Avatar"}
-          className="w-10 h-10 rounded-full object-cover border border-line ring-1 ring-black/5 dark:ring-white/10"
+          className="w-10 h-10 shrink-0 aspect-square rounded-full object-cover border border-line ring-1 ring-black/5 dark:ring-white/10"
           onError={() => setImgError(true)}
         />
         {user.authorProfile && (
@@ -140,7 +140,7 @@ function UserAvatar({ user }: { user: UserProfile }) {
 
   return (
     <div className="relative shrink-0">
-      <div className="w-10 h-10 rounded-full bg-surface-2 border border-line flex items-center justify-center font-bold text-xs text-ink select-none shadow-2xs">
+      <div className="w-10 h-10 shrink-0 aspect-square rounded-full bg-surface-2 border border-line flex items-center justify-center font-bold text-xs text-ink select-none shadow-2xs">
         {initials}
       </div>
       {user.authorProfile && (

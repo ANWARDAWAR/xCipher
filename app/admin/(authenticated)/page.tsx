@@ -6,6 +6,7 @@ import { buildArticleScope, authorize } from "@/lib/capabilities";
 import { redirect } from "next/navigation";
 import { Role } from "@prisma/client";
 import StatusChip from "@/components/console/StatusChip";
+import AuthorStatusBoard, { type BoardArticle } from "@/components/console/AuthorStatusBoard";
 import { 
   Plus, 
   FileText, 
@@ -58,6 +59,10 @@ export default async function AdminDashboard() {
   let unclaimedReview = 0;
   let changesRequested = 0;
   let scheduledCount = 0;
+  // Author board: their own work, grouped by state. Only populated for roles
+  // without article.view.all -- everyone else gets the newsroom-wide view.
+  let boardArticles: BoardArticle[] = [];
+  const boardCounts: Record<string, number> = {};
 
   // Resolved outside the try below: redirect() signals by throwing NEXT_REDIRECT,
   // so calling it inside a try/catch swallows the redirect and renders the page
@@ -141,6 +146,51 @@ export default async function AdminDashboard() {
         category: { select: { name: true, slug: true } },
       },
     });
+
+    // Author board. Scoped by buildArticleScope like every other console
+    // query, so this cannot become a hole that shows one author another's
+    // drafts -- the filter is derived from the actor, not from the UI.
+    if (!canViewAll) {
+      for (const group of statusCounts) {
+        boardCounts[group.status] = group._count.id;
+      }
+
+      boardArticles = await db.article.findMany({
+        where: {
+          ...scopeWhere,
+          status: { in: ["REVISION_REQUESTED", "DRAFT", "SUBMITTED", "PUBLISHED"] },
+          // "All published" is part of an author's scope so they can read the
+          // site, but this board is about *their* desk. Without this the
+          // Published column would fill with other people's work.
+          ...(authorId ? { authorId } : {}),
+        },
+        orderBy: { updatedAt: "desc" },
+        // 5 per column at most; the column footer links to the full list.
+        take: 20,
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          updatedAt: true,
+          publishedAt: true,
+          views: true,
+          category: { select: { name: true } },
+        },
+      });
+
+      // Recount from the author's own articles: statusCounts includes every
+      // published article in the publication, which would overstate the
+      // Published column against the list beneath it.
+      if (authorId) {
+        const ownCounts = await db.article.groupBy({
+          by: ["status"],
+          where: { authorId },
+          _count: { id: true },
+        });
+        for (const key of Object.keys(boardCounts)) delete boardCounts[key];
+        for (const group of ownCounts) boardCounts[group.status] = group._count.id;
+      }
+    }
 
     latestDrafts = await db.article.findMany({
       where: whereDraft,
@@ -348,6 +398,28 @@ export default async function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── Author status board ──────────────────────────────────────
+          Shown only to roles without article.view.all. An author cannot act on
+          publication-wide totals; what they need is their own work sorted by
+          who owes the next move. */}
+      {!canViewAll && (
+        <div className="pt-1">
+          <div className="flex items-baseline justify-between gap-3 mb-5">
+            <h2 className="text-sm font-bold text-ink tracking-wide uppercase font-[var(--f-ui)] flex items-center gap-2">
+              <span className="w-1.5 h-3.5 bg-accent rounded-sm" />
+              Your desk
+            </h2>
+            <Link
+              href="/admin/articles"
+              className="text-xs font-semibold text-muted hover:text-ink transition-colors"
+            >
+              All your stories →
+            </Link>
+          </div>
+          <AuthorStatusBoard articles={boardArticles} counts={boardCounts} />
+        </div>
+      )}
 
       {/* ── Editorial Stories Workbench (Split Cards) ────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
