@@ -35,6 +35,8 @@ export default function FilterBar({
   const statusParam = searchParams.get("status") || "";
   const authorParam = searchParams.get("author") || "";
   const categoryParam = searchParams.get("category") || "";
+  const fromParam = searchParams.get("from") || "";
+  const toParam = searchParams.get("to") || "";
 
   const [searchValue, setSearchValue] = useState(query);
   const [prevQuery, setPrevQuery] = useState(query);
@@ -104,6 +106,12 @@ export default function FilterBar({
     const catLabel = categories.find((c) => c.value === categoryParam)?.label || categoryParam;
     activeFilters.push({ key: "category", param: "category", label: `Category: ${catLabel}` });
   }
+  if (fromParam) {
+    activeFilters.push({ key: "from", param: "from", label: `From: ${fromParam}` });
+  }
+  if (toParam) {
+    activeFilters.push({ key: "to", param: "to", label: `To: ${toParam}` });
+  }
 
   const clearFilter = (param: string, value?: string) => {
     if (param === "status" && value) {
@@ -115,7 +123,7 @@ export default function FilterBar({
   };
 
   const clearAll = () => {
-    updateParams({ q: null, status: null, author: null, category: null });
+    updateParams({ q: null, status: null, author: null, category: null, from: null, to: null });
     setSearchValue("");
   };
 
@@ -215,6 +223,38 @@ export default function FilterBar({
               ))}
             </select>
           )}
+
+          {/* Date range. Bound to each other so the pair cannot invert: the start
+              input cannot exceed the end, and the end cannot precede the start. */}
+          <div className="flex items-center gap-1.5">
+            <label htmlFor="filter-from" className="sr-only">
+              Updated on or after
+            </label>
+            <input
+              id="filter-from"
+              type="date"
+              value={fromParam}
+              max={toParam || undefined}
+              onChange={(e) => updateParams({ from: e.target.value || null })}
+              className="bg-surface border border-line rounded-lg text-xs font-medium text-ink px-2.5 py-2 focus:outline-none focus:border-accent transition-colors cursor-pointer"
+              aria-label="Updated on or after"
+            />
+            <span className="text-xs text-muted" aria-hidden="true">
+              to
+            </span>
+            <label htmlFor="filter-to" className="sr-only">
+              Updated on or before
+            </label>
+            <input
+              id="filter-to"
+              type="date"
+              value={toParam}
+              min={fromParam || undefined}
+              onChange={(e) => updateParams({ to: e.target.value || null })}
+              className="bg-surface border border-line rounded-lg text-xs font-medium text-ink px-2.5 py-2 focus:outline-none focus:border-accent transition-colors cursor-pointer"
+              aria-label="Updated on or before"
+            />
+          </div>
 
           {activeFilters.length > 0 && (
             <button

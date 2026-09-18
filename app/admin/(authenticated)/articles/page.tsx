@@ -66,6 +66,8 @@ export default async function AdminArticles({ searchParams }: PageProps) {
   const statusParam = typeof resolvedParams.status === "string" ? resolvedParams.status : "";
   const authorParam = typeof resolvedParams.author === "string" ? resolvedParams.author : "";
   const categoryParam = typeof resolvedParams.category === "string" ? resolvedParams.category : "";
+  const fromParam = typeof resolvedParams.from === "string" ? resolvedParams.from : "";
+  const toParam = typeof resolvedParams.to === "string" ? resolvedParams.to : "";
   const sortParam = typeof resolvedParams.sort === "string" ? resolvedParams.sort : "updated";
   const dirParam = typeof resolvedParams.dir === "string" && resolvedParams.dir === "asc" ? "asc" : "desc";
   const pageParam = typeof resolvedParams.page === "string" ? Math.max(1, parseInt(resolvedParams.page, 10) || 1) : 1;
@@ -97,6 +99,32 @@ export default async function AdminArticles({ searchParams }: PageProps) {
   // Category filter
   if (categoryParam) {
     filterConditions.push({ categoryId: categoryParam });
+  }
+
+  // Date range, applied to the field currently being sorted on where that field
+  // is a date, otherwise to updatedAt. Parsed defensively: an unparseable date
+  // is ignored rather than throwing, because it arrives from the URL and a user
+  // can type anything there.
+  //
+  // `to` is widened to the end of that day. A range of 2026-01-05 to 2026-01-05
+  // should mean "that whole day", not "the single instant at midnight", which
+  // would match nothing.
+  const dateFilter: { gte?: Date; lte?: Date } = {};
+  if (fromParam) {
+    const from = new Date(`${fromParam}T00:00:00.000Z`);
+    if (!Number.isNaN(from.getTime())) dateFilter.gte = from;
+  }
+  if (toParam) {
+    const to = new Date(`${toParam}T23:59:59.999Z`);
+    if (!Number.isNaN(to.getTime())) dateFilter.lte = to;
+  }
+  if (dateFilter.gte || dateFilter.lte) {
+    // Guard against an inverted range: the inputs are bound to each other in the
+    // UI, but the URL can still be edited by hand, and gte > lte silently
+    // returns nothing, which reads as a bug rather than as empty input.
+    if (!dateFilter.gte || !dateFilter.lte || dateFilter.gte <= dateFilter.lte) {
+      filterConditions.push({ updatedAt: dateFilter });
+    }
   }
 
   // Search — case-insensitive across title, deck, slug, author name
@@ -183,7 +211,7 @@ export default async function AdminArticles({ searchParams }: PageProps) {
       ),
     ]);
 
-  const isFiltered = !!(query || statusParam || authorParam || categoryParam);
+  const isFiltered = !!(query || statusParam || authorParam || categoryParam || fromParam || toParam);
   const isAuthorOnly = actor.role === "AUTHOR";
   const pageTitle = isAuthorOnly ? "My Articles" : "Articles";
 
