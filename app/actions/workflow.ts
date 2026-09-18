@@ -9,6 +9,14 @@ const REVIEWER_ROLES = (Object.keys(ROLE_CAPABILITIES) as Role[]).filter(role =>
   authorize(role, "article.review")
 );
 import { validateTransition, TRANSITIONS, ArticleForTransition } from "@/lib/workflow";
+import {
+  notifySubmitted,
+  notifyApproved,
+  notifyChangesRequested,
+  notifyRejected,
+  notifyPublished,
+  notifyUnpublished,
+} from "@/lib/notifications";
 import { revalidatePath } from "next/cache";
 
 export type ActionResponse<T = any> =
@@ -204,6 +212,8 @@ export async function submitArticle(id: string): Promise<ActionResponse> {
       });
     });
 
+    await notifySubmitted(article, actor.id);
+
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
     return { ok: true };
@@ -266,6 +276,8 @@ export async function approveArticle(id: string, notes?: string): Promise<Action
       }
     });
 
+    await notifyApproved(article, actor.id);
+
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/review`);
     revalidatePath(`/admin/editor/${id}`);
@@ -312,6 +324,8 @@ export async function requestChanges(id: string, reason: string): Promise<Action
         });
       }
     });
+
+    await notifyChangesRequested(article, actor.id, reason);
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/review`);
@@ -364,6 +378,8 @@ export async function rejectArticle(id: string, reason: string, reasonCode: stri
       }
     });
 
+    await notifyRejected(article, actor.id, reason);
+
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/review`);
     revalidatePath(`/admin/editor/${id}`);
@@ -408,6 +424,8 @@ export async function publishArticle(id: string): Promise<ActionResponse> {
       data: { userId: actor.id, action: "PUBLISH_ARTICLE", entityType: "Article", entityId: id }
     });
 
+    await notifyPublished(article, actor.id);
+
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/review`);
     revalidatePath(`/admin/editor/${id}`);
@@ -429,6 +447,8 @@ export async function unpublishArticle(id: string): Promise<ActionResponse> {
         data: { userId: actor.id, action: "UNPUBLISH_ARTICLE", entityType: "Article", entityId: id }
       });
     });
+
+    await notifyUnpublished(article, actor.id);
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
