@@ -1,3 +1,12 @@
+"use client";
+
+// Client-side because bulk selection needs state. Nothing server-only is
+// imported here -- no db, no auth; authorize() is a pure function over a static
+// capability map, and the map is not a secret: it describes which role may do
+// what, and every one of those checks is re-run on the server before anything
+// is written. Hiding a control the server would refuse anyway buys nothing.
+
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArticleStatus, Role } from "@prisma/client";
@@ -6,6 +15,7 @@ import StatusChip from "./StatusChip";
 import { fmtViews } from "@/lib/utils";
 import ArticleActionMenu from "../editorial/ArticleActionMenu";
 import { Eye, ExternalLink, Edit3, FileText, Plus, Clock } from "lucide-react";
+import BulkActionBar from "./BulkActionBar";
 
 interface ArticleRow {
   id: string;
@@ -83,6 +93,43 @@ export default function ArticleIndex({
   emptyAction,
   isFiltered,
 }: ArticleIndexProps) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // Which bulk verbs to offer at all. These mirror the capabilities the server
+  // actions enforce; per-article eligibility is still decided there, so an
+  // article in the wrong state is skipped and reported rather than hidden.
+  const bulkCaps = useMemo(
+    () => ({
+      canArchive: authorize(actor.role, "article.archive"),
+      canPublish: authorize(actor.role, "article.publish"),
+      canSubmit: authorize(actor.role, "article.submit"),
+    }),
+    [actor.role]
+  );
+  const anyBulk = bulkCaps.canArchive || bulkCaps.canPublish || bulkCaps.canSubmit;
+
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Select-all covers the current page only. It deliberately does not reach
+  // across pagination: "select all 4,000 matching" is a different and much more
+  // dangerous operation, and conflating the two is how people archive an
+  // archive they never saw.
+  const allOnPageSelected =
+    articles.length > 0 && articles.every((a) => selected.has(a.id));
+
+  const toggleAll = () => {
+    setSelected((prev) =>
+      allOnPageSelected ? new Set() : new Set([...prev, ...articles.map((a) => a.id)])
+    );
+  };
+
   if (articles.length === 0) {
     return (
       <div className="bg-surface border border-line rounded-xl p-12 text-center mt-4">
@@ -106,6 +153,23 @@ export default function ArticleIndex({
   }
 
   return (
+    <>
+    {anyBulk && (
+      // Mobile has no table header to hang select-all off, so it gets its own
+      // row above the list rather than losing the affordance entirely.
+      <div className="md:hidden flex items-center gap-2 mt-4 px-1">
+        <input
+          id="select-all-mobile"
+          type="checkbox"
+          checked={allOnPageSelected}
+          onChange={toggleAll}
+          className="w-4 h-4 accent-[var(--accent)] cursor-pointer"
+        />
+        <label htmlFor="select-all-mobile" className="text-xs font-semibold text-muted">
+          Select all on this page
+        </label>
+      </div>
+    )}
     <div className="bg-surface border border-line rounded-xl shadow-xs mt-4 overflow-hidden">
       {/* Table from md up. Below that the same data renders as stacked rows:
           a five-column table on a 375px screen forces horizontal scrolling,
@@ -114,6 +178,21 @@ export default function ArticleIndex({
         <caption className="sr-only">Article list</caption>
         <thead>
           <tr className="border-b border-line bg-surface-2/60">
+            {anyBulk && (
+              <th className="py-3 pl-4 pr-0 w-10">
+                <input
+                  type="checkbox"
+                  checked={allOnPageSelected}
+                  onChange={toggleAll}
+                  className="w-4 h-4 accent-[var(--accent)] cursor-pointer align-middle"
+                  aria-label={
+                    allOnPageSelected
+                      ? "Deselect all articles on this page"
+                      : "Select all articles on this page"
+                  }
+                />
+              </th>
+            )}
             <th className="py-3 px-4 font-semibold text-[11px] tracking-wider uppercase text-muted w-24">
               <span className="sr-only">Thumbnail</span>
             </th>
@@ -139,8 +218,21 @@ export default function ArticleIndex({
             return (
               <tr
                 key={a.id}
-                className="hover:bg-surface-2/70 transition-colors"
+                className={`transition-colors ${
+                  selected.has(a.id) ? "bg-accent/5" : "hover:bg-surface-2/70"
+                }`}
               >
+                {anyBulk && (
+                  <td className="py-3.5 pl-4 pr-0 align-middle w-10">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(a.id)}
+                      onChange={() => toggle(a.id)}
+                      className="w-4 h-4 accent-[var(--accent)] cursor-pointer align-middle"
+                      aria-label={`Select "${a.title || "Untitled article"}"`}
+                    />
+                  </td>
+                )}
                 {/* Thumbnail */}
                 <td className="p-3.5 align-middle w-24">
                   {a.img ? (
@@ -270,8 +362,20 @@ export default function ArticleIndex({
           const categoryName = a.category?.name || "";
 
           return (
-            <li key={a.id} className="p-3.5">
+            <li
+              key={a.id}
+              className={`p-3.5 ${selected.has(a.id) ? "bg-accent/5" : ""}`}
+            >
               <div className="flex gap-3">
+                {anyBulk && (
+                  <input
+                    type="checkbox"
+                    checked={selected.has(a.id)}
+                    onChange={() => toggle(a.id)}
+                    className="w-4 h-4 mt-0.5 accent-[var(--accent)] cursor-pointer shrink-0"
+                    aria-label={`Select "${a.title || "Untitled article"}"`}
+                  />
+                )}
                 {a.img ? (
                   <div className="w-16 h-11 rounded-lg overflow-hidden border border-line bg-surface-2 shrink-0 relative">
                     <Image src={a.img} alt="" fill className="object-cover" sizes="64px" />
@@ -348,5 +452,14 @@ export default function ArticleIndex({
         })}
       </ul>
     </div>
+
+    <BulkActionBar
+      selectedIds={[...selected]}
+      onClear={() => setSelected(new Set())}
+      canArchive={bulkCaps.canArchive}
+      canPublish={bulkCaps.canPublish}
+      canSubmit={bulkCaps.canSubmit}
+    />
+    </>
   );
 }

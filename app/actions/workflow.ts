@@ -636,3 +636,160 @@ export async function deleteOwnDraft(id: string): Promise<ActionResponse> {
     return { ok: false, code: "SERVER", message: e.message };
   }
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Bulk operations
+// ──────────────────────────────────────────────────────────────────────────────
+// Clearing a backlog one row at a time is the single most repetitive thing in
+// this console: archiving forty stale drafts meant forty menu-open-confirm
+// cycles. Bulk fixes that without loosening anything.
+//
+// Two rules shape the implementation.
+//
+// First, every article is validated individually through validateTransition,
+// exactly as the single-article actions do. There is no bulk fast path that
+// skips the state machine, because a bulk endpoint that trusts the client's
+// list is an authorization hole -- the ids arrive from the browser and an
+// actor could name articles they cannot see.
+//
+// Second, it does NOT run in one transaction. A single failing article should
+// not roll back thirty-nine legitimate ones; the user would have no idea which
+// of the forty was the problem. Instead each is attempted and the result
+// reports exactly what succeeded and what did not, so the UI can say "37
+// archived, 3 skipped" and name them.
+
+export type BulkOutcome = {
+  id: string;
+  title: string;
+  ok: boolean;
+  message?: string;
+};
+
+export type BulkResponse = ActionResponse<{
+  succeeded: number;
+  failed: number;
+  outcomes: BulkOutcome[];
+}>;
+
+// Capped because the ids come from a checkbox selection on one page of results.
+// A request naming thousands is either a bug or someone probing the endpoint,
+// and either way it should not run a thousand sequential writes.
+const BULK_LIMIT = 100;
+
+async function runBulkTransition(
+  ids: string[],
+  to: ArticleStatus
+): Promise<BulkResponse> {
+  const actor = await getActor();
+  if (!actor) {
+    return { ok: false, code: "UNAUTHENTICATED", message: "You are not signed in." };
+  }
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return { ok: false, code: "VALIDATION", message: "No articles selected." };
+  }
+
+  // De-duplicate: a malformed selection repeating an id would otherwise be
+  // attempted twice and double-count in the summary.
+  const unique = Array.from(new Set(ids));
+
+  if (unique.length > BULK_LIMIT) {
+    return {
+      ok: false,
+      code: "VALIDATION",
+      message: `Select at most ${BULK_LIMIT} articles at a time.`,
+    };
+  }
+
+  const outcomes: BulkOutcome[] = [];
+  const touchedSlugs: string[] = [];
+  let publishedAffected = false;
+
+  for (const id of unique) {
+    const article = await getArticle(id);
+
+    if (!article) {
+      // Same answer for "does not exist" and "not yours to see" -- the loop
+      // must not become an existence oracle for ids the actor guessed.
+      outcomes.push({ id, title: "Unknown article", ok: false, message: "Not found." });
+      continue;
+    }
+
+    const forTransition: ArticleForTransition = {
+      status: article.status,
+      authorId: article.authorId,
+    };
+
+    const error = validateTransition(article.status, to, actor, forTransition);
+    if (error) {
+      outcomes.push({ id, title: article.title, ok: false, message: error });
+      continue;
+    }
+
+    try {
+      const data: Record<string, unknown> = { status: to };
+      if (to === "ARCHIVED") data.archivedAt = new Date();
+      if (to === "DRAFT") {
+        // Coming back out of the archive: clear the stamp so the milestone
+        // list on the detail page does not claim it is still archived.
+        data.archivedAt = null;
+      }
+
+      await db.article.update({ where: { id }, data });
+
+      await db.auditLog.create({
+        data: {
+          userId: actor.id,
+          action: `BULK_${to}`,
+          entityType: "Article",
+          entityId: id,
+          details: { from: article.status, to, title: article.title },
+        },
+      });
+
+      if (article.status === "PUBLISHED" || to === "PUBLISHED") {
+        publishedAffected = true;
+        if (article.slug) touchedSlugs.push(article.slug);
+      }
+
+      outcomes.push({ id, title: article.title, ok: true });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Update failed.";
+      outcomes.push({ id, title: article.title, ok: false, message });
+    }
+  }
+
+  const succeeded = outcomes.filter((o) => o.ok).length;
+
+  revalidatePath("/admin/articles");
+  // Only flush the public cache if something public actually moved -- archiving
+  // a pile of drafts has no reader-facing effect and should not invalidate the
+  // whole site.
+  if (publishedAffected) {
+    revalidatePath("/", "layout");
+    for (const slug of touchedSlugs) {
+      revalidatePath(`/article/${slug}`, "page");
+    }
+  }
+
+  return {
+    ok: true,
+    data: { succeeded, failed: outcomes.length - succeeded, outcomes },
+  };
+}
+
+export async function bulkArchive(ids: string[]): Promise<BulkResponse> {
+  return runBulkTransition(ids, "ARCHIVED");
+}
+
+export async function bulkRestore(ids: string[]): Promise<BulkResponse> {
+  return runBulkTransition(ids, "DRAFT");
+}
+
+export async function bulkPublish(ids: string[]): Promise<BulkResponse> {
+  return runBulkTransition(ids, "PUBLISHED");
+}
+
+export async function bulkSubmit(ids: string[]): Promise<BulkResponse> {
+  return runBulkTransition(ids, "SUBMITTED");
+}
