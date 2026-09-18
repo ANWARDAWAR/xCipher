@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { authorize } from "@/lib/capabilities";
-import type { Role } from "@prisma/client";
+import type { Role, Prisma } from "@prisma/client";
 
 // Derived from the capability map rather than a hardcoded list, so it cannot
 // drift from the page guard or the sidebar link that gate the same feature.
@@ -229,7 +229,12 @@ async function logTaxonomyAudit(
   action: string,
   entityType: string,
   entityId: string,
-  details: Record<string, unknown>
+  // Prisma.InputJsonValue rather than Record<string, unknown>: the column is
+  // Json, and Prisma will not accept a type whose values it cannot prove are
+  // serialisable -- `unknown` could hold a function or a Date. Using Prisma's
+  // own input type keeps the check instead of casting it away with `any`,
+  // which is what the other audit helpers in this codebase do.
+  details: Prisma.InputJsonValue
 ) {
   try {
     const user = await getCurrentUser();

@@ -2,10 +2,26 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Article, Category } from "@prisma/client";
+// Declares only the three fields this component reads, rather than the whole
+// Article row.
+//
+// It previously asked for `Article & { category }`, but every caller passes the
+// ARTICLE_CARD_SELECT projection -- a deliberately narrow set of columns, with
+// no contentHtml or contentJson, so a homepage render does not drag every
+// article body out of the database. The full type made that projection a type
+// error and would have been "fixed" by widening the query, which is the wrong
+// direction: the ticker shows a headline and a category label.
+//
+// Structural typing means any richer object still satisfies this, so callers
+// holding a full Article keep working.
+export interface TickerArticle {
+  slug: string;
+  title: string;
+  category?: { name: string | null } | null;
+}
 
 interface Props {
-  articles: (Article & { category?: Category | null })[];
+  articles: TickerArticle[];
 }
 
 export default function BreakingTicker({ articles }: Props) {
