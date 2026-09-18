@@ -19,6 +19,8 @@ import { TableHeader } from "@tiptap/extension-table-header";
 import tippy from 'tippy.js';
 
 import { upsertArticle } from "@/app/actions/article";
+import { useDraftCache, clearDraftCache } from "@/lib/use-draft-cache";
+import { Loader2 } from "lucide-react";
 import { Role, ArticleStatus } from "@prisma/client";
 import { ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
 import SeoPreview from "./SeoPreview";
@@ -146,6 +148,39 @@ export default function ArticleEditor({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
   const router = useRouter();
+
+  // The live article id.
+  //
+  // This used to be read straight off `initialData?.id` at save time, but that
+  // prop is captured when the component mounts and never changes. On /admin/editor
+  // (a new story) it is undefined, so every autosave posted with no id and the
+  // server -- correctly -- inserted another row. Five seconds of typing produced
+  // a new draft, forever.
+  //
+  // A ref rather than state because handleSave reads it during an in-flight
+  // async call: state would still hold the pre-render value and the very next
+  // autosave would duplicate once more before React caught up.
+  const articleIdRef = useRef<string | null>(initialData?.id ? String(initialData.id) : null);
+  const [articleId, setArticleId] = useState<string | null>(
+    initialData?.id ? String(initialData.id) : null
+  );
+
+  const {
+    recovered: recoveredDraft,
+    dismissRecovery,
+    discard: discardRecovery,
+    cache: cacheDraft,
+  } = useDraftCache({ articleId: initialData?.id ? String(initialData.id) : null });
+
+  const adoptArticleId = (id: string) => {
+    if (!id || articleIdRef.current === id) return;
+    articleIdRef.current = id;
+    setArticleId(id);
+    // Keep the URL in step so a reload lands on the saved story rather than a
+    // blank new-story form. replace() not push(): the empty editor is not a
+    // place the writer should be able to go "back" to and start a duplicate.
+    router.replace(`/admin/editor/${id}`, { scroll: false });
+  };
 
   const defaultValues: Partial<ArticleFormValues> = {
     title: initialData?.title || "",
@@ -307,18 +342,23 @@ export default function ArticleEditor({
   }, [autosaveStatus]);
 
   useEffect(() => {
-    const subscription = watch((value, { name, type }) => {
+    const subscription = watch(() => {
+      // Cache locally on every change, even while a save is in flight or a
+      // conflict is unresolved. This is the copy that survives a crash, so it
+      // must keep pace with the keystrokes rather than with the server.
+      cacheDraft(getValues() as Record<string, unknown>, editor?.getHTML() || "");
+
       // Don't autosave if the change is programmatic or if we are actively submitting a transition
       if (isPending || autosaveStatus === "conflict") return;
       setAutosaveStatus("idle");
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      
+
       typingTimeoutRef.current = setTimeout(() => {
         handleSave(getValues("status") || "DRAFT", true);
       }, 5000);
     });
     return () => subscription.unsubscribe();
-  }, [watch, isPending, autosaveStatus]);
+  }, [watch, isPending, autosaveStatus, cacheDraft, editor]);
 
   const fillTestData = (templateKey?: string) => {
     if (templateKey && ARTICLE_TEMPLATES[templateKey]) {
@@ -371,6 +411,61 @@ export default function ArticleEditor({
     showToast("Test data populated! You can now Save Draft, Publish, or Preview.");
   };
 
+  /** Apply a recovered localStorage cache over the current form. */
+  const handleRestoreDraft = () => {
+    if (!recoveredDraft) return;
+    const values = recoveredDraft.values as Partial<ArticleFormValues>;
+
+    // keepDefaultValues:false so the restored content becomes the new baseline;
+    // otherwise react-hook-form would treat it as dirty against the old values
+    // and the beforeunload guard would fire on a form the user just restored.
+    reset(values as ArticleFormValues);
+    if (recoveredDraft.bodyHtml) {
+      editor?.commands.setContent(recoveredDraft.bodyHtml);
+      setValue("bodyHtml", recoveredDraft.bodyHtml, { shouldDirty: false });
+    }
+    setSlugManuallyEdited(Boolean(values.slug));
+    dismissRecovery();
+    showToast("Recovered your unsaved changes.", "success");
+  };
+
+  /**
+   * Discard & restart — wipe the cache and return the form to a pristine state.
+   * Only resets the local form; it never deletes the server-side article, so an
+   * existing story is left intact and simply reloaded from the server copy.
+   */
+  const handleDiscardAndRestart = () => {
+    const isExisting = Boolean(articleIdRef.current);
+    const message = isExisting
+      ? "Discard local changes and reload the saved version of this story?"
+      : "Discard this draft and start over? Anything written here will be lost.";
+
+    if (!window.confirm(message)) return;
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+
+    clearDraftCache(articleIdRef.current);
+    clearDraftCache(null);
+    dismissRecovery();
+
+    if (isExisting) {
+      // Server copy is the source of truth for a saved story.
+      router.refresh();
+      showToast("Reloaded the saved version.", "success");
+      return;
+    }
+
+    reset({ ...defaultValues, bodyHtml: "<p>Start writing...</p>" } as ArticleFormValues);
+    editor?.commands.setContent("<p>Start writing...</p>");
+    setSlugManuallyEdited(false);
+    setLastSaved(null);
+    setAutosaveStatus("idle");
+    showToast("Editor reset.", "success");
+  };
+
   const handleSave = async (targetStatus: string, isAutosave = false, notesOverride?: string) => {
     const currentTitle = watch("title") || getValues("title");
     if (!currentTitle || !currentTitle.trim()) {
@@ -410,7 +505,9 @@ export default function ArticleEditor({
         : Array.isArray(rawTags) ? rawTags : [];
 
       const payload = {
-        id: initialData?.id ? String(initialData.id) : undefined,
+        // Live ref, not the mount-time prop: this is what stops autosave from
+        // re-creating the article on every pass.
+        id: articleIdRef.current || undefined,
         title: currentTitle.trim(),
         slug: currentSlug.trim(),
         cat: watch("cat") || getValues("cat") || "ai",
@@ -439,18 +536,32 @@ export default function ArticleEditor({
 
       if (result.success && result.article) {
         setLastSaved(new Date(result.article.updatedAt));
+
+        // Claim the id on EVERY successful save, autosave included, and before
+        // the autosave early-return below. This is the line the duplication bug
+        // turned on: the old code only adopted the id on the manual-save path,
+        // so an autosave-first story never learned its own id.
+        const wasNew = !articleIdRef.current;
+        if (result.article.id) adoptArticleId(String(result.article.id));
+
+        // The server copy is now authoritative, so the crash cache for this
+        // form has done its job. A new story also moves to an id-keyed cache
+        // key, so drop the "new" bucket to avoid a stale restore prompt on the
+        // next blank editor.
+        if (wasNew) clearDraftCache(null);
+        clearDraftCache(result.article.id ? String(result.article.id) : null);
+
         if (isAutosave) {
           setAutosaveStatus("saved");
           return result.article;
         }
 
-        showToast(targetStatus === "PUBLISHED" ? "Story published successfully!" : "Saved successfully!");
+        showToast(
+          targetStatus === "PUBLISHED" ? "Story published successfully!" : "Saved successfully!",
+          "success"
+        );
         setValue("status", result.article.status as any);
-        if (!initialData?.id && result.article.id) {
-          router.push(`/admin/editor/${result.article.id}`);
-        } else {
-          router.refresh();
-        }
+        if (!wasNew) router.refresh();
         return result.article;
       } else {
         if (isAutosave) {
@@ -535,8 +646,11 @@ export default function ArticleEditor({
     <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col h-[100dvh] overflow-hidden bg-[var(--bg)]">
       
       {/* ── Sticky Top Editorial Command Header ── */}
-      <header className="h-14 flex-shrink-0 z-40 bg-[var(--bg)]/95 backdrop-blur-md border-b border-[var(--line)] px-4 sm:px-6 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-2 sm:gap-3">
+      {/* sticky top-0 as well as flex-shrink-0: the form is a flex column with
+          its own scroll containers, but the header still needs to pin when a
+          narrow viewport lets the whole form scroll. */}
+      <header className="h-14 flex-shrink-0 sticky top-0 z-40 bg-[var(--bg)]/95 backdrop-blur-md border-b border-[var(--line)] px-4 sm:px-6 flex items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button 
             type="button"
             onClick={() => router.push('/admin/articles')}
@@ -561,7 +675,9 @@ export default function ArticleEditor({
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* shrink-0 so the action buttons keep their size and the left-hand
+            meta cluster is what gives way when the bar runs out of room. */}
+        <div className="flex items-center gap-2 shrink-0">
           {/* Mobile Inspector Toggle */}
           <button 
             type="button" 
@@ -572,6 +688,17 @@ export default function ArticleEditor({
             <span className="hidden sm:inline">Settings</span>
           </button>
           
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={handleDiscardAndRestart}
+            title="Discard local changes and start over"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg text-[var(--muted)] hover:text-[var(--bad)] hover:bg-[var(--bad)]/10 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+            <span className="hidden md:inline">Discard</span>
+          </button>
+
           <button 
             type="button" 
             disabled={isPending} 
@@ -587,9 +714,10 @@ export default function ArticleEditor({
               type="button" 
               disabled={isPending} 
               onClick={() => handleSave(currentFormStatus)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-[var(--line-2)] text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-[var(--line-2)] text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isPending ? "Saving..." : "Save Draft"}
+              {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+              {isPending ? "Saving\u2026" : "Save Draft"}
             </button>
           )}
 
@@ -598,9 +726,10 @@ export default function ArticleEditor({
               type="button" 
               disabled={isPending} 
               onClick={() => handleSave("PUBLISHED")}
-              className="bg-[var(--accent)] hover:bg-[var(--accent-deep)] text-white font-medium px-4 py-1.5 rounded-lg shadow-sm shadow-[var(--accent)]/20 text-sm transition-colors"
+              className="inline-flex items-center gap-1.5 bg-[var(--accent)] hover:bg-[var(--accent-deep)] active:bg-[var(--accent-press)] text-on-accent font-medium px-4 py-1.5 rounded-lg shadow-sm shadow-[var(--accent)]/20 text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isPending ? "Updating..." : "Update Live"}
+              {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+              {isPending ? "Updating\u2026" : "Update Live"}
             </button>
           ) : (
             (currentFormStatus === "DRAFT" || currentFormStatus === "REVISION_REQUESTED") && (
@@ -608,14 +737,49 @@ export default function ArticleEditor({
                 type="button" 
                 disabled={isPending} 
                 onClick={() => handleSave(canPublish ? "PUBLISHED" : "SUBMITTED")}
-                className="bg-[var(--accent)] hover:bg-[var(--accent-deep)] text-white font-medium px-4 py-1.5 rounded-lg shadow-sm shadow-[var(--accent)]/20 text-sm transition-colors"
+                className="inline-flex items-center gap-1.5 bg-[var(--accent)] hover:bg-[var(--accent-deep)] active:bg-[var(--accent-press)] text-on-accent font-medium px-4 py-1.5 rounded-lg shadow-sm shadow-[var(--accent)]/20 text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {canPublish ? "Publish Story" : "Submit for Review"}
+                {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                {isPending
+                  ? (canPublish ? "Publishing\u2026" : "Submitting\u2026")
+                  : (canPublish ? "Publish Story" : "Submit for Review")}
               </button>
             )
           )}
         </div>
       </header>
+
+      {recoveredDraft && (
+        <div
+          role="status"
+          className="bg-[var(--accent)]/10 text-[var(--ink)] px-6 py-3 border-b border-[var(--accent)]/30 flex flex-col sm:flex-row justify-between sm:items-center gap-3 z-50"
+        >
+          <div className="text-sm">
+            <strong className="font-semibold">Unsaved changes recovered.</strong>{" "}
+            <span className="text-[var(--muted)]">
+              This browser has a copy from{" "}
+              {new Date(recoveredDraft.savedAt).toLocaleString()} that was never saved to
+              the server.
+            </span>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={discardRecovery}
+              className="text-xs font-medium px-3 py-1.5 rounded-md border border-[var(--line-2)] text-[var(--ink-2)] hover:bg-[var(--surface-2)] transition-colors"
+            >
+              Discard
+            </button>
+            <button
+              type="button"
+              onClick={handleRestoreDraft}
+              className="text-xs font-semibold px-3 py-1.5 rounded-md bg-[var(--accent)] text-on-accent hover:bg-[var(--accent-deep)] transition-colors"
+            >
+              Restore
+            </button>
+          </div>
+        </div>
+      )}
 
       {autosaveStatus === "conflict" && (
         <div role="status" className="bg-warn/10 text-warn px-6 py-3 border-b border-warn flex flex-col sm:flex-row justify-between items-center z-50">
