@@ -126,6 +126,19 @@ export default function AdminNavLinks({
         New Story
       </Link>
 
+      {/* No capability prop: the media page is scoped by buildArticleScope, so
+          everyone with console access sees exactly the art on the articles they
+          can already see, and nothing more. Gating the link on a role would
+          hide a view that is safe for all of them. */}
+      <Link href="/admin/media" {...navProps(isActive("/admin/media"))}>
+        <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" />
+          <path d="M21 15l-5-5L5 21" />
+        </svg>
+        Media
+      </Link>
+
       {(canViewTaxonomy || canManageAuthors) && (
         <div className="cs-nav-group">Newsroom</div>
       )}
