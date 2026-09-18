@@ -16,6 +16,7 @@ import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
 import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
+import TextAlign from "@tiptap/extension-text-align";
 import tippy from 'tippy.js';
 
 import { upsertArticle } from "@/app/actions/article";
@@ -30,7 +31,9 @@ import { Figure } from "./extensions/AdvancedImage";
 import { Callout } from "./extensions/Callout";
 import { SlashMenu } from "./extensions/SlashMenu";
 import { CodeBlockLowlight } from "./extensions/CodeBlockLowlight";
+import { YouTubeEmbed } from "./extensions/YouTubeEmbed";
 import { SlashCommandList, getSuggestionItems } from "./SlashCommandList";
+import { EditorBubbleMenu } from "./EditorBubbleMenu";
 
 // Static category options for the editor dropdown
 const EDITOR_CATEGORIES: Record<string, string> = {
@@ -237,7 +240,19 @@ export default function ArticleEditor({
       Callout,
       Link.configure({
         openOnClick: false,
+        // Autolink turns a typed URL into a link as you go. Off for pasted
+        // text so a pasted YouTube URL can be claimed by the embed paste rule
+        // instead of being linkified first -- the two would otherwise race and
+        // the winner would depend on extension order.
+        autolink: true,
+        linkOnPaste: false,
+        protocols: ['http', 'https', 'mailto'],
       }),
+      // Alignment is only offered on block text. Allowing it on images or
+      // embeds would write alignment classes the public stylesheet has no rule
+      // for, so the editor and the article would disagree.
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      YouTubeEmbed,
       Table.configure({ resizable: true }),
       TableRow,
       TableCell,
@@ -992,6 +1007,7 @@ export default function ArticleEditor({
                   aria-label="Article body editor"
                   style={isFullscreen ? { minHeight: "calc(100vh - 150px)" } : { border: 'none', padding: 0 }}
                 >
+                  <EditorBubbleMenu editor={editor} />
                   <EditorContent editor={editor} />
                 </div>
               </div>
