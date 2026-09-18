@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { authorize, ROLE_CAPABILITIES } from "@/lib/capabilities";
+import { sendNotificationEmail } from "@/lib/email";
 import type { Role } from "@prisma/client";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -16,15 +17,25 @@ import type { Role } from "@prisma/client";
 // one, but holding a transaction open for a non-essential insert is worse
 // still, and the transitions commit before these run.
 //
-// Delivery is in-app only: rows land in the Notification table and the console
-// reads them. Email/digest delivery is a later concern and belongs behind this
-// same interface so call sites do not change.
+// Delivery is in-app first: rows land in the Notification table and the console
+// reads them. Email is sent alongside -- never instead of -- that row, from
+// inside emit(), so no call site knows or cares that it happens. The in-app
+// notification is the record; the email is a nudge for someone who is not
+// currently looking at the console.
 // ──────────────────────────────────────────────────────────────────────────────
 
 type NotifyInput = {
   userIds: string[];
   message: string;
   link?: string;
+};
+
+/** The shape stored in User.notificationPrefs. Every field is optional because
+ *  the column is nullable and older rows predate it. */
+type NotificationPrefs = {
+  emailAlerts?: boolean;
+  weeklyDigest?: boolean;
+  reviewUpdates?: boolean;
 };
 
 /** Writes one notification per recipient, skipping duplicates and self-notifies. */
@@ -38,6 +49,57 @@ async function emit({ userIds, message, link }: NotifyInput): Promise<void> {
     });
   } catch (error) {
     console.error("[notifications] emit failed:", error);
+  }
+
+  // Email is attempted only after the in-app row is written, and its failure is
+  // swallowed the same way. The whole point of the fail-soft contract above is
+  // that a transition never depends on a notification; adding a network call
+  // must not quietly change that.
+  await emailFanout(unique, message, link);
+}
+
+/** Sends the same message by email to recipients who have asked for it. */
+async function emailFanout(
+  userIds: string[],
+  message: string,
+  link?: string
+): Promise<void> {
+  // Cheap early exit so an unconfigured install does not query users on every
+  // single transition just to discard the result.
+  if (!process.env.RESEND_API_KEY) return;
+
+  try {
+    const recipients = await db.user.findMany({
+      where: { id: { in: userIds }, isActive: true, email: { not: null } },
+      select: { id: true, email: true, name: true, notificationPrefs: true },
+    });
+
+    const wanted = recipients.filter((u) => {
+      const prefs = (u.notificationPrefs ?? {}) as NotificationPrefs;
+      // Default ON when unset. The settings form has always shown emailAlerts
+      // defaulting to true, so a user who never touched it expects mail; making
+      // the absent case mean "off" would silently contradict the UI they saw.
+      return prefs.emailAlerts !== false;
+    });
+
+    if (wanted.length === 0) return;
+
+    // Concurrent rather than sequential: a submission notifies every reviewer,
+    // and awaiting each send in turn would add the full round-trip per person
+    // to the transition's response time. allSettled so one bad address cannot
+    // stop the rest.
+    await Promise.allSettled(
+      wanted.map((u) =>
+        sendNotificationEmail({
+          to: u.email as string,
+          recipientName: u.name,
+          message,
+          link: link ?? null,
+        })
+      )
+    );
+  } catch (error) {
+    console.error("[notifications] email fanout failed:", error);
   }
 }
 

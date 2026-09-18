@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { showToast } from "@/lib/utils";
+import { updateNotificationPrefs } from "@/app/actions/profile";
 
 export default function AccountForm({ user }: { user: any }) {
   const [isPending, setIsPending] = useState(false);
@@ -42,11 +43,23 @@ export default function AccountForm({ user }: { user: any }) {
   const handlePrefsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsPending(true);
-    // Add real notification prefs update API call here later
-    setTimeout(() => {
-      showToast("Preferences updated successfully (Mock)");
+    try {
+      const res = await updateNotificationPrefs({
+        emailAlerts: !!prefs.emailAlerts,
+        weeklyDigest: !!prefs.weeklyDigest,
+        reviewUpdates: !!prefs.reviewUpdates,
+      });
+      if (res.success) {
+        showToast("Notification preferences saved.");
+      } else {
+        showToast(`Error: ${res.error || "Failed to save preferences"}`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to save preferences";
+      showToast(`Error: ${msg}`);
+    } finally {
       setIsPending(false);
-    }, 500);
+    }
   };
 
   return (

@@ -120,3 +120,46 @@ export async function updateProfile(data: any) {
     return { success: false, error: error.message || "Failed to update profile" };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Notification preferences
+// ---------------------------------------------------------------------------
+// The settings form has had these three toggles since it was written, but
+// handlePrefsSubmit was a setTimeout that showed "(Mock)" and discarded the
+// change. Now that notifications actually send email, a toggle that does not
+// persist is worse than no toggle: someone turns alerts off, is told it worked,
+// and keeps receiving mail.
+
+export type NotificationPrefsInput = {
+  emailAlerts?: boolean;
+  weeklyDigest?: boolean;
+  reviewUpdates?: boolean;
+};
+
+export async function updateNotificationPrefs(prefs: NotificationPrefsInput) {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Unauthorized" };
+
+  try {
+    // Whitelist and coerce rather than storing the payload as-is. This lands in
+    // a Json column, so an unvalidated object would let a client persist
+    // arbitrary keys into the user record.
+    const clean = {
+      emailAlerts: prefs.emailAlerts !== false,
+      weeklyDigest: prefs.weeklyDigest === true,
+      reviewUpdates: prefs.reviewUpdates !== false,
+    };
+
+    await db.user.update({
+      where: { id: user.id },
+      data: { notificationPrefs: clean },
+    });
+
+    revalidatePath("/admin/settings");
+    return { success: true, prefs: clean };
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Failed to update preferences";
+    return { success: false, error: message };
+  }
+}
