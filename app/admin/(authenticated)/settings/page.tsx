@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { ARTICLE_CARD_SELECT, LISTING_ARTICLE_LIMIT } from "@/lib/queries";
 import ProfileForm from "./ProfileForm";
 import AccountForm from "./AccountForm";
 import Link from "next/link";
@@ -27,15 +28,24 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
   let articles: any[] = [];
   let totalViews = 0;
   if (author) {
-    articles = await db.article.findMany({
-      where: {
-        status: "PUBLISHED",
-        OR: [{ authorId: author.id }, { author: author.name }]
-      },
-      orderBy: { createdAt: "desc" },
-      include: { category: true }
-    });
-    totalViews = articles.reduce((sum, a) => sum + (a.views || 0), 0);
+    // This renders the same AuthorProfileView as the public author page, so it
+    // takes the same shape: a bounded page of body-free rows, and an exact view
+    // total from Postgres rather than a sum of whatever happened to be fetched.
+    const authorWhere = {
+      status: "PUBLISHED" as const,
+      OR: [{ authorId: author.id }, { author: author.name }]
+    };
+    const [rows, viewsAggregate] = await Promise.all([
+      db.article.findMany({
+        where: authorWhere,
+        orderBy: { createdAt: "desc" },
+        take: LISTING_ARTICLE_LIMIT,
+        select: ARTICLE_CARD_SELECT,
+      }),
+      db.article.aggregate({ where: authorWhere, _sum: { views: true } }),
+    ]);
+    articles = rows;
+    totalViews = viewsAggregate._sum.views || 0;
   }
 
   let socials: { platform: string; url: string }[] = [];

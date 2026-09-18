@@ -39,6 +39,7 @@ async function getArticle(id: string) {
       slug: true,
       categoryId: true,
       category: { select: { slug: true } },
+      authorModel: { select: { slug: true } },
       deck: true,
       contentHtml: true,
     }
@@ -161,6 +162,29 @@ export async function takeOverReview(id: string, confirm: boolean): Promise<Acti
 // ──────────────────────────────────────────────────────────────────────────────
 // Transitions
 // ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Invalidate every public route whose content depends on this article.
+ *
+ * The public pages are cached with a revalidate window now, so these calls are
+ * what makes an editorial change appear immediately instead of up to five
+ * minutes later. Previously each transition inlined its own list and they had
+ * drifted: none of them invalidated /latest (only the scheduler did) or the
+ * author's profile page, so unpublishing an article left it visible on both
+ * until the timer expired. Keeping the list in one function is what stops that
+ * drift from recurring.
+ */
+function revalidateArticleRoutes(article: {
+  slug: string;
+  category?: { slug: string } | null;
+  authorModel?: { slug: string } | null;
+}) {
+  revalidatePath("/", "layout");
+  revalidatePath("/latest", "page");
+  revalidatePath(`/article/${article.slug}`, "page");
+  if (article.category?.slug) revalidatePath(`/category/${article.category.slug}`, "page");
+  if (article.authorModel?.slug) revalidatePath(`/author/${article.authorModel.slug}`, "page");
+}
 
 async function executeTransition(
   id: string,
@@ -429,9 +453,7 @@ export async function publishArticle(id: string): Promise<ActionResponse> {
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/review`);
     revalidatePath(`/admin/editor/${id}`);
-    revalidatePath("/", "layout");
-    revalidatePath(`/article/${article.slug}`, "page");
-    if (article.category?.slug) revalidatePath(`/category/${article.category.slug}`, "page");
+    revalidateArticleRoutes(article);
     return { ok: true };
   });
 }
@@ -452,9 +474,7 @@ export async function unpublishArticle(id: string): Promise<ActionResponse> {
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
-    revalidatePath("/", "layout");
-    revalidatePath(`/article/${article.slug}`, "page");
-    if (article.category?.slug) revalidatePath(`/category/${article.category.slug}`, "page");
+    revalidateArticleRoutes(article);
     return { ok: true };
   });
 }
@@ -525,9 +545,7 @@ export async function archiveArticle(id: string): Promise<ActionResponse> {
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
-    revalidatePath("/", "layout");
-    revalidatePath(`/article/${article.slug}`, "page");
-    if (article.category?.slug) revalidatePath(`/category/${article.category.slug}`, "page");
+    revalidateArticleRoutes(article);
     return { ok: true };
   });
 }
@@ -546,9 +564,7 @@ export async function restoreArticle(id: string): Promise<ActionResponse> {
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
-    revalidatePath("/", "layout");
-    revalidatePath(`/article/${article.slug}`, "page");
-    if (article.category?.slug) revalidatePath(`/category/${article.category.slug}`, "page");
+    revalidateArticleRoutes(article);
     return { ok: true };
   });
 }

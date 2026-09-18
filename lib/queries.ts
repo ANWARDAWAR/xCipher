@@ -66,3 +66,9 @@ export const LATEST_ARTICLE_LIMIT = 60;
 
 /** Category and author listings. */
 export const LISTING_ARTICLE_LIMIT = 40;
+
+/**
+ * Ceiling for the editorial review queue. The queue is meant to be worked down
+ * to empty, so this is a safety limit rather than a paging window.
+ */
+export const REVIEW_QUEUE_LIMIT = 100;

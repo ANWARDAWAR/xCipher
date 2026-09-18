@@ -9,7 +9,16 @@ export const metadata: Metadata = {
   description: "Every xCipher story, newest first — reporting, analysis, reviews and guides as they publish.",
 };
 
-export const dynamic = "force-dynamic";
+// Cached and revalidated on a timer, rather than force-dynamic.
+//
+// force-dynamic meant every visitor triggered a fresh render and a fresh set of
+// queries, and -- more importantly -- it made every revalidatePath() call in the
+// workflow actions a no-op, because there was never a cached entry to
+// invalidate. Publishing already calls revalidatePath for this route, so an
+// editorial change still appears immediately; the window below is only the
+// ceiling for anything that changes without an explicit revalidation, such as
+// a view count.
+export const revalidate = 180; // latest listing
 
 export default async function LatestPage() {
   const articles = await db.article.findMany({

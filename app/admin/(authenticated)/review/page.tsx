@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Role, Prisma } from "@prisma/client";
 import { canViewReviewQueue } from "@/lib/permissions";
+import { REVIEW_QUEUE_LIMIT } from "@/lib/queries";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -94,7 +95,23 @@ export default async function ReviewQueuePage(props: {
   const articles = await db.article.findMany({
     where: { AND: filterConditions },
     orderBy,
-    include: {
+    // A review queue that has grown past this is a staffing problem, not a
+    // paging problem, but the query still needs a ceiling so one backlogged
+    // week cannot take the page down.
+    take: REVIEW_QUEUE_LIMIT,
+    // Explicit select rather than include: include is SELECT *, which pulled
+    // contentJson and every SEO column for rows that render neither.
+    // contentHtml is the one body field genuinely needed here -- the card
+    // shows a word count derived from it.
+    select: {
+      id: true,
+      title: true,
+      img: true,
+      submittedAt: true,
+      updatedAt: true,
+      reviewedById: true,
+      author: true,
+      contentHtml: true,
       category: { select: { name: true } },
       authorModel: { select: { name: true, slug: true } },
       reviewer: { select: { name: true, email: true } },
