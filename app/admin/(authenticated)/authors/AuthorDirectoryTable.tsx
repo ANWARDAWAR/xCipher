@@ -19,6 +19,8 @@ interface AuthorRow {
   totalViews: number;
   linkedUserEmail: string | null;
   linkedUserRole: string | null;
+  /** Null when the author has no linked account; no Edit action is shown. */
+  linkedUserId: string | null;
 }
 
 /**
@@ -158,6 +160,15 @@ export default function AuthorDirectoryTable({ authors }: { authors: AuthorRow[]
                   >
                     Articles
                   </Link>
+                  {a.linkedUserId && (
+                    <Link
+                      href={`/admin/settings?tab=profile&edit=true&user=${a.linkedUserId}`}
+                      className="px-2.5 py-1.5 text-xs font-semibold text-ink bg-surface-2 hover:bg-surface-3 border border-line rounded-md transition-colors"
+                      title={`Edit ${a.name}'s profile`}
+                    >
+                      Edit
+                    </Link>
+                  )}
                   <Link
                     href={`/author/${a.slug}`}
                     target="_blank"

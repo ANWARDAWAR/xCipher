@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -140,6 +140,14 @@ export default function ArticleEditor({
   initialRevisions = [],
 }: ArticleEditorProps) {
   const [isPending, setIsPending] = useState(false);
+
+  // Publishing and submitting re-render server components (the status pill, the
+  // review panel, the article list behind this page). router.refresh() is not
+  // awaitable, so without a transition isPending flips back the instant the
+  // action resolves and the command bar goes idle while the page is still
+  // showing the previous status.
+  const [isRefreshing, startRefresh] = useTransition();
+  const busy = isPending || isRefreshing;
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(Boolean(initialData?.slug));
   const [lastSaved, setLastSaved] = useState<Date | null>(initialData?.updatedAt ? new Date(initialData.updatedAt) : null);
   // "offline" is distinct from "error": the write failed for a reason we expect
@@ -532,7 +540,7 @@ export default function ArticleEditor({
 
     if (isExisting) {
       // Server copy is the source of truth for a saved story.
-      router.refresh();
+      startRefresh(() => router.refresh());
       showToast("Reloaded the saved version.", "success");
       return;
     }
@@ -647,7 +655,9 @@ export default function ArticleEditor({
           "success"
         );
         setValue("status", result.article.status as any);
-        if (!wasNew) router.refresh();
+        // Skipped for a brand-new story: the id-capturing router.replace above
+        // already remounts this route, so refreshing as well would fetch twice.
+        if (!wasNew) startRefresh(() => router.refresh());
         return result.article;
       } else {
         if (isAutosave) {
@@ -837,7 +847,7 @@ export default function ArticleEditor({
           
           <button
             type="button"
-            disabled={isPending}
+            disabled={busy}
             onClick={handleDiscardAndRestart}
             title="Discard local changes and start over"
             className="ed-act danger"
@@ -848,7 +858,7 @@ export default function ArticleEditor({
 
           <button 
             type="button" 
-            disabled={isPending} 
+            disabled={busy} 
             onClick={handlePreview}
             className="ed-act"
           >
@@ -859,41 +869,41 @@ export default function ArticleEditor({
           {(currentFormStatus === "DRAFT" || currentFormStatus === "REVISION_REQUESTED") && (
             <button 
               type="button" 
-              disabled={isPending} 
+              disabled={busy} 
               onClick={() => handleSave(currentFormStatus)}
               className="ed-act secondary"
             >
-              {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-              <span className="ed-act-label">{isPending ? "Saving\u2026" : "Save Draft"}</span>
+              {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+              <span className="ed-act-label">{busy ? "Saving\u2026" : "Save Draft"}</span>
             </button>
           )}
 
           {currentFormStatus === "PUBLISHED" && canPublish ? (
             <button 
               type="button" 
-              disabled={isPending} 
+              disabled={busy} 
               onClick={() => handleSave("PUBLISHED")}
               className="ed-act primary"
             >
-              {isPending
+              {busy
                 ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                 : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>}
-              <span>{isPending ? "Updating\u2026" : "Update Live"}</span>
+              <span>{busy ? "Updating\u2026" : "Update Live"}</span>
             </button>
           ) : (
             (currentFormStatus === "DRAFT" || currentFormStatus === "REVISION_REQUESTED") && (
               <button 
                 type="button" 
-                disabled={isPending} 
+                disabled={busy} 
                 onClick={() => handleSave(canPublish ? "PUBLISHED" : "SUBMITTED")}
                 className="ed-act primary"
               >
-                {isPending
+                {busy
                   ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                   : canPublish
                     ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
                     : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>}
-                <span>{isPending
+                <span>{busy
                   ? (canPublish ? "Publishing\u2026" : "Submitting\u2026")
                   : (canPublish ? "Publish Story" : "Submit for Review")}</span>
               </button>
@@ -1198,7 +1208,7 @@ export default function ArticleEditor({
             <div className="pt-4 lg:hidden">
               <button 
                 type="button" 
-                disabled={isPending} 
+                disabled={busy} 
                 onClick={() => handleSave("DRAFT", false, "Unpublished by editor")}
                 className="w-full bg-[var(--surface-3)] hover:bg-[var(--line-2)] text-[var(--bad)] font-medium px-4 py-2 rounded-lg transition-colors text-sm"
               >

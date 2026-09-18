@@ -1,19 +1,47 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { updateProfile } from "@/app/actions/profile";
 import { showToast } from "@/lib/utils";
-import { useEditor } from "@tiptap/react";
-import RichTextField from "@/components/editorial/RichTextField";
+import { useEditor, EditorContent } from "@tiptap/react";
+import { EditorToolbar } from "@/components/editorial/EditorToolbar";
+import { EditorBubbleMenu } from "@/components/editorial/EditorBubbleMenu";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
+import Highlight from "@tiptap/extension-highlight";
 import LinkExtension from "@tiptap/extension-link";
+import TextAlign from "@tiptap/extension-text-align";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableCell } from "@tiptap/extension-table-cell";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { CodeBlockLowlight } from "@/components/editorial/extensions/CodeBlockLowlight";
+import { Figure } from "@/components/editorial/extensions/AdvancedImage";
+import { Callout } from "@/components/editorial/extensions/Callout";
+import { YouTubeEmbed } from "@/components/editorial/extensions/YouTubeEmbed";
 import { X } from "lucide-react";
 
 const PLATFORM_OPTIONS = ["X", "LinkedIn", "GitHub", "YouTube", "Facebook", "Instagram", "Website", "Email"];
 
-export default function ProfileForm({ user, author }: { user: any; author: any }) {
+export default function ProfileForm({
+  user,
+  author,
+  targetUserId,
+  editingOtherName,
+}: {
+  user: any;
+  author: any;
+  /** Set when an owner/admin is editing someone else's profile. The server
+   *  re-checks the capability; this only tells the action which record to
+   *  write. */
+  targetUserId?: string;
+  editingOtherName?: string;
+}) {
   const [isPending, setIsPending] = useState(false);
+  const router = useRouter();
+  const [isRefreshing, startRefresh] = useTransition();
+  const busy = isPending || isRefreshing;
 
   // Parse existing social links
   let initialSocials: { platform: string; url: string }[] = [];
@@ -92,11 +120,37 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
     setExpertise(expertise.filter(b => b !== beat));
   };
 
+  // The biography uses the same editor as an article.
+  //
+  // It previously ran a reduced RichTextField toolbar, which meant an author
+  // writing a long profile had a different set of tools -- and a different
+  // visual language -- from the one they use every day. The extension list is
+  // the article list, so behaviour, shortcuts and markup all match, and
+  // sanitizeBioHtml was widened in step so nothing here is accepted by the
+  // editor and then dropped on save.
   const bioEditor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        codeBlock: false, // replaced by the highlighting version below
+        heading: { levels: [2, 3, 4] }, // a bio sits inside a page that already has an h1
+      }),
+      CodeBlockLowlight,
       Underline,
-      LinkExtension.configure({ openOnClick: false }),
+      Highlight.configure({ multicolor: false }),
+      Figure,
+      Callout,
+      LinkExtension.configure({
+        openOnClick: false,
+        autolink: true,
+        linkOnPaste: false,
+        protocols: ['http', 'https', 'mailto'],
+      }),
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      YouTubeEmbed,
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableCell,
+      TableHeader,
     ],
     content: bio,
     // This form is server-rendered, and Tiptap warns (and can mismatch) if it
@@ -120,11 +174,19 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
       const validSocials = socials.filter(s => s.url.trim() !== "");
       const res = await updateProfile({ 
         name, headline, role, overview, avatar, bio, location, website, email, 
-        socialLinks: validSocials, expertise: expertise.join(', '), verifiedTitle, disclosure, publicContact, slug
+        socialLinks: validSocials, expertise: expertise.join(', '), verifiedTitle, disclosure, publicContact, slug,
+        // Only meaningful when an owner/admin opened someone else's profile.
+        // The action authorises this against the actor's own role.
+        targetUserId,
       });
       if (res.success) {
-        showToast("Profile saved! Refreshing...");
-        setTimeout(() => window.location.reload(), 600);
+        showToast("Profile saved");
+        // Was a full window.location.reload() behind a 600ms setTimeout, which
+        // threw away the client bundle and the scroll position to show data the
+        // server had already committed. router.refresh() re-fetches just the
+        // server components, and the transition keeps the button disabled until
+        // the new tree commits rather than for a guessed interval.
+        startRefresh(() => router.refresh());
       } else {
         showToast(res.error || "Failed to update profile");
       }
@@ -161,6 +223,15 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
 
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-4xl mx-auto pb-32">
+      {editingOtherName && (
+        /* Editing someone else's profile is easy to forget once you are three
+           fields in, and the consequence is publishing changes under the wrong
+           byline. The notice stays visible for the whole form. */
+        <div className="pf-editing-other" role="status">
+          <strong>Editing another user&rsquo;s profile:</strong> {editingOtherName}.
+          Changes are saved to their account, not yours.
+        </div>
+      )}
       
       {/* Profile Completeness Card */}
       <div className="mb-8 p-6 bg-[var(--surface)] border border-[var(--line)] rounded-xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -327,12 +398,22 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
 
           <div className="cs-settings-full mt-6">
             <label className="ed-label">Full Biography</label>
-            <RichTextField
-              editor={bioEditor}
-              ariaLabel="Full biography"
-              minHeight={140}
-              hint="Displayed on your full public author profile page."
-            />
+            {bioEditor ? (
+              <div className="pf-bio-editor">
+                <EditorToolbar editor={bioEditor} />
+                <div className="ed-body prose max-w-none" aria-label="Full biography">
+                  <EditorBubbleMenu editor={bioEditor} />
+                  <EditorContent editor={bioEditor} />
+                </div>
+              </div>
+            ) : (
+              /* Fixed height before the client editor mounts, so the form does
+                 not jump when it does. */
+              <div className="pf-bio-editor pf-bio-loading" aria-hidden="true" />
+            )}
+            <span className="block mt-1.5 text-[11.5px] text-[var(--muted)]">
+              Displayed on your full public author profile page.
+            </span>
           </div>
         </div>
       </div>
@@ -403,7 +484,7 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
             <button 
               type="button" 
               onClick={handleReset} 
-              disabled={isPending} 
+              disabled={busy} 
               className="px-4 py-2 text-sm font-medium rounded-md text-[var(--muted)] hover:bg-[var(--surface-2)] transition-colors"
             >
               Reset
@@ -411,10 +492,10 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
             <button 
               type="submit" 
               onClick={handleSubmit}
-              disabled={isPending} 
+              disabled={busy} 
               className="px-6 py-2 text-sm font-medium rounded-md bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] disabled:opacity-50 transition-colors shadow-sm"
             >
-              {isPending ? "Saving..." : "Save Changes"}
+              {busy ? "Saving\u2026" : "Save Changes"}
             </button>
           </div>
         </div>

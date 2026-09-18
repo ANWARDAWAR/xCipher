@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useTransition } from "react";
 import { Role } from "@prisma/client";
 
 import { claimReview, releaseReview, takeOverReview } from "@/app/actions/workflow";
@@ -33,6 +33,16 @@ export default function ReviewWorkspace({ userRole, userId, reviewerId, reviewer
   const [showTakeOverConfirm, setShowTakeOverConfirm] = useState(false);
   const router = useRouter();
 
+  // router.refresh() re-fetches the server component in the background and is
+  // not awaitable. Wrapping it in a transition gives us isRefreshing, which
+  // stays true until the new tree has actually committed -- so the buttons stay
+  // disabled through the refresh instead of re-enabling over stale data the
+  // moment the action resolves.
+  const [isRefreshing, startRefresh] = useTransition();
+  const busy = isSubmitting || isRefreshing;
+
+  const refresh = () => startRefresh(() => router.refresh());
+
   const canReview = ["OWNER", "ADMIN", "EDITOR", "REVIEWER"].includes(userRole);
 
   const handleAction = async (status: string) => {
@@ -45,6 +55,9 @@ export default function ReviewWorkspace({ userRole, userId, reviewerId, reviewer
     try {
       await onDecision(status, notes);
       setNotes("");
+      // Previously missing: the decision succeeded on the server but the page
+      // kept rendering the old status until a manual reload.
+      refresh();
     } catch (e) {
       console.error(e);
       alert("Failed to submit decision.");
@@ -60,7 +73,7 @@ export default function ReviewWorkspace({ userRole, userId, reviewerId, reviewer
       const res = await takeOverReview(articleId, true);
       if (res.ok) {
         showToast("Review taken over");
-        router.refresh();
+        refresh();
       } else {
         alert(res.message || "Action failed.");
       }
@@ -78,7 +91,7 @@ export default function ReviewWorkspace({ userRole, userId, reviewerId, reviewer
       const res = await actionFn(articleId);
       if (res.ok) {
         showToast(successMsg);
-        router.refresh();
+        refresh();
       } else {
         alert(res.message || "Action failed.");
       }
@@ -94,7 +107,7 @@ export default function ReviewWorkspace({ userRole, userId, reviewerId, reviewer
   const isClaimedByOther = reviewerId && reviewerId !== userId;
   const canTakeOver = ["OWNER", "ADMIN"].includes(userRole);
   
-  const disableDecisions = Boolean(isSubmitting || (isClaimedByOther && !canTakeOver));
+  const disableDecisions = Boolean(busy || (isClaimedByOther && !canTakeOver));
 
   return (
     <div className="cs-card" style={{ padding: "16px", marginBottom: "20px" }}>
@@ -141,7 +154,7 @@ export default function ReviewWorkspace({ userRole, userId, reviewerId, reviewer
         <div style={{ borderTop: "1px solid var(--line)", paddingTop: "16px", marginBottom: "16px" }}>
           <div style={{ padding: "12px", background: "var(--surface-1)", borderRadius: "6px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "13px" }}>This article is waiting for review.</span>
-            <button className="btn-cs primary" onClick={() => handleWorkflowAction(claimReview, "Review claimed")} disabled={isSubmitting}>
+            <button className="btn-cs primary" onClick={() => handleWorkflowAction(claimReview, "Review claimed")} disabled={busy}>
               Claim Review
             </button>
           </div>
@@ -152,7 +165,7 @@ export default function ReviewWorkspace({ userRole, userId, reviewerId, reviewer
         <div style={{ borderTop: "1px solid var(--line)", paddingTop: "16px", marginBottom: "16px" }}>
           <div style={{ padding: "12px", background: "rgba(16, 185, 129, 0.1)", color: "var(--success)", borderRadius: "6px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "13px", fontWeight: 600 }}>You have claimed this review.</span>
-            <button className="btn-cs" onClick={() => handleWorkflowAction(releaseReview, "Review released")} disabled={isSubmitting}>
+            <button className="btn-cs" onClick={() => handleWorkflowAction(releaseReview, "Review released")} disabled={busy}>
               Release Review
             </button>
           </div>
@@ -164,7 +177,7 @@ export default function ReviewWorkspace({ userRole, userId, reviewerId, reviewer
           <div style={{ padding: "12px", background: "var(--surface-1)", borderRadius: "6px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "13px", color: "var(--ink-muted)" }}>This review is claimed by another user.</span>
             {canTakeOver && (
-              <button className="btn-cs danger" onClick={() => setShowTakeOverConfirm(true)} disabled={isSubmitting}>
+              <button className="btn-cs danger" onClick={() => setShowTakeOverConfirm(true)} disabled={busy}>
                 Take Over Review
               </button>
             )}

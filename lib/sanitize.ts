@@ -46,11 +46,64 @@ const ARTICLE_DOMPURIFY_CONFIG = {
   ADD_ATTR: ['target'],
 };
 
+// The biography now uses the same editor as an article, so this has to accept
+// the same markup that editor can produce -- otherwise a heading or a list
+// would be offered in the toolbar and then silently deleted on save, which is
+// the failure this codebase has already hit twice.
+//
+// It is still narrower than the article config on purpose. A profile is a
+// standing description of a person, not a story: no h1 (the page supplies its
+// own), and no iframe, because there is no reason for an author bio to embed a
+// video player and every reason not to widen that surface here.
 const BIO_DOMPURIFY_CONFIG = {
-  ALLOWED_TAGS: ['b', 'i', 'strong', 'em', 'a', 'p', 'br'],
-  ALLOWED_ATTR: ['href', 'target', 'rel'],
+  ALLOWED_TAGS: [
+    'p', 'br', 'b', 'i', 'u', 'strong', 'em', 'mark', 's', 'strike', 'del', 'sup', 'sub',
+    'h2', 'h3', 'h4',
+    'a', 'img', 'ul', 'ol', 'li', 'blockquote',
+    'code', 'pre', 'hr', 'span', 'div',
+    'figure', 'figcaption', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'aside',
+  ],
+  ALLOWED_ATTR: [
+    'href', 'target', 'rel', 'src', 'alt', 'title', 'class',
+    'data-type', 'data-callout-type', 'data-credit',
+    'colspan', 'rowspan', 'colwidth',
+    // Alignment only; the shared hook rewrites this down to a single
+    // text-align declaration and discards anything else.
+    'style',
+  ],
   ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
 };
+
+/**
+ * Reduce `style` to at most a single text-align declaration.
+ *
+ * The attribute is allowed purely so TextAlign round-trips. Everything else a
+ * style attribute can carry -- positioning, url() references, custom properties
+ * -- is discarded rather than trusted, so widening the allow-list for alignment
+ * does not widen it for anything else.
+ *
+ * Shared by both sanitizers: the bio config allows `style` for the same reason
+ * the article one does, and a second copy of this rule would be a second place
+ * to get it wrong.
+ */
+function restrictStyleToAlignment(node: unknown): void {
+  const el = node as {
+    getAttribute?: (n: string) => string | null;
+    setAttribute?: (n: string, v: string) => void;
+    removeAttribute?: (n: string) => void;
+  };
+  if (typeof el?.getAttribute !== 'function') return;
+
+  const style = el.getAttribute('style');
+  if (style === null) return;
+
+  const match = /(?:^|;)\s*text-align\s*:\s*(left|right|center|justify)\s*(?:;|$)/i.exec(style);
+  if (match) {
+    el.setAttribute?.('style', `text-align: ${match[1].toLowerCase()}`);
+  } else {
+    el.removeAttribute?.('style');
+  }
+}
 
 /** Exactly the capabilities a video player needs, and nothing else. Set by us,
  *  never carried over from the input. */
@@ -94,30 +147,7 @@ export function sanitizeArticleHtml(html: string | null | undefined): string {
     el.removeAttribute?.('sandbox'); // ours to decide, not the document's
   });
 
-  // Reduce `style` to at most a single text-align declaration.
-  //
-  // The attribute is allowed purely so TextAlign round-trips. Everything else a
-  // style attribute can carry -- positioning, url() references, custom
-  // properties -- is discarded here rather than trusted, so widening the
-  // allow-list for alignment does not widen it for anything else.
-  DOMPurify.addHook('afterSanitizeAttributes', function (node) {
-    const el = node as unknown as {
-      getAttribute?: (n: string) => string | null;
-      setAttribute?: (n: string, v: string) => void;
-      removeAttribute?: (n: string) => void;
-    };
-    if (typeof el?.getAttribute !== 'function') return;
-
-    const style = el.getAttribute('style');
-    if (style === null) return;
-
-    const match = /(?:^|;)\s*text-align\s*:\s*(left|right|center|justify)\s*(?:;|$)/i.exec(style);
-    if (match) {
-      el.setAttribute?.('style', `text-align: ${match[1].toLowerCase()}`);
-    } else {
-      el.removeAttribute?.('style');
-    }
-  });
+  DOMPurify.addHook('afterSanitizeAttributes', restrictStyleToAlignment);
 
   // Custom hook to ensure all external links have target="_blank" and rel="noopener noreferrer"
   DOMPurify.addHook('afterSanitizeAttributes', function (node) {
@@ -141,7 +171,11 @@ export function sanitizeArticleHtml(html: string | null | undefined): string {
 
 export function sanitizeBioHtml(html: string | null | undefined): string {
   if (!html) return "";
-  
+
+  // Same alignment-only restriction as articles. The bio config allows `style`
+  // so alignment survives; without this hook it would allow arbitrary CSS.
+  DOMPurify.addHook('afterSanitizeAttributes', restrictStyleToAlignment);
+
   DOMPurify.addHook('afterSanitizeAttributes', function (node) {
     if ('target' in node) {
       node.setAttribute('target', '_blank');

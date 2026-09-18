@@ -126,11 +126,14 @@ export default async function ReviewScreen({ params }: ReviewScreenProps) {
             revisions={article.revisions}
             onDecision={async (status, notes) => {
               "use server";
-              // The ReviewWorkspace now calls workflow actions directly using handleWorkflowAction
-              // but we kept onDecision for legacy compatibility. We'll just do nothing here
-              // because we updated ReviewWorkspace to call claimReview etc directly.
-              // Wait, ReviewWorkspace still uses onDecision for REVISION_REQUESTED and REJECTED!
-              // Let's implement those here.
+              // Claim, release and take-over are called directly by
+              // ReviewWorkspace. The three decisions that carry reviewer notes
+              // come through here, because the notes are collected in the
+              // client component and the actions are server-only.
+              //
+              // Each action revalidates the affected routes itself; the client
+              // then calls router.refresh() so this page re-renders with the
+              // new status rather than waiting for a manual reload.
               const { rejectArticle, requestChanges, publishArticle } = await import("@/app/actions/workflow");
               
               if (status === "REJECTED") {

@@ -82,6 +82,10 @@ export default async function AuthorsPage() {
     totalViews: publishedByAuthor.get(a.id)?.views ?? 0,
     linkedUserEmail: a.user?.email ?? null,
     linkedUserRole: a.user?.role ?? null,
+    // The settings editor is keyed by user id, not author id. An author with no
+    // linked account cannot be edited there, so the row renders no Edit action
+    // rather than a link that would silently open the actor's own profile.
+    linkedUserId: a.user?.id ?? null,
   }));
 
   const unlinked = rows.filter((r) => !r.linkedUserEmail).length;

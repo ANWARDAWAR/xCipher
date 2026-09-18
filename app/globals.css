@@ -6078,3 +6078,72 @@ select.ed-rail-input {
 @media (prefers-reduced-motion: reduce) {
   .sk::after { animation: none; }
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Profile biography editor
+   ───────────────────────────────────────────────────────────────────────────
+   The bio now runs the article editor, so it inherits .ed-body typography for
+   free. This only supplies the container: the article editor sits on a full
+   page and needs no frame, whereas inside a settings form the writing surface
+   has to read as one field among several.
+   ─────────────────────────────────────────────────────────────────────────── */
+.pf-bio-editor {
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.pf-bio-editor:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent);
+}
+
+/* The shared toolbar is sticky on the article page, where it tracks a long
+   scroll. In a form that would detach it from its own field, so it is pinned
+   to the top of this container instead. */
+.pf-bio-editor .ed-toolbar,
+.pf-bio-editor [role="toolbar"] {
+  position: static;
+  top: auto;
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--surface-2);
+  backdrop-filter: none;
+}
+
+.pf-bio-editor .ed-body {
+  padding: 14px 16px;
+  min-height: 200px;
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+/* A bio is short prose, so the article measure would leave it stranded in a
+   narrow column inside an already-narrow form field. */
+.pf-bio-editor .ed-body .ProseMirror {
+  max-width: none;
+}
+
+.pf-bio-loading {
+  min-height: 248px;
+  background: var(--surface-2);
+}
+
+/* Editing another user's profile: a standing notice, not a toast, because the
+   consequence of forgetting is saving changes under the wrong byline. */
+.pf-editing-other {
+  margin-bottom: 18px;
+  padding: 11px 14px;
+  border: 1px solid color-mix(in oklab, var(--warn) 42%, var(--line));
+  border-left: 3px solid var(--warn);
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--warn) 8%, transparent);
+  color: var(--ink);
+  font: 400 13px/1.5 var(--f-ui);
+}
+
+.pf-editing-other strong { font-weight: 600; }

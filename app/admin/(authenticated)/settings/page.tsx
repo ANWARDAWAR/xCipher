@@ -13,7 +13,7 @@ import type { Role } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage(props: { searchParams: Promise<{ tab?: string, edit?: string }> }) {
+export default async function SettingsPage(props: { searchParams: Promise<{ tab?: string, edit?: string, user?: string }> }) {
   const user = await getCurrentUser();
   if (!user) {
     redirect("/admin/login");
@@ -23,7 +23,25 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
   const currentTab = searchParams.tab || "profile";
   const isEditing = searchParams.edit === "true";
 
-  const dbUser = await db.user.findUnique({ where: { id: user.id } });
+  // ?user=<id> opens someone else's profile for editing, reached from the
+  // author directory. Gated on author.manage.all -- the same capability that
+  // gates /admin/authors and that updateProfile re-checks server-side, so a
+  // hand-typed URL cannot open a profile the actor may not edit.
+  const requestedUserId = searchParams.user?.trim();
+  const canManageOthers = authorize(user.role as Role, "author.manage.all");
+  const isManagingOther = Boolean(
+    requestedUserId && requestedUserId !== user.id && canManageOthers
+  );
+
+  // Falls back to the actor's own record when the id is absent, unauthorised or
+  // unknown, so the page degrades to "your settings" instead of erroring.
+  const targetUserId = isManagingOther ? requestedUserId! : user.id;
+
+  const dbUser = await db.user.findUnique({ where: { id: targetUserId } });
+
+  if (isManagingOther && !dbUser) {
+    redirect("/admin/authors");
+  }
 
   // Publication settings are OWNER/ADMIN only. Resolved here so the tab is not
   // even rendered for an editor; the action re-checks independently.
@@ -137,7 +155,12 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
                   </Link>
                 )}
               </div>
-              <ProfileForm user={dbUser || user} author={author} />
+              <ProfileForm
+                user={dbUser || user}
+                author={author}
+                targetUserId={isManagingOther ? targetUserId : undefined}
+                editingOtherName={isManagingOther ? (dbUser?.name || dbUser?.email || "this user") : undefined}
+              />
             </>
           )}
         </>

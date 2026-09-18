@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { archiveArticle, deleteArticlePermanently, deleteOwnDraft } from "@/app/actions/workflow";
 import { showToast } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -21,6 +21,12 @@ export default function ArticleActionMenu({ id, title, status, canArchive, canDe
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
 
+  // Keeps the row disabled until the refreshed server tree commits, rather than
+  // re-enabling as soon as the action resolves and briefly offering actions
+  // against a status that has already changed.
+  const [isRefreshing, startRefresh] = useTransition();
+  const busy = isProcessing || isRefreshing;
+
   const handleAction = async (action: "archive" | "delete" | "draftDelete") => {
     setShowConfirm(null);
     setIsProcessing(true);
@@ -32,7 +38,7 @@ export default function ArticleActionMenu({ id, title, status, canArchive, canDe
       
       if (result?.ok) {
         showToast("Action completed successfully");
-        router.refresh();
+        startRefresh(() => router.refresh());
       } else {
         showToast("Failed: " + (result?.message || "Unknown error"));
       }
@@ -56,11 +62,11 @@ export default function ArticleActionMenu({ id, title, status, canArchive, canDe
       <button
         type="button"
         onClick={() => setMenuOpen(!menuOpen)}
-        disabled={isProcessing}
+        disabled={busy}
         className="act"
         title="More actions"
       >
-        {isProcessing ? "..." : (
+        {busy ? "..." : (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="1" />
             <circle cx="12" cy="5" r="1" />

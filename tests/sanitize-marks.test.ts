@@ -52,11 +52,43 @@ describe("style is not a general-purpose opening", () => {
   });
 });
 
-describe("bio sanitizer stays narrow", () => {
-  it("gains neither mark nor style", () => {
-    const out = sanitizeBioHtml(`<p style="text-align:center"><mark>x</mark></p>`);
+describe("bio sanitizer now matches the shared editor", () => {
+  // The biography uses the article editor, so it must accept what that editor
+  // produces -- otherwise the toolbar offers formatting that is deleted on save.
+  it("keeps the marks and blocks the editor can produce", () => {
+    const out = sanitizeBioHtml(
+      `<h2>About</h2><p style="text-align:center"><mark>x</mark></p><ul><li>a</li></ul>`
+    );
+    expect(out).toContain("<h2>");
+    expect(out).toContain("<mark>");
+    expect(out).toContain("text-align: center");
+    expect(out).toContain("<li>");
+  });
+
+  it("applies the same alignment-only restriction to style", () => {
+    const out = sanitizeBioHtml(`<p style="position:fixed;background:url(https://evil.test/a.png)">x</p>`);
     expect(out).not.toContain("style=");
-    expect(out).not.toContain("mark");
-    expect(out).toContain("x");
+    expect(out).not.toContain("evil.test");
+  });
+
+  // Still deliberately narrower than an article.
+  it("refuses an iframe", () => {
+    const out = sanitizeBioHtml(
+      `<p>bio</p><iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"></iframe>`
+    );
+    expect(out).not.toContain("iframe");
+    expect(out).toContain("bio");
+  });
+
+  it("refuses h1, which the page supplies itself", () => {
+    const out = sanitizeBioHtml(`<h1>Name</h1><p>bio</p>`);
+    expect(out).not.toContain("<h1>");
+    expect(out).toContain("bio");
+  });
+
+  it("still blocks script and handlers", () => {
+    const out = sanitizeBioHtml(`<p onclick="alert(1)">x</p><script>y()</script>`);
+    expect(out).not.toContain("onclick");
+    expect(out).not.toContain("script");
   });
 });
