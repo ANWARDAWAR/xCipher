@@ -22,6 +22,8 @@ interface AuditLogsClientProps {
   totalLogs: number;
   currentPage: number;
   itemsPerPage: number;
+  /** Server render time, so relative ages do not depend on the client clock. */
+  renderedAt: number;
 }
 
 export default function AuditLogsClient({
@@ -29,6 +31,7 @@ export default function AuditLogsClient({
   totalLogs,
   currentPage,
   itemsPerPage,
+  renderedAt,
 }: AuditLogsClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -36,6 +39,7 @@ export default function AuditLogsClient({
 
   const [searchQuery, setSearchQuery] = useState(searchParams.get("query") || "");
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,8 +78,13 @@ export default function AuditLogsClient({
     return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
   };
 
+  // `renderedAt` comes from the server as a prop rather than being read here.
+  // Calling Date.now() while rendering a client component makes the
+  // server-rendered string and the first client render disagree, which React
+  // reports as a hydration mismatch, and it lets two rows a second apart show
+  // different ages within one screen.
   const getRelativeTime = (date: string | Date) => {
-    const diff = Date.now() - new Date(date).getTime();
+    const diff = renderedAt - new Date(date).getTime();
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);

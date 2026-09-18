@@ -15,8 +15,12 @@ interface Props {
   unreadCount: number;
 }
 
-function relativeTime(date: Date | string): string {
-  const diffMs = Date.now() - new Date(date).getTime();
+// `now` is passed in rather than read from the clock, so the value is stable
+// for a whole render pass. Reading Date.now() per item means two notifications
+// created in the same second can disagree, and on a client component it risks a
+// hydration mismatch between the server's clock and the browser's.
+function relativeTime(date: Date | string, now: number): string {
+  const diffMs = now - new Date(date).getTime();
   const mins = Math.floor(diffMs / 60000);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
@@ -66,6 +70,13 @@ export default function NotificationBell({ items, unreadCount }: Props) {
     if (open) panelRef.current?.focus();
   }, [open]);
 
+  const handleToggle = () => {
+    setOpen((wasOpen) => {
+      if (!wasOpen) setNow(Date.now());
+      return !wasOpen;
+    });
+  };
+
   const handleOpenItem = (item: NotificationItem) => {
     if (!item.isRead) {
       startTransition(async () => {
@@ -83,6 +94,12 @@ export default function NotificationBell({ items, unreadCount }: Props) {
     });
   };
 
+  // Captured when the panel opens rather than read during render: one clock
+  // reading for the whole list, so two notifications a second apart cannot
+  // disagree, and no Date.now() runs while rendering -- which on a client
+  // component risks a server/client hydration mismatch.
+  const [now, setNow] = useState(0);
+
   const label =
     unreadCount > 0
       ? `Notifications, ${unreadCount} unread`
@@ -93,7 +110,7 @@ export default function NotificationBell({ items, unreadCount }: Props) {
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleToggle}
         className="relative p-2 rounded-lg text-muted hover:text-ink hover:bg-surface-2 border border-transparent hover:border-line transition-colors cursor-pointer"
         aria-label={label}
         aria-expanded={open}
@@ -154,7 +171,7 @@ export default function NotificationBell({ items, unreadCount }: Props) {
                       {item.message}
                     </span>
                     <span className="block text-[10px] text-faint mt-1">
-                      {relativeTime(item.createdAt)}
+                      {relativeTime(item.createdAt, now)}
                       {!item.isRead && (
                         // Unread is carried by weight and by this word, not by
                         // the accent dot alone.

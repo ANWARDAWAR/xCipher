@@ -54,6 +54,14 @@ export default async function AuditLogsPage(props: {
   const limit = typeof searchParams.limit === 'string' ? parseInt(searchParams.limit, 10) : 25;
   const skip = (Math.max(1, page) - 1) * limit;
 
+  // Read once, alongside the query parameters, rather than in the JSX. The
+  // client renders every relative age against this single value, so the whole
+  // table agrees and nothing depends on the browser's clock.
+  // Server component: this runs once per request and the value is passed down,
+  // so the client never reads a clock of its own.
+  // eslint-disable-next-line react-hooks/purity
+  const renderedAt = Date.now();
+
   const where: any = {};
 
   if (query) {
@@ -80,7 +88,7 @@ export default async function AuditLogsPage(props: {
 
   if (dateRange && dateRange !== 'All Time') {
     const now = new Date();
-    let startDate = new Date();
+    const startDate = new Date();
     if (dateRange === '24h') {
       startDate.setHours(now.getHours() - 24);
     } else if (dateRange === '7d') {
@@ -117,7 +125,8 @@ export default async function AuditLogsPage(props: {
         logs={logs} 
         totalLogs={totalLogs} 
         currentPage={page} 
-        itemsPerPage={limit} 
+        itemsPerPage={limit}
+        renderedAt={renderedAt}
       />
     </>
   );
