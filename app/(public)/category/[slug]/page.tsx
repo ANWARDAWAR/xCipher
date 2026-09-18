@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { ARTICLE_CARD_SELECT, LISTING_ARTICLE_LIMIT } from "@/lib/queries";
+import { getCategoryArticles } from "@/lib/cached-queries";
 import { CATS } from "@/lib/mockData";
 import StoryRow from "@/components/article/StoryRow";
 import Sidebar from "@/components/layout/Sidebar";
@@ -59,15 +59,9 @@ export default async function CategoryPage({ params }: Props) {
   const catFullTitle = category?.fullTitle || fallbackCat?.full || catName;
   const catDesc = category?.description || fallbackCat?.desc || `${catName} news and updates on xSypher.`;
 
-  const articles = await db.article.findMany({
-    where: {
-      status: "PUBLISHED",
-      ...(category ? { categoryId: category.id } : { category: { slug } }),
-    },
-    orderBy: { createdAt: "desc" },
-    take: LISTING_ARTICLE_LIMIT,
-    select: ARTICLE_CARD_SELECT,
-  });
+  // Tagged per category, so an article landing in AI does not invalidate the
+  // twelve other sections.
+  const articles = await getCategoryArticles(slug);
 
   const feat = articles[0];
   const rest = articles.slice(1);

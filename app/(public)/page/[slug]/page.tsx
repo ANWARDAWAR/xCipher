@@ -7,6 +7,19 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
+/**
+ * These pages come from a hardcoded object, so every valid slug is known at
+ * build time and all of them can be pre-rendered. There is no database call
+ * here, which is why this route was already the fastest on the site.
+ */
+export function generateStaticParams() {
+  return Object.keys(PAGES).map((slug) => ({ slug }));
+}
+
+/** Nothing here reads a request, so the output never needs to be recomputed
+ *  per visitor. A slug outside PAGES still 404s through notFound(). */
+export const dynamicParams = false;
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const page = PAGES[slug];

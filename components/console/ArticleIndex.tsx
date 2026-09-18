@@ -6,7 +6,7 @@
 // what, and every one of those checks is re-run on the server before anything
 // is written. Hiding a control the server would refuse anyway buys nothing.
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useOptimistic } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArticleStatus, Role } from "@prisma/client";
@@ -95,6 +95,31 @@ export default function ArticleIndex({
 }: ArticleIndexProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  // Optimistic status.
+  //
+  // A bulk action is a server round-trip plus a router.refresh(), which on a
+  // slow connection leaves the table showing DRAFT for a second or more after
+  // the editor asked to publish. The rows below read from this instead of the
+  // prop so the new status paints immediately.
+  //
+  // The reducer takes a *map* of id -> status rather than a single status,
+  // because these actions report partial success: the server validates each
+  // article separately and can legitimately publish 37 of 40. Applying one
+  // status to the whole selection would show three rows as published that were
+  // actually rejected.
+  //
+  // Reverting is automatic. useOptimistic discards its overlay when the
+  // transition that set it completes, at which point `articles` has been
+  // refetched by router.refresh(). If the action throws, nothing was written
+  // and the overlay is dropped against unchanged server data -- so the failure
+  // path needs no explicit rollback, only that the mutation stay inside the
+  // transition.
+  const [optimisticArticles, applyOptimisticStatus] = useOptimistic(
+    articles,
+    (current: ArticleRow[], patch: Record<string, ArticleStatus>) =>
+      current.map((a) => (patch[a.id] ? { ...a, status: patch[a.id] } : a))
+  );
+
   // Which bulk verbs to offer at all. These mirror the capabilities the server
   // actions enforce; per-article eligibility is still decided there, so an
   // article in the wrong state is skipped and reported rather than hidden.
@@ -122,15 +147,15 @@ export default function ArticleIndex({
   // dangerous operation, and conflating the two is how people archive an
   // archive they never saw.
   const allOnPageSelected =
-    articles.length > 0 && articles.every((a) => selected.has(a.id));
+    optimisticArticles.length > 0 && optimisticArticles.every((a) => selected.has(a.id));
 
   const toggleAll = () => {
     setSelected((prev) =>
-      allOnPageSelected ? new Set() : new Set([...prev, ...articles.map((a) => a.id)])
+      allOnPageSelected ? new Set() : new Set([...prev, ...optimisticArticles.map((a) => a.id)])
     );
   };
 
-  if (articles.length === 0) {
+  if (optimisticArticles.length === 0) {
     return (
       <div className="bg-surface border border-line rounded-xl p-12 text-center mt-4">
         <FileText className="w-10 h-10 text-faint mx-auto mb-3" />
@@ -211,7 +236,7 @@ export default function ArticleIndex({
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
-          {articles.map((a) => {
+          {optimisticArticles.map((a) => {
             const authorName = a.authorModel?.name || a.author || "Unknown";
             const categoryName = a.category?.name || "";
 
@@ -357,7 +382,7 @@ export default function ArticleIndex({
           Same data, same actions, no horizontal scroll. Thumbnail and title sit
           on one line; status and metadata wrap beneath. */}
       <ul className="md:hidden divide-y divide-line">
-        {articles.map((a) => {
+        {optimisticArticles.map((a) => {
           const authorName = a.authorModel?.name || a.author || "Unknown";
           const categoryName = a.category?.name || "";
 
@@ -459,6 +484,10 @@ export default function ArticleIndex({
       canArchive={bulkCaps.canArchive}
       canPublish={bulkCaps.canPublish}
       canSubmit={bulkCaps.canSubmit}
+      // Called from inside the bar's transition, which is what lets React tie
+      // the overlay's lifetime to the action and drop it automatically when the
+      // refreshed rows arrive.
+      onOptimisticStatus={applyOptimisticStatus}
     />
     </>
   );

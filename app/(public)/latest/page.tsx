@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { db } from "@/lib/db";
-import { ARTICLE_CARD_SELECT, LATEST_ARTICLE_LIMIT } from "@/lib/queries";
+import { getLatestArticles } from "@/lib/cached-queries";
 import StoryRow from "@/components/article/StoryRow";
 import Sidebar from "@/components/layout/Sidebar";
 
@@ -31,12 +30,7 @@ function currentTimestamp(): number {
 }
 
 export default async function LatestPage() {
-  const articles = await db.article.findMany({
-    where: { status: "PUBLISHED" },
-    orderBy: { createdAt: "desc" },
-    take: LATEST_ARTICLE_LIMIT,
-    select: ARTICLE_CARD_SELECT,
-  });
+  const articles = await getLatestArticles();
 
   // Bucketing is a data decision, so unlike the relative labels it genuinely
   // has to happen here. The clock is read once, before the JSX, rather than

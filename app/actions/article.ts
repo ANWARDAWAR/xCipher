@@ -1,7 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import { articleMutationTags } from "@/lib/cache-tags";
 import { ArticleStatus, Role } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { canEditArticle, canPublishArticle, canDeleteArticle } from "@/lib/permissions";
@@ -247,11 +248,12 @@ export async function deleteArticle(id: string) {
       // public-visible transition like unpublish or archive and needs the same
       // invalidation. A draft has no public representation, so skip it there.
       if (article.status === "PUBLISHED") {
-        revalidatePath("/", "layout");
-        revalidatePath(`/article/${article.slug}`, "page");
-        if (article.category?.slug) {
-          revalidatePath(`/category/${article.category.slug}`, "page");
+        // Tag-scoped rather than dropping the whole layout: the listings and
+        // this article's own page are what changed.
+        for (const tag of articleMutationTags(article)) {
+          updateTag(tag);
         }
+        revalidatePath(`/article/${article.slug}`, "page");
       }
     } catch (revalError) {
       console.warn(">>> [SERVER] Revalidation error:", revalError);

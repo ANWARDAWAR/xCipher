@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getImgSrc, fmtViews, timeAgo } from "@/lib/utils";
 import { db } from "@/lib/db";
+import { getRecentArticleSlugs } from "@/lib/cached-queries";
 import { ARTICLE_CARD_SELECT } from "@/lib/queries";
 import { constructMetadata, generateNewsArticleJsonLd } from "@/lib/seo";
 import { SocialIcon } from "@/components/author/AuthorProfileView";
@@ -56,6 +57,30 @@ export async function generateMetadata({ params }: Props, parent: ResolvingMetad
 // ceiling for anything that changes without an explicit revalidation, such as
 // a view count.
 export const revalidate = 300; // article
+
+/**
+ * Pre-render the most recent articles at build time.
+ *
+ * Bounded at 50 rather than the whole archive: build time would otherwise grow
+ * with the number of published stories, and the long tail is not what readers
+ * arrive on -- traffic to a news site concentrates hard on the last few days.
+ *
+ * Anything not in this list still works. Next renders it on first request and
+ * caches the result from then on, so the only difference is who pays for that
+ * first render. Leaving dynamicParams at its default (true) is what makes that
+ * true; setting it false would 404 every older article.
+ */
+export async function generateStaticParams() {
+  try {
+    const recent = await getRecentArticleSlugs(50);
+    return recent.map((a: { slug: string }) => ({ slug: a.slug }));
+  } catch {
+    // A build without a reachable database should still succeed. Returning an
+    // empty list means every article renders on demand, which is exactly the
+    // behaviour before this function existed.
+    return [];
+  }
+}
 
 export default async function ArticlePage({ params }: Props) {
   const { slug } = await params;

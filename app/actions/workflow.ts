@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { getActor } from "@/lib/auth";
 import { authorize, ROLE_CAPABILITIES } from "@/lib/capabilities";
-import { ArticleStatus, Role } from "@prisma/client";
+import { ArticleStatus, Role, Prisma } from "@prisma/client";
 
 const REVIEWER_ROLES = (Object.keys(ROLE_CAPABILITIES) as Role[]).filter(role => 
   authorize(role, "article.review")
@@ -17,7 +17,8 @@ import {
   notifyPublished,
   notifyUnpublished,
 } from "@/lib/notifications";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import { CACHE_TAGS, articleTag, articleMutationTags } from "@/lib/cache-tags";
 
 export type ActionResponse<T = any> =
   | { ok: true; data?: T }
@@ -179,11 +180,25 @@ function revalidateArticleRoutes(article: {
   category?: { slug: string } | null;
   authorModel?: { slug: string } | null;
 }) {
-  revalidatePath("/", "layout");
-  revalidatePath("/latest", "page");
+  // Tags, not revalidatePath("/", "layout").
+  //
+  // That call was the broadest invalidation Next.js offers: it drops every
+  // route under the root layout, so publishing one story discarded the
+  // homepage, /latest, all thirteen categories, every tag page, every author
+  // page and every other article. On a title that ships several stories an
+  // hour the public cache was rarely warm.
+  //
+  // articleMutationTags names what actually changed -- the article listings,
+  // this article, its category, its author -- and leaves everything else
+  // cached.
+  for (const tag of articleMutationTags(article)) {
+    updateTag(tag);
+  }
+
+  // The article's own route is still invalidated by path. Its page component
+  // queries the article directly rather than through a tagged helper, because
+  // it needs the body columns the card select deliberately omits.
   revalidatePath(`/article/${article.slug}`, "page");
-  if (article.category?.slug) revalidatePath(`/category/${article.category.slug}`, "page");
-  if (article.authorModel?.slug) revalidatePath(`/author/${article.authorModel.slug}`, "page");
 }
 
 async function executeTransition(
@@ -705,8 +720,53 @@ async function runBulkTransition(
   const touchedSlugs: string[] = [];
   let publishedAffected = false;
 
+  // One read for the whole selection instead of N sequential findUnique calls.
+  //
+  // At the 50-article bulk limit that was fifty round-trips to Postgres before
+  // any work started, each waiting on the last. The authorization and
+  // transition checks below still run per article -- they have to, since the
+  // whole point is that some may legitimately be rejected -- but they now run
+  // against rows already in memory.
+  type BulkRow = {
+    id: string;
+    status: ArticleStatus;
+    authorId: string | null;
+    reviewedById: string | null;
+    title: string;
+    slug: string;
+    categoryId: string | null;
+    category: { slug: string } | null;
+    authorModel: { slug: string } | null;
+    deck: string | null;
+    contentHtml: string | null;
+  };
+
+  const found = (await db.article.findMany({
+    where: { id: { in: unique } },
+    select: {
+      id: true,
+      status: true,
+      authorId: true,
+      reviewedById: true,
+      title: true,
+      slug: true,
+      categoryId: true,
+      category: { select: { slug: true } },
+      authorModel: { select: { slug: true } },
+      deck: true,
+      contentHtml: true,
+    },
+  })) as BulkRow[];
+  const byId = new Map<string, BulkRow>(found.map((a) => [a.id, a]));
+
+  // Writes are accumulated and issued together once every article has been
+  // checked. Each is still an independent decision, so this is not an
+  // all-or-nothing transaction: a rejected article simply contributes no write.
+  const updates: Prisma.PrismaPromise<unknown>[] = [];
+  const auditRows: Prisma.AuditLogCreateManyInput[] = [];
+
   for (const id of unique) {
-    const article = await getArticle(id);
+    const article = byId.get(id);
 
     if (!article) {
       // Same answer for "does not exist" and "not yours to see" -- the loop
@@ -726,36 +786,63 @@ async function runBulkTransition(
       continue;
     }
 
+    const data: Prisma.ArticleUpdateInput = { status: to };
+    if (to === "ARCHIVED") data.archivedAt = new Date();
+    if (to === "DRAFT") {
+      // Coming back out of the archive: clear the stamp so the milestone
+      // list on the detail page does not claim it is still archived.
+      data.archivedAt = null;
+    }
+
+    updates.push(db.article.update({ where: { id }, data }));
+    auditRows.push({
+      userId: actor.id,
+      action: `BULK_${to}`,
+      entityType: "Article",
+      entityId: id,
+      details: { from: article.status, to, title: article.title },
+    });
+
+    if (article.status === "PUBLISHED" || to === "PUBLISHED") {
+      publishedAffected = true;
+      if (article.slug) touchedSlugs.push(article.slug);
+    }
+
+    outcomes.push({ id, title: article.title, ok: true });
+  }
+
+  // Issue the accepted writes together.
+  //
+  // $transaction here is about the round-trip, not atomicity across unrelated
+  // articles: every row in this array has already passed its own authorization
+  // and transition check, so there is no case where one should veto another.
+  // What it replaces is 2N sequential awaits -- an update and an audit insert
+  // per article, each waiting on the last.
+  //
+  // The audit rows go in as a single createMany for the same reason.
+  //
+  // If the batch does fail, it fails as a unit, so the outcomes optimistically
+  // recorded above would be wrong. They are corrected in the catch rather than
+  // reported as successes.
+  if (updates.length > 0) {
     try {
-      const data: Record<string, unknown> = { status: to };
-      if (to === "ARCHIVED") data.archivedAt = new Date();
-      if (to === "DRAFT") {
-        // Coming back out of the archive: clear the stamp so the milestone
-        // list on the detail page does not claim it is still archived.
-        data.archivedAt = null;
-      }
-
-      await db.article.update({ where: { id }, data });
-
-      await db.auditLog.create({
-        data: {
-          userId: actor.id,
-          action: `BULK_${to}`,
-          entityType: "Article",
-          entityId: id,
-          details: { from: article.status, to, title: article.title },
-        },
-      });
-
-      if (article.status === "PUBLISHED" || to === "PUBLISHED") {
-        publishedAffected = true;
-        if (article.slug) touchedSlugs.push(article.slug);
-      }
-
-      outcomes.push({ id, title: article.title, ok: true });
+      await db.$transaction([
+        ...updates,
+        db.auditLog.createMany({ data: auditRows }),
+      ]);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Update failed.";
-      outcomes.push({ id, title: article.title, ok: false, message });
+      // Nothing was written, so no article moved and no cache is stale.
+      return {
+        ok: true,
+        data: {
+          succeeded: 0,
+          failed: outcomes.length,
+          outcomes: outcomes.map((o) =>
+            o.ok ? { ...o, ok: false as const, message } : o
+          ),
+        },
+      };
     }
   }
 
@@ -766,8 +853,9 @@ async function runBulkTransition(
   // a pile of drafts has no reader-facing effect and should not invalidate the
   // whole site.
   if (publishedAffected) {
-    revalidatePath("/", "layout");
+    updateTag(CACHE_TAGS.articles);
     for (const slug of touchedSlugs) {
+      updateTag(articleTag(slug));
       revalidatePath(`/article/${slug}`, "page");
     }
   }

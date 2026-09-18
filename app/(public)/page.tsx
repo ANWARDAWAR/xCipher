@@ -2,8 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getImgSrc, fmtViews } from "@/lib/utils";
 import RelativeTime from "@/components/common/RelativeTime";
-import { db } from "@/lib/db";
-import { ARTICLE_CARD_SELECT, HOME_ARTICLE_LIMIT } from "@/lib/queries";
+import { getHomeArticles } from "@/lib/cached-queries";
 import StoryCard from "@/components/article/StoryCard";
 import StoryRow from "@/components/article/StoryRow";
 import BreakingTicker from "@/components/home/BreakingTicker";
@@ -21,12 +20,10 @@ import NewsletterSignup from "@/components/newsletter/NewsletterSignup";
 export const revalidate = 300; // homepage
 
 export default async function Home() {
-  const dbArticles = await db.article.findMany({
-    where: { status: "PUBLISHED" },
-    orderBy: { createdAt: 'desc' },
-    take: HOME_ARTICLE_LIMIT,
-    select: ARTICLE_CARD_SELECT,
-  });
+  // Tagged read: publishing invalidates the `articles` tag, which drops this
+  // entry and nothing else. Previously the same event dropped every cached
+  // route in the app.
+  const dbArticles = await getHomeArticles();
 
   if (!dbArticles.length) return <div className="wrap py-20 text-center">No articles published yet.</div>;
 

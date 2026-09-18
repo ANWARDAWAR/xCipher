@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { CACHE_TAGS, articleTag, categoryTag } from "./cache-tags";
 import { notifyPublished } from "@/lib/notifications";
+import type { Prisma } from "@prisma/client";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Scheduled publication executor
@@ -70,6 +72,8 @@ export async function runScheduledPublications(
   // Collected as we go rather than derived afterwards: it keeps the set exact
   // (only categories of articles that actually published) without a second pass.
   const categorySlugs = new Set<string>();
+  const auditRows: Prisma.AuditLogCreateManyInput[] = [];
+  const notifyTargets: typeof due = [];
 
   for (const article of batch) {
     try {
@@ -93,23 +97,25 @@ export async function runScheduledPublications(
         continue;
       }
 
-      await db.auditLog.create({
-        data: {
-          userId: null, // performed by the system, not a person
-          action: "PUBLISH_ARTICLE_SCHEDULED",
-          entityType: "Article",
-          entityId: article.id,
-          details: {
-            scheduledFor: article.scheduledFor?.toISOString() ?? null,
-            executedAt: now.toISOString(),
-          },
+      // Audit rows and notifications are collected and flushed after the loop.
+      //
+      // The publish itself stays per-article on purpose: the conditional
+      // updateMany above is what makes a concurrent run safe, and `count === 0`
+      // has to be inspected for each row. Those semantics would be lost in a
+      // single batched write. What was genuinely wasteful was the two awaits
+      // that follow it, which have nothing to do with that race.
+      auditRows.push({
+        userId: null, // performed by the system, not a person
+        action: "PUBLISH_ARTICLE_SCHEDULED",
+        entityType: "Article",
+        entityId: article.id,
+        details: {
+          scheduledFor: article.scheduledFor?.toISOString() ?? null,
+          executedAt: now.toISOString(),
         },
       });
 
-      // actorId is empty: there is no acting user, so the author is always
-      // notified rather than being skipped as a self-notify.
-      await notifyPublished(article, "");
-
+      notifyTargets.push(article);
       published.push({ id: article.id, slug: article.slug, title: article.title });
       if (article.category?.slug) categorySlugs.add(article.category.slug);
     } catch (error) {
@@ -119,16 +125,46 @@ export async function runScheduledPublications(
     }
   }
 
+  // One insert for the whole run instead of one per article.
+  if (auditRows.length > 0) {
+    try {
+      await db.auditLog.createMany({ data: auditRows });
+    } catch (error) {
+      // The articles are published; losing the audit rows must not fail the
+      // run or make it look like nothing happened.
+      console.error("[scheduler] failed to write audit rows:", error);
+    }
+  }
+
+  // Notifications in parallel rather than one await at a time. allSettled so a
+  // single failed notification does not abandon the rest -- publication has
+  // already happened and cannot be undone by a mail error.
+  //
+  // actorId is empty: there is no acting user, so the author is always notified
+  // rather than being skipped as a self-notify.
+  if (notifyTargets.length > 0) {
+    const results = await Promise.allSettled(
+      notifyTargets.map((article) => notifyPublished(article, ""))
+    );
+    for (const r of results) {
+      if (r.status === "rejected") {
+        console.error("[scheduler] notification failed:", r.reason);
+      }
+    }
+  }
+
   if (published.length > 0) {
     try {
-      revalidatePath("/", "layout");
-      revalidatePath("/latest", "page");
+      // One tag covers every article listing -- homepage, /latest, category,
+      // tag, author, search -- instead of dropping the entire route tree.
+      revalidateTag(CACHE_TAGS.articles, { expire: 0 });
       revalidatePath("/admin/articles", "page");
       for (const article of published) {
+        revalidateTag(articleTag(article.slug), { expire: 0 });
         revalidatePath(`/article/${article.slug}`, "page");
       }
       for (const slug of categorySlugs) {
-        revalidatePath(`/category/${slug}`, "page");
+        revalidateTag(categoryTag(slug), { expire: 0 });
       }
     } catch (error) {
       // A revalidation failure must not make the run look failed: the articles

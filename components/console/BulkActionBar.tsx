@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import type { ArticleStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { Archive, Send, Globe, RotateCcw, X, Loader2 } from "lucide-react";
 import {
@@ -35,7 +36,20 @@ interface BulkActionBarProps {
   canArchive: boolean;
   canPublish: boolean;
   canSubmit: boolean;
+  /** Paint the new status on the affected rows before the server answers.
+   *  Must be invoked inside a transition, which is why the call lives in
+   *  handleRun rather than in the click handler. */
+  onOptimisticStatus?: (patch: Record<string, ArticleStatus>) => void;
 }
+
+/** The status each bulk verb moves an article to, for the optimistic paint.
+ *  Mirrors the `to` each server action passes to runBulkTransition. */
+const OPTIMISTIC_TARGET: Record<BulkKind, ArticleStatus> = {
+  archive: "ARCHIVED",
+  restore: "DRAFT",
+  publish: "PUBLISHED",
+  submit: "SUBMITTED",
+};
 
 const ACTIONS: Record<
   BulkKind,
@@ -90,8 +104,10 @@ export default function BulkActionBar({
   canArchive,
   canPublish,
   canSubmit,
+  onOptimisticStatus,
 }: BulkActionBarProps) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [pending, setPending] = useState<BulkKind | null>(null);
   const [running, setRunning] = useState(false);
 
@@ -108,45 +124,71 @@ export default function BulkActionBar({
   const handleRun = async () => {
     if (!pending) return;
     const action = ACTIONS[pending];
+    const target = OPTIMISTIC_TARGET[pending];
+    const ids = [...selectedIds];
     setRunning(true);
-    try {
-      const res = await action.run(selectedIds);
 
-      if (!res.ok) {
-        showToast(`Error: ${res.message}`);
-        return;
+    // Everything below runs inside one transition so the optimistic overlay
+    // stays alive for exactly as long as the action does. React discards it
+    // when the transition settles -- by which point router.refresh() has
+    // replaced the rows with server truth -- so there is no manual rollback and
+    // no window where a stale overlay can outlive its action.
+    startTransition(async () => {
+      // Paint first. If the action throws, nothing was written and this is
+      // dropped against unchanged data, which is the revert.
+      onOptimisticStatus?.(Object.fromEntries(ids.map((id) => [id, target])));
+
+      try {
+        const res = await action.run(ids);
+
+        if (!res.ok) {
+          showToast(`Error: ${res.message}`);
+          return;
+        }
+
+        const { succeeded, failed, outcomes } = res.data!;
+
+        if (failed === 0) {
+          showToast(`${succeeded} article${succeeded === 1 ? "" : "s"} updated.`);
+        } else if (succeeded === 0) {
+          // Every one was rejected -- show why for the first, since they usually
+          // share a cause, rather than a bare "nothing happened".
+          const first = outcomes.find((o) => !o.ok);
+          showToast(`No articles were changed. ${first?.message || ""}`.trim());
+        } else {
+          const skipped = outcomes
+            .filter((o) => !o.ok)
+            .map((o) => o.title)
+            .slice(0, 3)
+            .join(", ");
+          const more = failed > 3 ? ` and ${failed - 3} more` : "";
+          showToast(
+            `${succeeded} updated, ${failed} skipped: ${skipped}${more}.`
+          );
+        }
+
+        // Partial success is the interesting case: the paint above moved every
+        // selected row, but the server may have rejected some. Re-apply the
+        // overlay to the accepted ids only, so a rejected article visibly stays
+        // where it was instead of flickering to the new status and back when
+        // the refresh lands.
+        if (failed > 0) {
+          const accepted = outcomes.filter((o) => o.ok).map((o) => o.id);
+          onOptimisticStatus?.(
+            Object.fromEntries(accepted.map((id) => [id, target]))
+          );
+        }
+
+        onClear();
+        router.refresh();
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Bulk action failed";
+        showToast(`Error: ${msg}`);
+      } finally {
+        setRunning(false);
+        setPending(null);
       }
-
-      const { succeeded, failed, outcomes } = res.data!;
-
-      if (failed === 0) {
-        showToast(`${succeeded} article${succeeded === 1 ? "" : "s"} updated.`);
-      } else if (succeeded === 0) {
-        // Every one was rejected -- show why for the first, since they usually
-        // share a cause, rather than a bare "nothing happened".
-        const first = outcomes.find((o) => !o.ok);
-        showToast(`No articles were changed. ${first?.message || ""}`.trim());
-      } else {
-        const skipped = outcomes
-          .filter((o) => !o.ok)
-          .map((o) => o.title)
-          .slice(0, 3)
-          .join(", ");
-        const more = failed > 3 ? ` and ${failed - 3} more` : "";
-        showToast(
-          `${succeeded} updated, ${failed} skipped: ${skipped}${more}.`
-        );
-      }
-
-      onClear();
-      router.refresh();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Bulk action failed";
-      showToast(`Error: ${msg}`);
-    } finally {
-      setRunning(false);
-      setPending(null);
-    }
+    });
   };
 
   return (
