@@ -114,10 +114,29 @@ export default function ArticleIndex({
   // and the overlay is dropped against unchanged server data -- so the failure
   // path needs no explicit rollback, only that the mutation stay inside the
   // transition.
+  // Two overlays rather than one: a status change restyles a row, a delete
+  // takes it out of the list. Folding both into one reducer would mean encoding
+  // "removed" as a pseudo-status, which the row renderer would then have to
+  // know about.
+  const [removedIds, applyOptimisticRemove] = useOptimistic(
+    [] as string[],
+    (_current: string[], ids: string[]) => ids
+  );
+
   const [optimisticArticles, applyOptimisticStatus] = useOptimistic(
     articles,
     (current: ArticleRow[], patch: Record<string, ArticleStatus>) =>
       current.map((a) => (patch[a.id] ? { ...a, status: patch[a.id] } : a))
+  );
+
+  // What the table actually renders: the status overlay applied, minus anything
+  // a delete is currently removing.
+  const visibleArticles = useMemo(
+    () =>
+      removedIds.length === 0
+        ? optimisticArticles
+        : optimisticArticles.filter((a) => !removedIds.includes(a.id)),
+    [optimisticArticles, removedIds]
   );
 
   // Which bulk verbs to offer at all. These mirror the capabilities the server
@@ -128,10 +147,16 @@ export default function ArticleIndex({
       canArchive: authorize(actor.role, "article.archive"),
       canPublish: authorize(actor.role, "article.publish"),
       canSubmit: authorize(actor.role, "article.submit"),
+      // Either capability puts the button on screen; the server decides per
+      // article which rows it actually applies to.
+      canDelete:
+        authorize(actor.role, "article.delete") ||
+        authorize(actor.role, "article.delete.own.draft"),
     }),
     [actor.role]
   );
-  const anyBulk = bulkCaps.canArchive || bulkCaps.canPublish || bulkCaps.canSubmit;
+  const anyBulk =
+    bulkCaps.canArchive || bulkCaps.canPublish || bulkCaps.canSubmit || bulkCaps.canDelete;
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -147,15 +172,15 @@ export default function ArticleIndex({
   // dangerous operation, and conflating the two is how people archive an
   // archive they never saw.
   const allOnPageSelected =
-    optimisticArticles.length > 0 && optimisticArticles.every((a) => selected.has(a.id));
+    visibleArticles.length > 0 && visibleArticles.every((a) => selected.has(a.id));
 
   const toggleAll = () => {
     setSelected((prev) =>
-      allOnPageSelected ? new Set() : new Set([...prev, ...optimisticArticles.map((a) => a.id)])
+      allOnPageSelected ? new Set() : new Set([...prev, ...visibleArticles.map((a) => a.id)])
     );
   };
 
-  if (optimisticArticles.length === 0) {
+  if (visibleArticles.length === 0) {
     return (
       <div className="bg-surface border border-line rounded-xl p-12 text-center mt-4">
         <FileText className="w-10 h-10 text-faint mx-auto mb-3" />
@@ -236,7 +261,7 @@ export default function ArticleIndex({
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
-          {optimisticArticles.map((a) => {
+          {visibleArticles.map((a) => {
             const authorName = a.authorModel?.name || a.author || "Unknown";
             const categoryName = a.category?.name || "";
 
@@ -382,7 +407,7 @@ export default function ArticleIndex({
           Same data, same actions, no horizontal scroll. Thumbnail and title sit
           on one line; status and metadata wrap beneath. */}
       <ul className="md:hidden divide-y divide-line">
-        {optimisticArticles.map((a) => {
+        {visibleArticles.map((a) => {
           const authorName = a.authorModel?.name || a.author || "Unknown";
           const categoryName = a.category?.name || "";
 
@@ -488,6 +513,8 @@ export default function ArticleIndex({
       // the overlay's lifetime to the action and drop it automatically when the
       // refreshed rows arrive.
       onOptimisticStatus={applyOptimisticStatus}
+      onOptimisticRemove={applyOptimisticRemove}
+      canDelete={bulkCaps.canDelete}
     />
     </>
   );

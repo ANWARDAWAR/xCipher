@@ -881,3 +881,201 @@ export async function bulkPublish(ids: string[]): Promise<BulkResponse> {
 export async function bulkSubmit(ids: string[]): Promise<BulkResponse> {
   return runBulkTransition(ids, "SUBMITTED");
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Bulk permanent deletion
+// ──────────────────────────────────────────────────────────────────────────────
+//
+// Separate from runBulkTransition rather than folded into it, because this is
+// not a transition. The others move a status and are reversible -- an archived
+// article can be restored, an unpublished one republished. This destroys rows,
+// and the article, its revisions, its review history and its comments go with
+// it. Sharing a code path would make it too easy for a future change to the
+// generic runner to widen what deletion accepts.
+//
+// It enforces exactly the same conditions as the two single-article delete
+// actions, per article, so bulk is a convenience over the existing rules and
+// never a way around them:
+//
+//   * ARCHIVED         -> requires "article.delete"          (OWNER, ADMIN)
+//   * DRAFT, own       -> requires "article.delete.own.draft"
+//   * anything else    -> refused, with the reason reported
+//
+// A published article is never deletable here. Archiving first is a deliberate
+// speed bump: it takes the story off the public site and gives the newsroom a
+// reversible state to sit in before anything is destroyed.
+// ──────────────────────────────────────────────────────────────────────────────
+
+export async function bulkDelete(ids: string[]): Promise<BulkResponse> {
+  const actor = await getActor();
+  if (!actor) {
+    return { ok: false, code: "UNAUTHENTICATED", message: "You are not signed in." };
+  }
+
+  const canDeleteArchived = authorize(actor.role, "article.delete");
+  const canDeleteOwnDraft = authorize(actor.role, "article.delete.own.draft");
+
+  // Refuse the whole call if the actor cannot delete anything at all, rather
+  // than returning a list of identical per-article refusals.
+  if (!canDeleteArchived && !canDeleteOwnDraft) {
+    return {
+      ok: false,
+      code: "FORBIDDEN",
+      message: "You do not have permission to delete articles.",
+    };
+  }
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return { ok: false, code: "VALIDATION", message: "No articles selected." };
+  }
+
+  const unique = Array.from(new Set(ids));
+
+  if (unique.length > BULK_LIMIT) {
+    return {
+      ok: false,
+      code: "VALIDATION",
+      message: `Select at most ${BULK_LIMIT} articles at a time.`,
+    };
+  }
+
+  type DeleteRow = {
+    id: string;
+    status: ArticleStatus;
+    authorId: string | null;
+    title: string;
+    slug: string;
+  };
+
+  const found = (await db.article.findMany({
+    where: { id: { in: unique } },
+    select: { id: true, status: true, authorId: true, title: true, slug: true },
+  })) as DeleteRow[];
+  const byId = new Map<string, DeleteRow>(found.map((a) => [a.id, a]));
+
+  const outcomes: BulkOutcome[] = [];
+  const deletable: DeleteRow[] = [];
+
+  for (const id of unique) {
+    const article = byId.get(id);
+
+    if (!article) {
+      // Same answer for "does not exist" and "not yours to see", so the
+      // response cannot be used to probe for ids.
+      outcomes.push({ id, title: "Unknown article", ok: false, message: "Not found." });
+      continue;
+    }
+
+    if (article.status === "ARCHIVED") {
+      if (!canDeleteArchived) {
+        outcomes.push({
+          id,
+          title: article.title,
+          ok: false,
+          message: "You cannot permanently delete archived articles.",
+        });
+        continue;
+      }
+      deletable.push(article);
+      continue;
+    }
+
+    if (article.status === "DRAFT") {
+      // Ownership is checked against the actor's author record, not the
+      // session, and not the client payload.
+      const isOwn = Boolean(actor.authorId) && article.authorId === actor.authorId;
+
+      // An account that can delete any archived article can also clear out
+      // drafts; anyone else is limited to their own.
+      if (!canDeleteArchived && !(canDeleteOwnDraft && isOwn)) {
+        outcomes.push({
+          id,
+          title: article.title,
+          ok: false,
+          message: "You can only delete your own drafts.",
+        });
+        continue;
+      }
+      deletable.push(article);
+      continue;
+    }
+
+    outcomes.push({
+      id,
+      title: article.title,
+      ok: false,
+      message:
+        article.status === "PUBLISHED"
+          ? "Published articles must be archived before they can be deleted."
+          : `Only drafts and archived articles can be deleted (this one is ${article.status.toLowerCase().replace("_", " ")}).`,
+    });
+  }
+
+  if (deletable.length === 0) {
+    return {
+      ok: true,
+      data: { succeeded: 0, failed: outcomes.length, outcomes },
+    };
+  }
+
+  const deletableIds = deletable.map((a) => a.id);
+  const deletableSlugs = deletable.map((a) => a.slug);
+
+  try {
+    // One transaction for the accepted set. Atomicity matters here in a way it
+    // does not for the status transitions: a half-finished delete would leave
+    // orphaned revisions and comments pointing at an article that no longer
+    // exists. Every row in this batch has already passed its own check, so
+    // nothing valid is being held hostage by something invalid.
+    //
+    // The audit rows are written first and deliberately survive the articles
+    // they describe -- that record is the only remaining trace once the rows
+    // are gone, and it is what makes an owner's deletion accountable.
+    await db.$transaction([
+      db.auditLog.createMany({
+        data: deletable.map((a) => ({
+          userId: actor.id,
+          action: "BULK_DELETE_ARTICLE",
+          entityType: "Article",
+          entityId: a.id,
+          details: {
+            title: a.title,
+            slug: a.slug,
+            status: a.status,
+            authorId: a.authorId,
+          },
+        })),
+      }),
+      db.articleReview.deleteMany({ where: { articleId: { in: deletableIds } } }),
+      db.articleRevision.deleteMany({ where: { articleId: { in: deletableIds } } }),
+      // Comments key off the slug, not the article id.
+      db.comment.deleteMany({ where: { articleSlug: { in: deletableSlugs } } }),
+      db.article.deleteMany({ where: { id: { in: deletableIds } } }),
+    ]);
+
+    for (const a of deletable) {
+      outcomes.push({ id: a.id, title: a.title, ok: true });
+    }
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Delete failed.";
+    // The transaction rolled back, so nothing was deleted. Report the accepted
+    // ones as failed rather than leaving them unaccounted for.
+    for (const a of deletable) {
+      outcomes.push({ id: a.id, title: a.title, ok: false, message });
+    }
+    return {
+      ok: true,
+      data: { succeeded: 0, failed: outcomes.length, outcomes },
+    };
+  }
+
+  revalidatePath("/admin/articles");
+  // Neither drafts nor archived articles are on the public site, so the reader
+  // -facing cache is untouched. Only the console listing changes.
+
+  const succeeded = outcomes.filter((o) => o.ok).length;
+  return {
+    ok: true,
+    data: { succeeded, failed: outcomes.length - succeeded, outcomes },
+  };
+}

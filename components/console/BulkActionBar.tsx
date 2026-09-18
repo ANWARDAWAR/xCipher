@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import type { ArticleStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { Archive, Send, Globe, RotateCcw, X, Loader2 } from "lucide-react";
+import { Archive, Send, Globe, RotateCcw, X, Loader2, Trash2 } from "lucide-react";
 import {
   bulkArchive,
   bulkRestore,
   bulkPublish,
   bulkSubmit,
+  bulkDelete,
   type BulkResponse,
 } from "@/app/actions/workflow";
 import { showToast } from "@/lib/utils";
@@ -28,7 +29,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 // the rejected ones are listed rather than collapsed into a generic failure.
 // ─────────────────────────────────────────────────────────────────────────────
 
-type BulkKind = "archive" | "restore" | "publish" | "submit";
+type BulkKind = "archive" | "restore" | "publish" | "submit" | "delete";
 
 interface BulkActionBarProps {
   selectedIds: string[];
@@ -36,6 +37,12 @@ interface BulkActionBarProps {
   canArchive: boolean;
   canPublish: boolean;
   canSubmit: boolean;
+  /** Permanent deletion. Separate from the others because it is the only
+   *  irreversible verb here, and only OWNER/ADMIN hold the capability. */
+  canDelete?: boolean;
+  /** Remove rows from the table before the server answers. Delete has no
+   *  target status to paint -- the row goes away entirely. */
+  onOptimisticRemove?: (ids: string[]) => void;
   /** Paint the new status on the affected rows before the server answers.
    *  Must be invoked inside a transition, which is why the call lives in
    *  handleRun rather than in the click handler. */
@@ -44,11 +51,13 @@ interface BulkActionBarProps {
 
 /** The status each bulk verb moves an article to, for the optimistic paint.
  *  Mirrors the `to` each server action passes to runBulkTransition. */
-const OPTIMISTIC_TARGET: Record<BulkKind, ArticleStatus> = {
+const OPTIMISTIC_TARGET: Partial<Record<BulkKind, ArticleStatus>> = {
   archive: "ARCHIVED",
   restore: "DRAFT",
   publish: "PUBLISHED",
   submit: "SUBMITTED",
+  // No entry for "delete": the row is removed rather than restyled, so it is
+  // handled by onOptimisticRemove instead.
 };
 
 const ACTIONS: Record<
@@ -69,6 +78,18 @@ const ACTIONS: Record<
     confirmTitle: (n) => `Archive ${n} article${n === 1 ? "" : "s"}?`,
     confirmBody: (n) =>
       `${n} article${n === 1 ? "" : "s"} will be moved to the archive and removed from the public site if published. Archived articles can be restored to draft later.`,
+    destructive: true,
+  },
+  delete: {
+    label: "Delete",
+    icon: Trash2,
+    run: bulkDelete,
+    confirmTitle: (n) => `Permanently delete ${n} article${n === 1 ? "" : "s"}?`,
+    // Names what else goes, because "delete the article" reads as reversible to
+    // most people and this is not. The server refuses anything that is not a
+    // draft or archived, which is said here so the count is not a surprise.
+    confirmBody: (n) =>
+      `This cannot be undone. ${n === 1 ? "The article" : `Up to ${n} articles`} will be erased along with ${n === 1 ? "its" : "their"} revision history, review history and reader comments. Only drafts and archived articles are eligible — anything published or in review will be skipped and reported.`,
     destructive: true,
   },
   restore: {
@@ -104,7 +125,9 @@ export default function BulkActionBar({
   canArchive,
   canPublish,
   canSubmit,
+  canDelete,
   onOptimisticStatus,
+  onOptimisticRemove,
 }: BulkActionBarProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -115,10 +138,13 @@ export default function BulkActionBar({
 
   const n = selectedIds.length;
 
+  // Delete is last, and visually separated below, so it is never adjacent to
+  // the verb an editor reaches for most.
   const available: BulkKind[] = [
     ...(canSubmit ? (["submit"] as BulkKind[]) : []),
     ...(canPublish ? (["publish"] as BulkKind[]) : []),
     ...(canArchive ? (["archive", "restore"] as BulkKind[]) : []),
+    ...(canDelete ? (["delete"] as BulkKind[]) : []),
   ];
 
   const handleRun = async () => {
@@ -136,7 +162,12 @@ export default function BulkActionBar({
     startTransition(async () => {
       // Paint first. If the action throws, nothing was written and this is
       // dropped against unchanged data, which is the revert.
-      onOptimisticStatus?.(Object.fromEntries(ids.map((id) => [id, target])));
+      if (pending === "delete") {
+        // Rows leave the table rather than change status.
+        onOptimisticRemove?.(ids);
+      } else if (target) {
+        onOptimisticStatus?.(Object.fromEntries(ids.map((id) => [id, target])));
+      }
 
       try {
         const res = await action.run(ids);
@@ -174,9 +205,16 @@ export default function BulkActionBar({
         // the refresh lands.
         if (failed > 0) {
           const accepted = outcomes.filter((o) => o.ok).map((o) => o.id);
-          onOptimisticStatus?.(
-            Object.fromEntries(accepted.map((id) => [id, target]))
-          );
+          if (pending === "delete") {
+            // Narrow the removal to what actually went, so a skipped article
+            // reappears immediately instead of vanishing and returning when
+            // the refresh lands.
+            onOptimisticRemove?.(accepted);
+          } else if (target) {
+            onOptimisticStatus?.(
+              Object.fromEntries(accepted.map((id) => [id, target]))
+            );
+          }
         }
 
         onClear();
@@ -211,21 +249,40 @@ export default function BulkActionBar({
           <div className="flex items-center gap-1 flex-wrap flex-1">
             {available.map((kind) => {
               const { label, icon: Icon } = ACTIONS[kind];
+              const isDelete = kind === "delete";
               return (
-                <button
-                  key={kind}
-                  type="button"
-                  onClick={() => setPending(kind)}
-                  disabled={running}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-md hover:bg-white/10 transition-colors disabled:opacity-50"
-                >
-                  {running && pending === kind ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Icon className="w-3.5 h-3.5" aria-hidden="true" />
+                <Fragment key={kind}>
+                  {/* Delete sits behind a rule, away from the verb reached for
+                      most often. The separator is the cheapest way to stop a
+                      mis-aimed click on a bar whose buttons are otherwise
+                      interchangeable. */}
+                  {isDelete && (
+                    <span
+                      className="mx-1 h-5 w-px bg-white/20 self-center"
+                      aria-hidden="true"
+                    />
                   )}
-                  {label}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setPending(kind)}
+                    disabled={running}
+                    // Danger styling is carried by colour *and* by the
+                    // separator and position, so it does not depend on colour
+                    // perception alone.
+                    className={
+                      isDelete
+                        ? "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-md text-[#ff9ea6] hover:bg-[var(--bad)] hover:text-white transition-colors disabled:opacity-50"
+                        : "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-md hover:bg-white/10 transition-colors disabled:opacity-50"
+                    }
+                  >
+                    {running && pending === kind ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Icon className="w-3.5 h-3.5" aria-hidden="true" />
+                    )}
+                    {label}
+                  </button>
+                </Fragment>
               );
             })}
           </div>
@@ -249,6 +306,11 @@ export default function BulkActionBar({
         confirmText={running ? "Working…" : pending ? ACTIONS[pending].label : ""}
         cancelText="Cancel"
         isDestructive={pending ? !!ACTIONS[pending].destructive : false}
+        // Typing the word is reserved for the one action that cannot be undone.
+        // Archiving is destructive-looking but reversible, so making it equally
+        // laborious would train people to type through the prompt without
+        // reading it -- which is exactly when the real one gets missed.
+        requireTypedConfirmation={pending === "delete" ? "DELETE" : undefined}
         onConfirm={handleRun}
         onCancel={() => setPending(null)}
       />
