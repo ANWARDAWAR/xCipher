@@ -25,6 +25,15 @@
   /* Foreground for text placed ON a solid status fill. Flips per theme because
      the status tokens themselves flip from dark-on-light to light-on-dark. */
   --on-status: #ffffff;
+
+  /* Aliases for names used in components that predate the token list. Declared
+     once here rather than in both theme blocks: they resolve through the
+     canonical token, so the dark overrides carry through automatically. */
+  --ink-muted: var(--muted);
+  --success: var(--ok);
+  --warning: var(--warn);
+  --error: var(--bad);
+  --surface-1: var(--surface);
   --ink-panel: #14171b;
   --ink-panel-2: #1b1f24;
   --ink-panel-line: #2c323a;
