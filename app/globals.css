@@ -67,9 +67,19 @@
   --w-prose: 712px;
   --prose-fs: 1.075rem;
 
-  --f-display: var(--font-fraunces), Georgia, serif;
-  --f-ui: var(--font-space-grotesk), "Segoe UI", sans-serif;
-  --f-body: var(--font-newsreader), Georgia, serif;
+  /* Type roles. Fallbacks are chosen to be metrically close to the webfont, so
+     the swap on a slow connection shifts as little as possible. */
+  --f-display: var(--font-space-grotesk), "Segoe UI", system-ui, sans-serif;
+  --f-ui: var(--font-geist), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-body: var(--font-geist), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Headline tracking. Space Grotesk is set tight at display sizes -- the
+     geometric forms leave enough counter space that default tracking reads
+     loose and unfinished. Two steps rather than one: the tighter value would
+     start closing up the smaller headings in a card grid. */
+  --track-display: -0.03em;
+  --track-display-sm: -0.02em;
 }
 
 [data-theme="dark"] {
@@ -144,9 +154,10 @@
   --shadow-1: var(--shadow-1);
   --shadow-2: var(--shadow-2);
 
-  --font-display: var(--font-fraunces), Georgia, serif;
-  --font-ui: var(--font-space-grotesk), "Segoe UI", sans-serif;
-  --font-body: var(--font-newsreader), Georgia, serif;
+  --font-display: var(--f-display);
+  --font-ui: var(--f-ui);
+  --font-body: var(--f-body);
+  --font-mono: var(--f-mono);
 }
 
 body {
@@ -284,12 +295,17 @@ body {
         }
 
         /* type helpers */
+        /* Section kickers are set in mono deliberately. In a technology title
+           the category label is a tag, not prose, and the monospace forms make
+           it read as a machine-applied classification rather than a headline
+           fragment. Tracking is reduced from .16em because mono glyphs already
+           sit on a fixed advance -- the wider value made these read as gappy. */
         .kicker {
             display: inline-flex;
             align-items: center;
             gap: 7px;
-            font: 600 11px/1 var(--f-ui);
-            letter-spacing: .16em;
+            font: 600 10.5px/1 var(--f-mono);
+            letter-spacing: .1em;
             text-transform: uppercase;
             color: var(--accent)
         }
@@ -312,7 +328,7 @@ body {
         .hl {
             font-family: var(--f-display);
             font-weight: 640;
-            letter-spacing: -.015em;
+            letter-spacing: var(--track-display);
             line-height: 1.08
         }
 
@@ -399,11 +415,14 @@ body {
         }
 
         /* chips / badges */
+        /* Article tags. Used only for the tag row on article and preview pages,
+           so switching to mono does not touch filter chips elsewhere in the
+           console. Tags are identifiers the newsroom assigns, and mono says so. */
         .chip {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            font: 500 12px/1 var(--f-ui);
+            font: 500 11.5px/1 var(--f-mono);
             padding: 7px 12px;
             border: 1px solid var(--line-2);
             border-radius: 99px;
@@ -1101,7 +1120,7 @@ body {
         .story-hl {
             font-family: var(--f-display);
             font-weight: 640;
-            letter-spacing: -.015em;
+            letter-spacing: var(--track-display);
             line-height: 1.1
         }
 
@@ -1157,7 +1176,7 @@ body {
             font-size: 17px;
             font-weight: 600;
             line-height: 1.25;
-            letter-spacing: -.01em;
+            letter-spacing: var(--track-display-sm);
             margin: 5px 0 6px
         }
 
@@ -1189,7 +1208,7 @@ body {
             font-size: 18.5px;
             font-weight: 600;
             line-height: 1.22;
-            letter-spacing: -.01em;
+            letter-spacing: var(--track-display-sm);
             margin: 5px 0 4px
         }
 
@@ -1229,7 +1248,7 @@ body {
             font-size: clamp(1.9rem, 3.6vw, 2.9rem);
             font-weight: 700;
             line-height: 1.05;
-            letter-spacing: -.02em;
+            letter-spacing: var(--track-display);
             margin: 10px 0 12px
         }
 
@@ -1323,6 +1342,7 @@ body {
 
         .mostread .rank {
             font-family: var(--f-display);
+            letter-spacing: var(--track-display-sm);
             font-size: 26px;
             font-weight: 700;
             color: var(--line-2);
@@ -1340,8 +1360,7 @@ body {
             font-size: 15.5px;
             font-weight: 600;
             line-height: 1.3;
-            letter-spacing: -.01em
-        }
+            letter-spacing: var(--track-display-sm)}
 
         .mostread .mr-cat {
             font: 600 10px/1 var(--f-ui);
@@ -1404,7 +1423,7 @@ body {
             font-size: clamp(1.35rem, 2.2vw, 1.7rem);
             font-weight: 650;
             line-height: 1.15;
-            letter-spacing: -.015em;
+            letter-spacing: var(--track-display-sm);
             margin: 14px 0 8px
         }
 
@@ -1555,6 +1574,7 @@ body {
 
         .trend .num {
             font-family: var(--f-display);
+            letter-spacing: var(--track-display-sm);
             font-size: 44px;
             font-weight: 700;
             line-height: 1;
@@ -1573,8 +1593,7 @@ body {
             font-size: 16.5px;
             font-weight: 620;
             line-height: 1.28;
-            letter-spacing: -.01em
-        }
+            letter-spacing: var(--track-display-sm)}
 
         .trend .tr-cat {
             font: 600 10px/1 var(--f-ui);
@@ -1638,7 +1657,7 @@ body {
             font-size: clamp(1.4rem, 2.4vw, 1.85rem);
             font-weight: 680;
             line-height: 1.12;
-            letter-spacing: -.015em;
+            letter-spacing: var(--track-display-sm);
             margin: 14px 0 10px
         }
 
@@ -1667,7 +1686,7 @@ body {
             font-weight: 520;
             font-size: clamp(1.35rem, 2.6vw, 2rem);
             line-height: 1.3;
-            letter-spacing: -.01em;
+            letter-spacing: var(--track-display-sm);
             max-width: 24ch
         }
 
@@ -1736,8 +1755,7 @@ body {
             font-size: clamp(1.6rem, 3vw, 2.3rem);
             font-weight: 680;
             line-height: 1.12;
-            letter-spacing: -.015em
-        }
+            letter-spacing: var(--track-display-sm)}
 
         .news-band h2 em {
             color: var(--accent);
@@ -1840,9 +1858,9 @@ body {
         .art-title {
             font-family: var(--f-display);
             font-size: clamp(1.9rem, 4.4vw, 3rem);
-            font-weight: 720;
+            font-weight: 700;
             line-height: 1.05;
-            letter-spacing: -.022em;
+            letter-spacing: var(--track-display);
             max-width: 22ch
         }
 
@@ -1874,8 +1892,13 @@ body {
             font-weight: 600
         }
 
+        /* Publication timestamps and counts. Mono here is functional, not
+           decorative: tabular figures keep "Updated 9/17/2026" and the read
+           count from shifting width as the numbers change, and it visually
+           separates the record of when a piece ran from the byline above it. */
         .art-byline .ab-meta {
-            font: 400 12px/1.6 var(--f-ui);
+            font: 400 11.5px/1.6 var(--f-mono);
+            font-variant-numeric: tabular-nums;
             color: var(--muted)
         }
 
@@ -2127,7 +2150,7 @@ body {
             font-family: var(--f-display);
             font-size: 2em;
             font-weight: 700;
-            letter-spacing: -.015em;
+            letter-spacing: var(--track-display);
             line-height: 1.15;
             margin: 1.4em 0 .6em;
             color: var(--ink);
@@ -2137,7 +2160,7 @@ body {
             font-family: var(--f-display);
             font-size: 1.55em;
             font-weight: 660;
-            letter-spacing: -.015em;
+            letter-spacing: var(--track-display-sm);
             line-height: 1.2;
             margin: 1.8em 0 .7em;
             color: var(--ink);
@@ -2145,6 +2168,7 @@ body {
 
         .prose h3, .ed-body h3, .tiptap-content h3 {
             font-family: var(--f-display);
+            letter-spacing: var(--track-display-sm);
             font-size: 1.25em;
             font-weight: 640;
             margin: 1.6em 0 .6em;
@@ -2191,8 +2215,7 @@ body {
             font-size: 1.32em;
             line-height: 1.45;
             font-weight: 520;
-            letter-spacing: -.01em
-        }
+            letter-spacing: var(--track-display-sm)}
 
         .prose blockquote cite {
             display: block;
@@ -2266,7 +2289,7 @@ body {
             border-radius: var(--r-md);
             padding: 20px 22px;
             overflow-x: auto;
-            font: 400 13.5px/1.65 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+            font: 400 13.5px/1.65 var(--f-mono);
             margin: 1.9em 0;
             position: relative
         }
@@ -2287,7 +2310,7 @@ body {
             background: var(--surface-2);
             padding: 2px 6px;
             border-radius: 3px;
-            font: 400 0.85em ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+            font: 400 0.85em var(--f-mono);
             color: var(--accent)
         }
 
@@ -2383,6 +2406,7 @@ body {
 
         .author-card h4 {
             font-family: var(--f-display);
+            letter-spacing: var(--track-display-sm);
             font-size: 19px;
             font-weight: 650
         }
@@ -2634,8 +2658,8 @@ body {
         .cat-hero h1 {
             font-family: var(--f-display);
             font-size: clamp(2rem, 4.5vw, 3.1rem);
-            font-weight: 740;
-            letter-spacing: -.025em;
+            font-weight: 700;
+            letter-spacing: var(--track-display);
             line-height: 1.02
         }
 
@@ -2698,13 +2722,14 @@ body {
         .page-static h1 {
             font-family: var(--f-display);
             font-size: clamp(1.9rem, 4vw, 2.7rem);
-            font-weight: 720;
-            letter-spacing: -.02em;
+            font-weight: 700;
+            letter-spacing: var(--track-display);
             margin-bottom: 18px
         }
 
         .page-static h2 {
             font-family: var(--f-display);
+            letter-spacing: var(--track-display-sm);
             font-size: 1.35rem;
             font-weight: 650;
             margin: 30px 0 10px
@@ -2797,7 +2822,7 @@ body {
             font-family: var(--f-display);
             font-size: clamp(1.3rem, 3vw, 1.9rem);
             font-weight: 560;
-            letter-spacing: -.01em;
+            letter-spacing: var(--track-display-sm);
             color: var(--ink)
         }
 
@@ -2855,6 +2880,7 @@ body {
         .sp-empty b {
             display: block;
             font-family: var(--f-display);
+            letter-spacing: var(--track-display-sm);
             font-size: 21px;
             color: var(--ink);
             margin-bottom: 8px;
@@ -3408,8 +3434,7 @@ body {
             font-weight: 700;
             color: var(--ink);
             margin: 10px 0 4px;
-            letter-spacing: -.02em
-        }
+            letter-spacing: var(--track-display-sm)}
 
         .stat .s-d {
             font: 500 11px var(--f-ui);
@@ -3676,7 +3701,7 @@ body {
             border: 1px solid var(--ink-panel-line);
             border-radius: var(--r-md);
             padding: 16px 18px;
-            font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+            font-family: var(--f-mono);
             font-size: 13px;
             line-height: 1.6;
             overflow-x: auto;
@@ -3694,7 +3719,7 @@ body {
             background: var(--surface-2);
             padding: 2px 5px;
             border-radius: 3px;
-            font: 400 0.85em ui-monospace, monospace;
+            font: 400 0.85em var(--f-mono);
             color: var(--accent)
         }
 
@@ -4219,9 +4244,9 @@ body {
         }
 
         h1.ap-name {
-            font: 800 28px/1.1 var(--f-display);
+            font: 700 28px/1.1 var(--f-display);
             color: var(--ink);
-            letter-spacing: -.02em;
+            letter-spacing: var(--track-display);
             margin: 0
         }
 
@@ -4354,8 +4379,7 @@ body {
         .ap-stat-val {
             font: 700 26px/1 var(--f-display);
             color: var(--ink);
-            letter-spacing: -.03em
-        }
+            letter-spacing: var(--track-display-sm)}
 
         .ap-stat-label {
             font: 500 11px var(--f-ui);
@@ -4501,7 +4525,7 @@ body {
 
         .ap-featured-title {
             font: 700 22px/1.2 var(--f-display);
-            letter-spacing: -.02em;
+            letter-spacing: var(--track-display);
             color: var(--ink);
             margin: 0 0 10px
         }

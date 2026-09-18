@@ -1,24 +1,46 @@
 import type { Metadata } from "next";
 import { getPublicationSettings } from "@/lib/settings";
-import { Fraunces, Space_Grotesk, Newsreader } from 'next/font/google';
+import { Space_Grotesk, Geist, JetBrains_Mono } from 'next/font/google';
 import "./globals.css";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-fraunces',
-  display: 'swap',
-});
+// ─────────────────────────────────────────────────────────────────────────────
+// Type system — three families, one job each.
+//
+// Replaces the previous Fraunces/Newsreader serif pairing. A serif masthead
+// reads as legacy-press; this publication is a technology title, and the
+// geometric grotesk + neutral sans + true mono combination is the register its
+// readers already associate with technical writing.
+//
+// All three are variable fonts, so each ships one file covering its whole
+// weight range rather than a request per weight.
+// ─────────────────────────────────────────────────────────────────────────────
 
+// Headlines. Geometric and sharp, with enough weight to carry a front page.
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
   variable: '--font-space-grotesk',
   display: 'swap',
+  // 300 is unused today but is the only weight below 400 this family offers;
+  // including it keeps a lighter deck available without a second request.
+  weight: ['300', '400', '500', '600', '700'],
 });
 
-const newsreader = Newsreader({
+// Reading text and interface. Tall x-height keeps body copy legible at the
+// sizes this design uses, and holds up in dark mode where thin strokes tend to
+// bloom against the background.
+const geist = Geist({
   subsets: ['latin'],
-  variable: '--font-newsreader',
+  variable: '--font-geist',
+  display: 'swap',
+});
+
+// Code, and the metadata that should read as machine-precise: timestamps,
+// kickers, tags, byline roles. Designed for long code lines, with a tall
+// x-height and disambiguated 0/O and 1/l/I.
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-jetbrains-mono',
   display: 'swap',
 });
 
@@ -41,7 +63,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${fraunces.variable} ${spaceGrotesk.variable} ${newsreader.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${spaceGrotesk.variable} ${geist.variable} ${jetbrainsMono.variable}`}>
       <head>
         {/* Carry a theme chosen under a previous brand over to the current
             storage key. next-themes reads a single key, so without this a
