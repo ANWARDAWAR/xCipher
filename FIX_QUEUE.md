@@ -472,18 +472,21 @@ A clean build does **not** validate FIX-03, FIX-04, FIX-06, FIX-07, FIX-08 or FI
 | FIX-04 fail-closed JWT | ✅ done | `055999b` |
 | FIX-05 take-over confirmation | ✅ done | `e9ae662` |
 | FIX-06 self-review guard | ✅ done | `cdda564` |
-| FIX-06b reviewer-count derivation | open | |
-| FIX-08b conflict banner tokens | open | |
-| FIX-09b dashboard heading + fake role | open | |
+| FIX-06b reviewer-count derivation | ✅ done | `54d4b0c` |
+| FIX-08b conflict banner tokens | ✅ done | `1175dd9` |
+| FIX-08c status token contrast + dark overrides | ✅ done | `5b58cfc` |
+| FIX-09b dashboard heading + fake role | ✅ done | `6e7e33c` |
+| FIX-09c redirect inside try/catch | ✅ done | `922b9dd` |
 | FIX-07 delete status guard | ✅ done | `c0a8b67` |
 | FIX-08 autosave conflict state | ✅ done | `56a5d54` |
 | FIX-09 dashboard scope | ✅ done | `eb570f2` |
-| **FIX-10 revalidation** | **NOT DONE — was in the same prompt as FIX-09 but never implemented** | |
-| FIX-11 duplicate Pagination | open | |
-| FIX-12 five remaining tokens | open | |
-| FIX-13 notification stubs | open | |
-| FIX-14 scheduled executor | deferred → Phase 3 TASK-06 | |
-| FIX-15a `REVIEW` backfill | open | |
+| FIX-10 revalidation | ✅ done | `d146c1c` |
+| FIX-10b delete revalidation regression | ✅ done | `24917f4` |
+| FIX-11 duplicate Pagination | ✅ done | `c27d05a` |
+| FIX-12 five remaining tokens | ✅ done | `37833ce` |
+| FIX-13 notifications | ✅ done | `0d7fd0f` |
+| FIX-14 scheduled executor | deferred → Phase 3 TASK-06 | **last CRITICAL open** |
+| FIX-15a `REVIEW` backfill | ✅ done | `05b8c7f` |
 | FIX-15b duplicate plan docs | ✅ done | housekeeping |
 | FIX-15c hardcoded palette | deferred → Phase 4 TASK-14 | |
 
@@ -493,6 +496,37 @@ A clean build does **not** validate FIX-03, FIX-04, FIX-06, FIX-07, FIX-08 or FI
 - `fixed_queue.md` and `IMPLEMENTATION_MASTER_PLAN.md` were both duplicates — `IMPLEMENTATION_MASTER_PLAN.md` had grown into a byte-identical copy of the 6,164-line master plan. Both removed. **`FIX_QUEUE.md` and `DASHBOARD_CMS_MASTER_PLAN.md` are the only two authoritative documents.**
 - `prisma/migrations/migration_lock.toml` was missing from the baseline commit and has been added. Without it Prisma cannot verify the provider and will warn on every migrate command.
 
-### Outstanding question
+### FIX-03 step 4 — contrast audit (delivered, `afea738`)
 
-FIX-03's verification step 4 asked for a list of white-on-white / dark-on-dark contrast gaps exposed by activating the dark variant. That list has not been reported. Several of the fifteen redesigned files hardcode `bg-white` with no dark counterpart; those are now visible defects in dark mode. Collect that list before Phase 4 TASK-14 — it is the input to FIX-15c.
+Two real dark-mode defects, both fixed:
+
+| Location | Was | Now |
+|---|---|---|
+| `CommentModerationRow.tsx:49` | `bg-neutral-100 text-neutral-600 border-neutral-200` | `bg-surface-2 text-muted border-line` |
+| `SubscribersClient.tsx:71` | same | same |
+
+False positives, deliberately left alone:
+
+- `app/admin/login/page.tsx`, `app/admin/setup/SetupForm.tsx` — `bg-white/5` and `text-neutral-400` on a permanently dark, theme-independent page.
+- audit-log / comments / subscribers screens — every remaining `neutral-*` occurrence already carries an explicit `dark:` variant.
+
+Migrating those files wholesale onto the token scale remains FIX-15c / Phase 4 TASK-14.
+
+### Follow-ups found while verifying round 5
+
+- **FIX-08c** — `--warn` was `#b07818`: 3.79:1 on white, failing AA in the default theme. Now `#845a12` (6.08:1). `--ok`, `--warn` and `--bad` had **no** `[data-theme="dark"]` override at all, so light mid-tones were reused on dark surfaces at 3.0–3.6:1. Dark values added. New `--on-status` token for text on a solid status fill, because `text-white` on the new dark `--warn` would have been 1.6:1.
+- **FIX-09c** — FIX-09b put `redirect("/admin/login")` inside a `try` whose `catch` swallows everything. `redirect()` signals by throwing `NEXT_REDIRECT`, so the redirect never happened; the page rendered with zeroed counts. Masked today by the layout guard. `canViewAll` was also inside the `try`, so a DB error relabelled an owner's dashboard "Your Stories".
+- **FIX-10b** — FIX-10 stripped the public revalidations from `deleteArticle` along with the autosave ones. Deleting a *published* article left its page cached and still listed. Restored, gated on `status === "PUBLISHED"`.
+
+### Build health note
+
+`node_modules` installed in the sandbox for the first time this round. `npx tsc --noEmit` reports **no errors originating in application logic**; the 48 remaining errors are all `has no exported member` against `@prisma/client`, caused by `prisma generate` producing a stub — the sandbox cannot reach `binaries.prisma.sh`. `next build` cannot complete here either: `next/font` cannot reach `fonts.googleapis.com`. **Both are sandbox network restrictions, not code defects.** Full typecheck and build must be run locally.
+
+### Remaining queue
+
+| Item | Status |
+|---|---|
+| **TASK-06** scheduled-publish executor | **open — last CRITICAL finding** |
+| TASK-08 | verify tag/date filters, per-status counts, filtered-empty state |
+| TASK-09 | thumbnails from `Article.img`, stacked rows < 768px, expandable detail |
+| FIX-15c → TASK-14 | palette migration off `neutral-*` |
