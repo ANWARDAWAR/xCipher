@@ -3081,6 +3081,145 @@ body {
             .cs-nav-group { display: block }
         }
 
+        /* ── Console mobile drawer ───────────────────────────────────────
+           Below 900px the sidebar was a horizontal scroller: ten items in one
+           row with most of them off-screen. These rules turn the same
+           server-rendered nav into a slide-in panel, and disappear entirely at
+           desktop width. */
+
+        .cs-drawer-trigger {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border: 1px solid var(--line);
+            border-radius: var(--r-sm);
+            background: var(--surface);
+            color: var(--ink);
+            cursor: pointer;
+            flex: none;
+            transition: background .15s, border-color .15s;
+        }
+
+        .cs-drawer-trigger:hover {
+            background: var(--surface-2);
+        }
+
+        .cs-drawer-scrim {
+            position: fixed;
+            inset: 0;
+            z-index: 60;
+            background: rgb(0 0 0 / .5);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .2s ease;
+        }
+
+        .cs-drawer-scrim.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .cs-drawer-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 4px 12px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .cs-drawer-title {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            color: var(--faint);
+        }
+
+        .cs-drawer-close {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border: 1px solid var(--line);
+            border-radius: var(--r-sm);
+            background: var(--surface);
+            color: var(--muted);
+            cursor: pointer;
+        }
+
+        .cs-drawer-close:hover {
+            color: var(--ink);
+            background: var(--surface-2);
+        }
+
+        @media(max-width:899px) {
+            /* The trigger is the first child of .cs-body, so at this width it
+               occupies its own grid row above the content: a hamburger at the
+               top-left of the page area. It is not placed in .cs-top because
+               the nav must stay inside .cs-body for the desktop grid below to
+               work. */
+            .cs-drawer-trigger {
+                margin: 10px 0 2px 12px;
+            }
+
+            /* The nav lives inside the sliding panel at this width. */
+            .cs-drawer-panel {
+                position: fixed;
+                top: 0;
+                bottom: 0;
+                left: 0;
+                width: min(82vw, 300px);
+                z-index: 70;
+                background: var(--bg-elevated);
+                border-right: 1px solid var(--line);
+                padding: 14px 12px;
+                overflow-y: auto;
+                transform: translateX(-100%);
+                transition: transform .22s ease;
+            }
+
+            .cs-drawer-panel.open {
+                transform: translateX(0);
+            }
+
+            /* Inside the drawer the nav is vertical, not a scroller, and the
+               structure hidden at this width on the old layout comes back. */
+            .cs-drawer-panel .cs-nav {
+                flex-direction: column;
+                overflow-x: hidden;
+                border-right: 0;
+                padding: 0;
+                background: transparent;
+            }
+
+            .cs-drawer-panel .cs-nav-group,
+            .cs-drawer-panel .cs-profile-card,
+            .cs-drawer-panel .cs-nav-divider {
+                display: block;
+            }
+
+            .cs-drawer-panel .cs-profile-card {
+                display: flex;
+            }
+        }
+
+        @media(min-width:900px) {
+            /* Desktop: no drawer chrome, sidebar sits in the grid as before. */
+            .cs-drawer-trigger,
+            .cs-drawer-scrim,
+            .cs-drawer-head {
+                display: none;
+            }
+
+            .cs-drawer-panel {
+                display: contents;
+            }
+        }
+
         /* override default cs-nav a/button hover to not apply to profile card */
         .cs-nav button,
         .cs-nav a:not(.cs-profile-card) {

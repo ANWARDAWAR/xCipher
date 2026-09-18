@@ -6,6 +6,7 @@ import SignOutButton from "@/components/editorial/SignOutButton";
 import AdminNavLinks from "@/components/editorial/AdminNavLinks";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 import NotificationBell from "@/components/console/NotificationBell";
+import ConsoleNavDrawer from "@/components/console/ConsoleNavDrawer";
 import { getNotifications } from "@/app/actions/notifications";
 import { canViewReviewQueue, canViewUsersList, canViewAuditLogs, canModerateComments, canViewSubscribers, canViewTaxonomy } from "@/lib/permissions";
 import { authorize } from "@/lib/capabilities";
@@ -92,6 +93,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </div>
       <div className="cs-body">
+        <ConsoleNavDrawer>
         <nav className="cs-nav" aria-label="Console sections">
 
           {/* ── Profile Card ─────────────────────── */}
@@ -147,6 +149,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             reviewCount={reviewCount}
           />
         </nav>
+        </ConsoleNavDrawer>
         {/*
           Was a plain <div>. The console's only landmark was the <nav>, so a
           screen-reader user had no way to jump to the actual page content --
