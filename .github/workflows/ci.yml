@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Runs before typecheck: lib/*.ts import types from @prisma/client, and
+      # without the generated client tsc reports dozens of phantom errors that
+      # have nothing to do with the change under review.
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # The unit tests deliberately do not need a database or a generated
+      # client -- they alias @prisma/client to a type stub -- so they would
+      # still pass if the step above were removed.
+      - name: Unit tests
+        run: npm test
+
+      # Not gating on lint yet. The repository carries ~146 pre-existing
+      # violations, almost all no-explicit-any, so a hard failure here would
+      # block every PR on debt that predates it. Reported, not enforced, until
+      # that backlog is cleared.
+      - name: Lint (non-blocking)
+        run: npx eslint . || true
