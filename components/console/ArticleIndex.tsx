@@ -163,8 +163,14 @@ export default function ArticleIndex({
                 {/* Primary — title + metadata */}
                 <td className="p-3.5 align-middle">
                   <div className="min-w-0 max-w-xl">
+                    {/* The headline opens the read-only detail hub, not the
+                        editor. Clicking a title to inspect something should not
+                        drop the actor into an editing surface -- and a reviewer
+                        holding article.view.all without any edit right could not
+                        follow the old link at all. The pencil below still goes
+                        straight to the editor. */}
                     <Link
-                      href={`/admin/editor/${a.id}`}
+                      href={`/admin/articles/${a.id}`}
                       className="text-sm font-semibold text-ink hover:text-accent transition-colors line-clamp-2 block leading-snug"
                     >
                       {a.title || "Untitled article"}
@@ -278,7 +284,7 @@ export default function ArticleIndex({
 
                 <div className="min-w-0 flex-1">
                   <Link
-                    href={`/admin/editor/${a.id}`}
+                    href={`/admin/articles/${a.id}`}
                     className="text-sm font-semibold text-ink hover:text-accent transition-colors line-clamp-2 block leading-snug"
                   >
                     {a.title || "Untitled article"}
