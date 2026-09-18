@@ -46,7 +46,7 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
       case "REJECTED":
         return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">Trash</span>;
       default:
-        return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-neutral-100 text-neutral-600 border border-neutral-200">Unknown</span>;
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-2 text-muted border border-line">Unknown</span>;
     }
   };
 
