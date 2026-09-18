@@ -397,7 +397,7 @@ export default function TaxonomyManager({
           {/* Header & Meta */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-accent/10 text-accent border border-accent/20 flex items-center justify-center">
                 <Folder className="w-4 h-4" />
               </div>
               <div>
@@ -417,7 +417,7 @@ export default function TaxonomyManager({
           {/* Creation Card */}
           <div className="bg-surface border border-line rounded-xl p-5 shadow-xs space-y-4">
             <div className="flex items-center gap-2 pb-3 border-b border-line">
-              <Plus className="w-4 h-4 text-red-600 dark:text-red-400" />
+              <Plus className="w-4 h-4 text-accent" />
               <h3 className="text-xs font-bold uppercase tracking-wider text-ink font-[var(--f-ui)]">
                 Add Category
               </h3>
@@ -426,7 +426,7 @@ export default function TaxonomyManager({
             <form onSubmit={handleCreateCategory} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-medium text-ink mb-1">
-                  Category Name <span className="text-red-500">*</span>
+                  Category Name <span className="text-accent">*</span>
                 </label>
                 <input
                   type="text"
@@ -434,7 +434,7 @@ export default function TaxonomyManager({
                   value={catName}
                   onChange={(e) => setCatName(e.target.value)}
                   placeholder="e.g. Artificial Intelligence"
-                  className="w-full h-10 px-3 text-sm rounded-lg border border-line bg-surface text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-red-500/50 transition-colors"
+                  className="w-full h-10 px-3 text-sm rounded-lg border border-line bg-surface text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-accent/50 transition-colors"
                 />
               </div>
 
@@ -462,7 +462,7 @@ export default function TaxonomyManager({
                   value={catDesc}
                   onChange={(e) => setCatDesc(e.target.value)}
                   placeholder="Brief synopsis of this editorial section..."
-                  className="w-full h-10 px-3 text-sm rounded-lg border border-line bg-surface text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-red-500/50 transition-colors"
+                  className="w-full h-10 px-3 text-sm rounded-lg border border-line bg-surface text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-accent/50 transition-colors"
                 />
               </div>
 
@@ -470,7 +470,7 @@ export default function TaxonomyManager({
                 <button
                   type="submit"
                   disabled={isCreatingCat || !catName.trim()}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 active:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg shadow-xs transition-all"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-deep active:bg-accent-press disabled:opacity-50 disabled:cursor-not-allowed text-on-accent text-xs font-semibold rounded-lg shadow-xs transition-all"
                 >
                   {isCreatingCat ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -494,7 +494,7 @@ export default function TaxonomyManager({
                   value={catSearch}
                   onChange={(e) => setCatSearch(e.target.value)}
                   placeholder="Filter categories..."
-                  className="w-full h-8 pl-8 pr-3 text-xs rounded-md border border-line bg-surface text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-red-500/50"
+                  className="w-full h-8 pl-8 pr-3 text-xs rounded-md border border-line bg-surface text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-accent/50"
                 />
               </div>
               <span className="text-xs text-muted font-medium">
@@ -583,7 +583,7 @@ export default function TaxonomyManager({
                               <button
                                 type="button"
                                 onClick={() => setDeletingCat(cat)}
-                                className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
+                                className="p-1.5 text-bad hover:bg-bad/10 rounded-md transition-colors"
                                 title="Delete Category"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -636,7 +636,7 @@ export default function TaxonomyManager({
             <form onSubmit={handleCreateTag} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-medium text-ink mb-1">
-                  Tag Name <span className="text-red-500">*</span>
+                  Tag Name <span className="text-accent">*</span>
                 </label>
                 <input
                   type="text"
@@ -644,7 +644,7 @@ export default function TaxonomyManager({
                   value={tagName}
                   onChange={(e) => setTagName(e.target.value)}
                   placeholder="e.g. OpenAI, Cryptography, Zero-Day"
-                  className="w-full h-10 px-3 text-sm rounded-lg border border-line bg-surface text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-red-500/50 transition-colors"
+                  className="w-full h-10 px-3 text-sm rounded-lg border border-line bg-surface text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-accent/50 transition-colors"
                 />
               </div>
 
@@ -672,7 +672,7 @@ export default function TaxonomyManager({
                   value={tagDesc}
                   onChange={(e) => setTagDesc(e.target.value)}
                   placeholder="Optional context for this keyword..."
-                  className="w-full h-10 px-3 text-sm rounded-lg border border-line bg-surface text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-red-500/50 transition-colors"
+                  className="w-full h-10 px-3 text-sm rounded-lg border border-line bg-surface text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-accent/50 transition-colors"
                 />
               </div>
 
@@ -704,7 +704,7 @@ export default function TaxonomyManager({
                   value={tagSearch}
                   onChange={(e) => setTagSearch(e.target.value)}
                   placeholder="Filter tags..."
-                  className="w-full h-8 pl-8 pr-3 text-xs rounded-md border border-line bg-surface text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-red-500/50"
+                  className="w-full h-8 pl-8 pr-3 text-xs rounded-md border border-line bg-surface text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-accent/50"
                 />
               </div>
               <span className="text-xs text-muted font-medium">
@@ -796,7 +796,7 @@ export default function TaxonomyManager({
                               <button
                                 type="button"
                                 onClick={() => setDeletingTag(tag)}
-                                className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
+                                className="p-1.5 text-bad hover:bg-bad/10 rounded-md transition-colors"
                                 title="Delete Tag"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -840,14 +840,14 @@ export default function TaxonomyManager({
             <form onSubmit={handleSaveCategory} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-ink mb-1">
-                  Name <span className="text-red-500">*</span>
+                  Name <span className="text-accent">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={editCatName}
                   onChange={(e) => setEditCatName(e.target.value)}
-                  className="w-full h-10 px-3 text-sm rounded-lg border border-line bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-red-500/50"
+                  className="w-full h-10 px-3 text-sm rounded-lg border border-line bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
                 />
               </div>
 
@@ -868,7 +868,7 @@ export default function TaxonomyManager({
                   rows={3}
                   value={editCatDesc}
                   onChange={(e) => setEditCatDesc(e.target.value)}
-                  className="w-full p-3 text-sm rounded-lg border border-line bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-red-500/50"
+                  className="w-full p-3 text-sm rounded-lg border border-line bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
                 />
               </div>
 
@@ -883,7 +883,7 @@ export default function TaxonomyManager({
                 <button
                   type="submit"
                   disabled={isUpdatingCat || !editCatName.trim()}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-accent hover:bg-accent-deep text-on-accent transition-colors disabled:opacity-50"
                 >
                   {isUpdatingCat && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Save Changes</span>
@@ -920,14 +920,14 @@ export default function TaxonomyManager({
             <form onSubmit={handleSaveTag} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-ink mb-1">
-                  Name <span className="text-red-500">*</span>
+                  Name <span className="text-accent">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={editTagName}
                   onChange={(e) => setEditTagName(e.target.value)}
-                  className="w-full h-10 px-3 text-sm rounded-lg border border-line bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-red-500/50"
+                  className="w-full h-10 px-3 text-sm rounded-lg border border-line bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
                 />
               </div>
 
@@ -948,7 +948,7 @@ export default function TaxonomyManager({
                   rows={3}
                   value={editTagDesc}
                   onChange={(e) => setEditTagDesc(e.target.value)}
-                  className="w-full p-3 text-sm rounded-lg border border-line bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-red-500/50"
+                  className="w-full p-3 text-sm rounded-lg border border-line bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
                 />
               </div>
 
@@ -963,7 +963,7 @@ export default function TaxonomyManager({
                 <button
                   type="submit"
                   disabled={isUpdatingTag || !editTagName.trim()}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-accent hover:bg-accent-deep text-on-accent transition-colors disabled:opacity-50"
                 >
                   {isUpdatingTag && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Save Changes</span>
@@ -1075,7 +1075,7 @@ export default function TaxonomyManager({
                 type="button"
                 onClick={handleConfirmMergeCat}
                 disabled={!mergeCatTarget || isMerging}
-                className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                className="px-4 py-2 text-sm font-semibold bg-accent text-on-accent rounded-md hover:bg-accent-deep transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
               >
                 {isMerging && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 {isMerging ? "Merging…" : "Merge & Delete"}
@@ -1149,7 +1149,7 @@ export default function TaxonomyManager({
                 type="button"
                 onClick={handleConfirmMergeTag}
                 disabled={!mergeTagTarget || isMerging}
-                className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                className="px-4 py-2 text-sm font-semibold bg-accent text-on-accent rounded-md hover:bg-accent-deep transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
               >
                 {isMerging && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 {isMerging ? "Merging…" : "Merge & Delete"}

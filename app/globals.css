@@ -17,6 +17,13 @@
   --accent: #d92332;
   --accent-deep: #b01726;
   --accent-soft: rgba(217, 35, 50, .07);
+  /* Pressed state. hover and active previously mapped to the same token, which
+     left buttons with no press feedback; this is one step beyond --accent-deep
+     in the same direction the theme darkens. */
+  --accent-press: #8f1220;
+  /* Foreground for text/icons sitting ON an accent fill. White clears 4.5:1 on
+     every light-theme accent step (4.96 / 7.01 / 9.23). */
+  --on-accent: #ffffff;
   /* Status tokens. Each meets 4.5:1 against --surface, --paper and --surface-2,
      and supports white foreground text when used as a solid fill. */
   --ok: #1a7f4e;
@@ -81,6 +88,13 @@
   --accent: #f04552;
   --accent-deep: #ff6973;
   --accent-soft: rgba(240, 69, 82, .1);
+  /* Dark theme brightens rather than darkens, so the press step continues up. */
+  --accent-press: #ff8a92;
+  /* The dark theme's accent steps get BRIGHTER, so white text falls through the
+     floor as the button is pressed: 3.70 at rest, 2.79 on hover, 2.26 on active.
+     Near-black instead scores 5.25 / 6.96 / 8.61 -- it improves exactly where
+     white degrades, because both move with the fill's luminance. */
+  --on-accent: #0c0d10;
   /* Status tokens must be re-stated for dark: the light values are mid-tone and
      fall to ~3.3:1 against the dark surfaces. These are lifted to read on dark
      and are dark enough to carry black text when used as a solid fill. */
@@ -110,6 +124,8 @@
   --color-accent: var(--accent);
   --color-accent-deep: var(--accent-deep);
   --color-accent-soft: var(--accent-soft);
+  --color-accent-press: var(--accent-press);
+  --color-on-accent: var(--on-accent);
   --color-ok: var(--ok);
   --color-warn: var(--warn);
   --color-bad: var(--bad);
@@ -4757,5 +4773,309 @@ body {
   .animate-tech-grid,
   .animate-ambient-pulse {
     animation: none !important;
+  }
+}
+
+/* ===========================================================================
+   CONSOLE COMPONENT LAYER
+   ===========================================================================
+   Audit finding that motivated this: the console was running two styling
+   systems at once. A small semantic layer (.btn-cs, .ed-input) on some pages,
+   and long ad-hoc Tailwind strings on others -- 93 hardcoded red-500/600/700
+   utilities across 10 files that bypass --accent entirely, 8 different radius
+   values against a 3-step token scale, and 9 shadow variants.
+
+   The practical consequence is that the same button is a different size and a
+   different red depending on which page you are on, and none of it responds to
+   the theme tokens.
+
+   These classes extend the .btn-cs family that already existed rather than
+   introducing a competing one. Everything is driven by the existing tokens, so
+   dark and light mode come for free and the accent stays in one place.
+   =========================================================================== */
+
+/* --- Buttons -------------------------------------------------------------
+   One height, one radius, one type scale. Hierarchy is carried by weight and
+   surface, not by size, so a row of mixed-priority actions still aligns. */
+
+.btn-cs.secondary {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--ink);
+}
+.btn-cs.secondary:hover {
+  background: var(--surface-3);
+  border-color: var(--line-2);
+}
+
+/* Tertiary: no chrome at rest. For actions that must be available but should
+   not compete -- Cancel, Clear filters, Back. */
+.btn-cs.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+}
+.btn-cs.ghost:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+/* Destructive is deliberately NOT the brand accent. --accent means "primary
+   action" across this console; if delete is also accent-red then red stops
+   carrying meaning. --bad is reserved for irreversible operations. */
+.btn-cs.danger {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--bad);
+}
+.btn-cs.danger:hover {
+  background: color-mix(in srgb, var(--bad) 8%, transparent);
+  border-color: var(--bad);
+}
+.btn-cs.danger-solid {
+  background: var(--bad);
+  border-color: var(--bad);
+  color: #fff;
+}
+.btn-cs.danger-solid:hover {
+  filter: brightness(0.92);
+}
+
+.btn-cs.sm {
+  padding: 7px 12px;
+  font-size: 12px;
+}
+
+/* Icon-only. Square so a row of them forms an even rhythm, and sized to the
+   44px touch target on coarse pointers -- see the block near the end. */
+.btn-cs.icon {
+  padding: 0;
+  width: 34px;
+  height: 34px;
+  justify-content: center;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+.btn-cs.icon:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.btn-cs:disabled,
+.btn-cs[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Async feedback. The spinner replaces the icon rather than being appended, so
+   the button does not change width mid-request and shift the row around it. */
+.btn-cs[data-loading="true"] {
+  cursor: progress;
+  pointer-events: none;
+}
+.btn-cs[data-loading="true"] > .btn-cs-icon {
+  display: none;
+}
+.btn-cs[data-loading="true"]::before {
+  content: "";
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: cs-spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes cs-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Icons inside buttons: fixed box and centred, which is what stops the
+   half-pixel vertical drift between a 14px and a 16px lucide glyph. */
+.btn-cs > svg,
+.btn-cs-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  display: block;
+}
+
+/* --- Focus ---------------------------------------------------------------
+   Audit found 39 `focus:outline-none` against only 15 focus rings, so a number
+   of controls were keyboard-invisible. focus-visible keeps the ring off mouse
+   clicks while guaranteeing it for keyboard users. Offset rather than inset so
+   it reads on both dark and light surfaces. */
+
+.cs-body :is(a, button, input, select, textarea, [tabindex]):focus-visible,
+.btn-cs:focus-visible,
+.ed-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* --- Status badges -------------------------------------------------------
+   Shape and label carry the state; the tint is reinforcement. Nothing here
+   depends on colour alone, which matters for the ~8% of male readers with a
+   red/green deficiency and for anyone printing a queue. */
+
+.cs-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 600 10px/1 var(--f-ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 5px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+/* --- Surfaces ------------------------------------------------------------
+   The no-box-touch rule. A section is defined by a rule above it and space
+   around it, not by a card. .cs-panel exists for the few places that genuinely
+   need containment (dialogs, menus) and is deliberately plain. */
+
+.cs-section {
+  padding-top: var(--sp-6, 32px);
+  border-top: 1px solid var(--line);
+}
+.cs-section:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.cs-section-label {
+  font: 700 11px/1 var(--f-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.cs-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+
+/* --- Page header ---------------------------------------------------------
+   One pattern for every console page: title, one line of support, actions on
+   the right. */
+
+.cs-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 28px;
+}
+.cs-page-title {
+  font: 700 24px/1.2 var(--f-ui);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.cs-page-sub {
+  font: 400 13px/1.5 var(--f-ui);
+  color: var(--muted);
+  margin-top: 5px;
+  max-width: 60ch;
+}
+.cs-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* --- Skeletons -----------------------------------------------------------
+   Shimmer rather than a pulse on opacity: a pulsing block reads as a broken
+   element, a directional sweep reads as pending. */
+
+.cs-skel {
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    var(--surface-3) 37%,
+    var(--surface-2) 63%
+  );
+  background-size: 400% 100%;
+  animation: cs-shimmer 1.4s ease infinite;
+  border-radius: var(--r-sm);
+}
+
+@keyframes cs-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* --- Touch targets -------------------------------------------------------
+   Only on coarse pointers, so the desktop UI keeps its density instead of
+   being padded out for a touchscreen that is not there. */
+
+@media (pointer: coarse) {
+  .btn-cs.icon {
+    width: 44px;
+    height: 44px;
+  }
+  .btn-cs {
+    min-height: 44px;
+  }
+}
+
+/* --- Reduced motion ------------------------------------------------------
+   The existing rules only covered two decorative keyframes. This covers the
+   interactive animation added above. A spinner still needs to convey activity,
+   so it is slowed to a step rather than removed entirely. */
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-skel {
+    animation: none;
+    background: var(--surface-2);
+  }
+  .btn-cs[data-loading="true"]::before {
+    animation: cs-spin 1.2s steps(8) infinite;
+  }
+  #toast {
+    transition: opacity 0.01ms !important;
+  }
+}
+
+/* ---- Toast: completed states + small screens -------------------------------
+   .success and .error were already coloured; warning and info are new types
+   introduced with the inferred-type fix and would otherwise fall through to the
+   default accent. Colour is a reinforcement here, not the signal -- each type
+   ships a distinct glyph, so the state survives greyscale and colour blindness.
+
+   The toast was pinned to `top/right: 16px` with no small-screen rule. At 360px
+   a long message became a tall column hugging the right edge, overlapping the
+   header controls. Below 640px it spans the width instead and is anchored to
+   the bottom, out of the way of the header and within thumb reach. */
+
+#toast.warning svg { color: var(--warn); }
+#toast.info svg { color: var(--accent); }
+
+@media (max-width: 640px) {
+  #toast {
+    top: auto;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-width: none;
+    /* Slides up from the bottom edge, matching its new anchor. */
+    transform: translate(0, 16px);
+  }
+
+  #toast.show {
+    transform: translate(0, 0);
   }
 }

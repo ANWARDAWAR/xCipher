@@ -59,7 +59,7 @@ function RoleBadge({ role }: { role: Role }) {
   switch (role) {
     case "OWNER":
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold tracking-wider uppercase bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold tracking-wider uppercase bg-accent/10 text-accent border border-accent/20">
           <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
           Owner
         </span>
@@ -129,7 +129,7 @@ function UserAvatar({ user }: { user: UserProfile }) {
         {user.authorProfile && (
           <span
             title="Author Profile Linked"
-            className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-red-600 rounded-full border-2 border-surface flex items-center justify-center text-[8px] text-white font-bold"
+            className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-accent rounded-full border-2 border-surface flex items-center justify-center text-[8px] text-on-accent font-bold"
           >
             ✓
           </span>
@@ -146,7 +146,7 @@ function UserAvatar({ user }: { user: UserProfile }) {
       {user.authorProfile && (
         <span
           title="Author Profile Linked"
-          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-red-600 rounded-full border-2 border-surface flex items-center justify-center text-[8px] text-white font-bold"
+          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-accent rounded-full border-2 border-surface flex items-center justify-center text-[8px] text-on-accent font-bold"
         >
           ✓
         </span>
@@ -302,7 +302,7 @@ export default function UserDirectoryTable({
                                   {user.name || user.authorProfile?.name || "Editorial Contributor"}
                                 </span>
                                 {isSelf && (
-                                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
+                                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">
                                     You
                                   </span>
                                 )}
@@ -343,7 +343,7 @@ export default function UserDirectoryTable({
                                   handleRoleChange(user.id, e.target.value as Role)
                                 }
                                 disabled={isSaving}
-                                className="h-8 text-xs font-medium rounded-lg border border-line bg-surface text-ink px-2.5 pr-8 focus:outline-none focus:ring-1 focus:ring-red-500/50 transition-colors cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23838D99%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:9px_9px] bg-[right_10px_center] bg-no-repeat"
+                                className="h-8 text-xs font-medium rounded-lg border border-line bg-surface text-ink px-2.5 pr-8 focus:outline-none focus:ring-1 focus:ring-accent/50 transition-colors cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23838D99%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:9px_9px] bg-[right_10px_center] bg-no-repeat"
                               >
                                 <option value="AUTHOR">Author</option>
                                 <option value="REVIEWER">Reviewer</option>
@@ -361,7 +361,7 @@ export default function UserDirectoryTable({
                                 disabled={!hasChangedRole || isSaving}
                                 className={`inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg transition-all ${
                                   hasChangedRole
-                                    ? "bg-red-600 hover:bg-red-500 text-white shadow-2xs"
+                                    ? "bg-accent hover:bg-accent-deep text-on-accent shadow-2xs"
                                     : "bg-surface-2 text-faint border border-line cursor-not-allowed opacity-60"
                                 }`}
                                 title={hasChangedRole ? "Save role change" : "No changes made"}
@@ -379,7 +379,7 @@ export default function UserDirectoryTable({
                                 type="button"
                                 onClick={() => setDeletingUser(user)}
                                 disabled={isSaving}
-                                className="inline-flex items-center gap-1 h-8 px-2.5 text-xs font-medium rounded-lg border border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors"
+                                className="inline-flex items-center gap-1 h-8 px-2.5 text-xs font-medium rounded-lg border border-bad/20 text-bad hover:bg-bad/10 transition-colors"
                                 title="Revoke system access"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -388,7 +388,7 @@ export default function UserDirectoryTable({
                             </div>
                           ) : isOwner ? (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-2 border border-line text-xs font-medium text-muted">
-                              <Lock className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                              <Lock className="w-3.5 h-3.5 text-bad shrink-0" />
                               Protected System Account
                             </span>
                           ) : isSelf ? (
@@ -473,7 +473,7 @@ export default function UserDirectoryTable({
                         <td className="px-5 py-3.5">
                           <span
                             className={`text-xs ${
-                              isExpired ? "text-red-500 font-semibold" : "text-muted"
+                              isExpired ? "text-bad font-semibold" : "text-muted"
                             }`}
                           >
                             {isExpired
@@ -490,7 +490,7 @@ export default function UserDirectoryTable({
                             type="button"
                             onClick={() => handleRevokeInvite(inv.id, inv.email)}
                             disabled={isRevoking}
-                            className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium rounded-lg border border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors"
+                            className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium rounded-lg border border-bad/20 text-bad hover:bg-bad/10 transition-colors"
                           >
                             {isRevoking ? (
                               <Loader2 className="w-3 h-3 animate-spin" />

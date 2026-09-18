@@ -61,11 +61,11 @@ function LoginForm() {
       
       {error && (
         <div 
-          className="flex items-start gap-3 p-3.5 bg-red-500/10 border border-red-500/25 text-red-400 rounded-lg text-sm"
+          className="flex items-start gap-3 p-3.5 bg-bad/10 border border-bad/25 text-bad rounded-lg text-sm"
           role="alert"
           aria-live="assertive"
         >
-          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-bad" />
           <p className="font-medium text-xs sm:text-sm leading-relaxed">{error}</p>
         </div>
       )}
@@ -87,7 +87,7 @@ function LoginForm() {
           placeholder="editor@xcipher.com"
           required 
           autoComplete="email"
-          className="block w-full h-11 px-3.5 py-2.5 bg-neutral-900/90 border border-neutral-700/80 rounded-lg text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-red-500/70 focus:ring-1 focus:ring-red-500/40 transition-all box-border" 
+          className="block w-full h-11 px-3.5 py-2.5 bg-neutral-900/90 border border-neutral-700/80 rounded-lg text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/40 transition-all box-border" 
         />
       </div>
 
@@ -115,7 +115,7 @@ function LoginForm() {
           placeholder="••••••••••••"
           required 
           autoComplete="current-password"
-          className="block w-full h-11 px-3.5 py-2.5 bg-neutral-900/90 border border-neutral-700/80 rounded-lg text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-red-500/70 focus:ring-1 focus:ring-red-500/40 transition-all box-border" 
+          className="block w-full h-11 px-3.5 py-2.5 bg-neutral-900/90 border border-neutral-700/80 rounded-lg text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/40 transition-all box-border" 
         />
       </div>
 
@@ -125,7 +125,7 @@ function LoginForm() {
           type="submit" 
           disabled={loading} 
           style={{ backgroundColor: loading ? '#b91c1c' : '#dc2626' }}
-          className="w-full h-11 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-medium text-sm tracking-wide rounded-lg shadow-md shadow-red-600/25 transition-all duration-200 active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer"
+          className="w-full h-11 flex items-center justify-center gap-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-on-accent font-medium text-sm tracking-wide rounded-lg shadow-md shadow-accent/25 transition-all duration-200 active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer"
         >
           {loading ? (
             <>
@@ -143,7 +143,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center text-neutral-200 p-4 sm:p-6 lg:p-8 relative selection:bg-red-500 selection:text-white">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center text-neutral-200 p-4 sm:p-6 lg:p-8 relative selection:bg-accent selection:text-on-accent">
       {/* High-Performance Animated Tech Background */}
       <div 
         className="fixed inset-0 overflow-hidden pointer-events-none -z-10 bg-[#0c0d10]"

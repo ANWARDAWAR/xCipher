@@ -142,7 +142,7 @@ export default function ArticleIndex({
         {!isFiltered && emptyAction && (
           <Link 
             href={emptyAction.href} 
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-deep text-on-accent text-xs sm:text-sm font-semibold rounded-lg shadow-xs transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>{emptyAction.label}</span>

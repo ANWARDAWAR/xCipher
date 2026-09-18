@@ -31,7 +31,7 @@ export default function SetupForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      {error && <div className="p-3 bg-red-500/10 text-red-400 rounded text-sm">{error}</div>}
+      {error && <div className="p-3 bg-bad/10 text-bad rounded text-sm">{error}</div>}
       
       <div>
         <label className="block text-sm font-medium mb-1">Name</label>

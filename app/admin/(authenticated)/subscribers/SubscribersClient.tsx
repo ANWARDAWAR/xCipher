@@ -66,7 +66,7 @@ export default function SubscribersClient({
       case "UNSUBSCRIBED":
         return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted/10 text-muted border border-muted/25">Unsubscribed</span>;
       case "BOUNCED":
-        return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">Bounced</span>;
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-bad/10 text-bad border border-bad/20">Bounced</span>;
       default:
         return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-2 text-muted border border-line">Unknown</span>;
     }
@@ -100,7 +100,7 @@ export default function SubscribersClient({
           <div className="text-3xl font-display font-semibold text-ink">{stats.unsubscribed}</div>
           <div className="text-xs font-medium text-muted mt-1 uppercase tracking-wider">Unsubscribed</div>
         </div>
-        <div className="bg-surface border border-line border-t-[3px] border-t-red-500 rounded-xl p-5 text-center shadow-sm">
+        <div className="bg-surface border border-line border-t-[3px] border-t-accent rounded-xl p-5 text-center shadow-sm">
           <div className="text-3xl font-display font-semibold text-ink">{stats.bounced}</div>
           <div className="text-xs font-medium text-muted mt-1 uppercase tracking-wider">Bounced</div>
         </div>
@@ -123,7 +123,7 @@ export default function SubscribersClient({
             <Download className="w-4 h-4" />
             Export CSV
           </button>
-          <button className="flex items-center justify-center flex-1 md:flex-none h-[38px] px-4 gap-2 text-sm font-medium bg-accent text-white hover:bg-accent-deep border border-transparent rounded-md transition-colors whitespace-nowrap">
+          <button className="flex items-center justify-center flex-1 md:flex-none h-[38px] px-4 gap-2 text-sm font-medium bg-accent text-on-accent hover:bg-accent-deep border border-transparent rounded-md transition-colors whitespace-nowrap">
             <Plus className="w-4 h-4" />
             Add Subscriber
           </button>
@@ -194,7 +194,7 @@ export default function SubscribersClient({
                           </button>
                           <button
                             onClick={() => handleAction("Remove", s.email)}
-                            className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 border-t border-line"
+                            className="w-full text-left px-4 py-2 text-sm text-bad hover:bg-bad/10 flex items-center gap-2 border-t border-line"
                           >
                             <Trash2 className="w-3.5 h-3.5" /> Remove
                           </button>

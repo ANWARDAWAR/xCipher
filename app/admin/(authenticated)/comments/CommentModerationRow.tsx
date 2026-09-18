@@ -44,7 +44,7 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
       case "SPAM":
         return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted/10 text-muted border border-muted/25">Spam</span>;
       case "REJECTED":
-        return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">Trash</span>;
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-bad/10 text-bad border border-bad/20">Trash</span>;
       default:
         return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-2 text-muted border border-line">Unknown</span>;
     }
@@ -133,7 +133,7 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
                 <button
                   onClick={() => act("REJECTED")}
                   disabled={isPending}
-                  className="p-1.5 rounded-md text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10 disabled:opacity-50 transition-colors"
+                  className="p-1.5 rounded-md text-bad hover:bg-bad/10 disabled:opacity-50 transition-colors"
                   aria-label="Delete"
                   title="Delete"
                 >
@@ -156,7 +156,7 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
                 <button
                   onClick={() => act("REJECTED")}
                   disabled={isPending}
-                  className="p-1.5 rounded-md text-faint hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 disabled:opacity-50 transition-colors"
+                  className="p-1.5 rounded-md text-faint hover:text-bad hover:bg-bad/10 disabled:opacity-50 transition-colors"
                   aria-label="Move to Trash"
                   title="Move to Trash"
                 >

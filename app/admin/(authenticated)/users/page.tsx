@@ -23,7 +23,7 @@ export default async function UsersPage() {
   if (!isAuthorized) {
     return (
       <div className="max-w-xl mx-auto my-12 p-8 bg-surface border border-line rounded-xl shadow-xs text-center">
-        <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+        <div className="w-12 h-12 rounded-full bg-bad/10 text-bad flex items-center justify-center mx-auto mb-4 border border-bad/20">
           <ShieldAlert className="w-6 h-6" />
         </div>
         <h2 className="text-xl font-bold text-ink mb-2 font-[var(--f-ui)]">
@@ -45,7 +45,7 @@ export default async function UsersPage() {
           </Link>
           <Link
             href="/api/auth/signout"
-            className="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors"
+            className="px-4 py-2 text-sm font-semibold rounded-lg bg-accent hover:bg-accent-deep text-on-accent transition-colors"
           >
             Switch Account
           </Link>
@@ -94,7 +94,7 @@ export default async function UsersPage() {
 
         <Link
           href="/admin/users/invite"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs hover:shadow transition-all duration-150 active:scale-[0.99] self-start sm:self-auto"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-on-accent text-xs sm:text-sm font-semibold rounded-lg shadow-xs hover:shadow transition-all duration-150 active:scale-[0.99] self-start sm:self-auto"
         >
           <UserPlus className="w-4 h-4" />
           <span>+ Invite User</span>

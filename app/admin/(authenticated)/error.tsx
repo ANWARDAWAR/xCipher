@@ -50,7 +50,7 @@ export default function AdminError({
       <div className="flex gap-4">
         <button
           onClick={() => reset()}
-          className="px-6 py-2 bg-accent text-white rounded-md font-medium hover:bg-accent-deep transition-colors"
+          className="px-6 py-2 bg-accent text-on-accent rounded-md font-medium hover:bg-accent-deep transition-colors"
         >
           Try again
         </button>

@@ -183,7 +183,7 @@ export default async function AdminDashboard() {
           </Link>
           <Link
             href="/admin/editor"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm hover:shadow transition-all duration-150 active:scale-[0.99]"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-on-accent text-xs sm:text-sm font-semibold rounded-lg shadow-sm hover:shadow transition-all duration-150 active:scale-[0.99]"
           >
             <Plus className="w-4 h-4" />
             <span>New Story</span>
@@ -336,7 +336,7 @@ export default async function AdminDashboard() {
             <span className="text-[11px] font-semibold tracking-wider uppercase">
               Total Reads
             </span>
-            <div className="p-2 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400">
+            <div className="p-2 rounded-lg bg-accent/10 text-accent">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
@@ -357,7 +357,7 @@ export default async function AdminDashboard() {
           <div className="px-5 py-4 border-b border-line flex items-center justify-between bg-surface">
             <div>
               <h2 className="text-sm font-bold text-ink tracking-wide uppercase font-[var(--f-ui)] flex items-center gap-2">
-                <span className="w-1.5 h-3.5 bg-red-600 rounded-sm" />
+                <span className="w-1.5 h-3.5 bg-accent rounded-sm" />
                 {canViewAll ? "Top Stories by Reads" : "Your Top Stories"}
               </h2>
               <p className="text-xs text-muted mt-0.5">
