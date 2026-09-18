@@ -3,8 +3,8 @@ import ArticleEditor from "@/components/editorial/ArticleEditor";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { canEditArticle } from "@/lib/permissions";
-import { Role } from "@prisma/client";
 import { getCategories, getTags } from "@/app/actions/taxonomy";
+import ReviewFeedbackPanel from "@/components/editorial/ReviewFeedbackPanel";
 
 interface EditDraftPageProps {
   params: Promise<{ id: string }>;
@@ -28,7 +28,22 @@ export default async function EditDraftPage({ params }: EditDraftPageProps) {
       revisions: {
         orderBy: { createdAt: "desc" },
         include: { user: { select: { name: true, email: true } } }
-      }
+      },
+      // Only the most recent decision: the author needs to know what to fix
+      // now, not the whole argument. The full history stays in revisions.
+      reviews: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          id: true,
+          decision: true,
+          reason: true,
+          reasonCode: true,
+          createdAt: true,
+          passNumber: true,
+          reviewer: { select: { name: true } },
+        },
+      },
     }
   });
 
@@ -62,6 +77,7 @@ export default async function EditDraftPage({ params }: EditDraftPageProps) {
     <div>
       <h1>Edit story</h1>
       <p className="cs-sub">Write, save drafts and publish.</p>
+      <ReviewFeedbackPanel status={draft.status} latestReview={draft.reviews[0] ?? null} />
       <ArticleEditor
         initialData={initialData}
         initialRevisions={draft.revisions}
