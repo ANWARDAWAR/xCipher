@@ -139,7 +139,13 @@ export default function ArticleEditor({
   const [isPending, setIsPending] = useState(false);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(Boolean(initialData?.slug));
   const [lastSaved, setLastSaved] = useState<Date | null>(initialData?.updatedAt ? new Date(initialData.updatedAt) : null);
-  const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error" | "conflict">("idle");
+  // "offline" is distinct from "error": the write failed for a reason we expect
+  // to be temporary (timeout, dropped connection, 5xx), the text is safe in
+  // localStorage, and the next debounce will retry. "error" means the server
+  // rejected the content itself, which retrying will not fix.
+  const [autosaveStatus, setAutosaveStatus] = useState<
+    "idle" | "edited" | "saving" | "saved" | "error" | "offline" | "conflict"
+  >("idle");
   const [conflictBaseline, setConflictBaseline] = useState<Date | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -148,6 +154,15 @@ export default function ArticleEditor({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
   const router = useRouter();
+
+  // Overlap guard. On a slow connection a save can still be in flight when the
+  // next debounce fires; two concurrent upserts for the same article race each
+  // other and the loser's text is silently lost. Rather than queue every
+  // attempt, we mark that another save is owed and fire exactly one more when
+  // the current one lands -- the form is always saved whole, so a single
+  // trailing write carries everything the skipped ones would have.
+  const saveInFlightRef = useRef(false);
+  const resaveQueuedRef = useRef(false);
 
   // The live article id.
   //
@@ -331,8 +346,19 @@ export default function ArticleEditor({
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // If there are unsaved changes (idle waiting for debounce, saving, or error)
-      if (autosaveStatus !== "saved" && (typingTimeoutRef.current !== null || autosaveStatus === "error")) {
+      // Warn whenever the server copy is behind the editor: a debounce still
+      // pending, a request on the wire, or a failed/deferred save. "offline"
+      // counts -- the text is in localStorage and recoverable, but leaving now
+      // still means it never reached the server, which is worth a prompt.
+      const unsynced =
+        typingTimeoutRef.current !== null ||
+        saveInFlightRef.current ||
+        resaveQueuedRef.current ||
+        autosaveStatus === "error" ||
+        autosaveStatus === "offline" ||
+        autosaveStatus === "edited";
+
+      if (unsynced) {
         e.preventDefault();
         e.returnValue = "";
       }
@@ -350,12 +376,24 @@ export default function ArticleEditor({
 
       // Don't autosave if the change is programmatic or if we are actively submitting a transition
       if (isPending || autosaveStatus === "conflict") return;
-      setAutosaveStatus("idle");
+
+      // "edited" rather than "idle": there are now unsaved changes, and the
+      // indicator should say so while the debounce runs.
+      setAutosaveStatus("edited");
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
       typingTimeoutRef.current = setTimeout(() => {
-        handleSave(getValues("status") || "DRAFT", true);
-      }, 5000);
+        typingTimeoutRef.current = null;
+
+        // A save is already on the wire. Note that the document moved on and
+        // let the in-flight save's completion fire the follow-up.
+        if (saveInFlightRef.current) {
+          resaveQueuedRef.current = true;
+          return;
+        }
+
+        void runAutosave();
+      }, 2500);
     });
     return () => subscription.unsubscribe();
   }, [watch, isPending, autosaveStatus, cacheDraft, editor]);
@@ -409,6 +447,32 @@ export default function ArticleEditor({
     setSlugManuallyEdited(true);
     editor?.commands.setContent(bodyContent);
     showToast("Test data populated! You can now Save Draft, Publish, or Preview.");
+  };
+
+  /**
+   * Single entry point for background saves. Owns the in-flight flag so the
+   * debounce never has two upserts racing, and fires one trailing save if the
+   * document changed while this one was on the wire.
+   */
+  const runAutosave = async () => {
+    if (saveInFlightRef.current) {
+      resaveQueuedRef.current = true;
+      return;
+    }
+
+    saveInFlightRef.current = true;
+    try {
+      await handleSave(getValues("status") || "DRAFT", true);
+    } finally {
+      saveInFlightRef.current = false;
+    }
+
+    if (resaveQueuedRef.current) {
+      resaveQueuedRef.current = false;
+      // Recurse once for the edits made during the previous request. Guarded by
+      // the same flag, so this cannot become an unbounded loop.
+      void runAutosave();
+    }
   };
 
   /** Apply a recovered localStorage cache over the current form. */
@@ -496,8 +560,17 @@ export default function ArticleEditor({
         }
       }
       setIsPending(true);
+
+      // A manual save supersedes any pending autosave: cancel the debounce so
+      // the same content is not written twice in quick succession.
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
     }
-    if (isAutosave) setAutosaveStatus("saving");
+    // Both paths drive the indicator, otherwise an explicit save would leave it
+    // reading "Edited" after the write had already succeeded.
+    setAutosaveStatus("saving");
     try {
       const rawTags = watch("tags") || getValues("tags") || "";
       const tagsArray = typeof rawTags === "string" 
@@ -551,10 +624,8 @@ export default function ArticleEditor({
         if (wasNew) clearDraftCache(null);
         clearDraftCache(result.article.id ? String(result.article.id) : null);
 
-        if (isAutosave) {
-          setAutosaveStatus("saved");
-          return result.article;
-        }
+        setAutosaveStatus("saved");
+        if (isAutosave) return result.article;
 
         showToast(
           targetStatus === "PUBLISHED" ? "Story published successfully!" : "Saved successfully!",
@@ -572,21 +643,37 @@ export default function ArticleEditor({
             showToast("Autosave conflict: article changed elsewhere.");
 
           } else {
-            setAutosaveStatus("error");
-            console.error("Autosave failed:", result.error);
+            // The action returned a failure rather than throwing. Validation
+            // problems ("title is required") are the writer's to fix and will
+            // surface when they save explicitly; a transient server/database
+            // fault is not. Neither is worth a toast mid-sentence, so both
+            // report through the status indicator and the local cache holds.
+            setAutosaveStatus("offline");
+            console.warn("Autosave deferred:", result.error);
           }
         } else {
-          showToast("Save failed: " + (result.error || "Unknown error"));
+          setAutosaveStatus("error");
+          showToast("Save failed: " + (result.error || "Unknown error"), "error");
         }
         return null;
       }
     } catch (error: any) {
       if (isAutosave) {
-        setAutosaveStatus("error");
+        // A thrown error here is a transport failure -- the action never
+        // returned. The text is already in localStorage and the next debounce
+        // retries, so this reports "offline" rather than interrupting the
+        // writer with a red toast they can do nothing about.
+        setAutosaveStatus("offline");
+        console.warn("Autosave deferred (network):", error?.message || error);
       } else {
-        showToast("Save failed: " + (error.message || "Network or database error"));
+        // A manual save is an explicit request, so silence would be wrong --
+        // but the copy still says the work is safe, because it is.
+        showToast(
+          "Couldn't reach the server. Your changes are saved in this browser and will sync when you're back online.",
+          "error"
+        );
+        console.error("Save error:", error);
       }
-      console.error("Save error:", error);
       return null;
     } finally {
       if (!isAutosave) setIsPending(false);
@@ -616,6 +703,29 @@ export default function ArticleEditor({
   }
 
   const isEditorial = ["OWNER", "ADMIN", "EDITOR", "REVIEWER"].includes(userRole || "");
+  /**
+   * Human-readable sync state for the top bar.
+   *
+   * "Saved locally" is deliberate wording for the offline case: the writer's
+   * question in that moment is "have I lost my work", and the honest answer is
+   * no -- it is in this browser and will sync. Saying "Error" would be both
+   * less accurate and more alarming.
+   */
+  const syncStatus: { label: string; tone: "idle" | "edited" | "saving" | "saved" | "offline" } =
+    autosaveStatus === "saving"
+      ? { label: "Saving\u2026", tone: "saving" }
+      : autosaveStatus === "saved"
+        ? { label: "Saved to cloud", tone: "saved" }
+        : autosaveStatus === "offline"
+          ? { label: "Offline \u2014 saved locally", tone: "offline" }
+          : autosaveStatus === "edited"
+            ? { label: "Edited", tone: "edited" }
+            : autosaveStatus === "error"
+              ? { label: "Not saved", tone: "offline" }
+              : lastSaved
+                ? { label: "Saved to cloud", tone: "saved" }
+                : { label: "", tone: "idle" };
+
   const canPublish = ["OWNER", "ADMIN", "EDITOR"].includes(userRole || "");
   const currentFormStatus = watch("status") || "DRAFT";
 
@@ -672,6 +782,28 @@ export default function ArticleEditor({
           
           <span className="text-xs text-[var(--muted)] hidden md:inline ml-2">
             {editor.storage.characterCount.words()} words · {editor.storage.characterCount.characters()} chars
+          </span>
+
+          {/* Sync status. aria-live="polite" so a screen reader hears the
+              outcome without having the sentence in progress interrupted. */}
+          <span
+            role="status"
+            aria-live="polite"
+            className={`text-xs hidden sm:inline-flex items-center gap-1.5 ml-2 transition-colors ${
+              syncStatus.tone === "offline"
+                ? "text-[var(--warn)]"
+                : syncStatus.tone === "saved"
+                  ? "text-[var(--ok)]"
+                  : "text-[var(--muted)]"
+            }`}
+          >
+            {syncStatus.tone === "saving" && (
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+            )}
+            {syncStatus.tone === "offline" && (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M1 1l22 22"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            )}
+            {syncStatus.label}
           </span>
         </div>
 
@@ -752,28 +884,30 @@ export default function ArticleEditor({
       {recoveredDraft && (
         <div
           role="status"
-          className="bg-[var(--accent)]/10 text-[var(--ink)] px-6 py-3 border-b border-[var(--accent)]/30 flex flex-col sm:flex-row justify-between sm:items-center gap-3 z-50"
+          className="mx-4 sm:mx-6 mt-4 bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 p-3 rounded-lg text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3"
         >
-          <div className="text-sm">
-            <strong className="font-semibold">Unsaved changes recovered.</strong>{" "}
-            <span className="text-[var(--muted)]">
-              This browser has a copy from{" "}
-              {new Date(recoveredDraft.savedAt).toLocaleString()} that was never saved to
-              the server.
+          <div className="flex items-start sm:items-center gap-2.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5 sm:mt-0" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <span>
+              You have unsaved offline changes from{" "}
+              <strong className="font-semibold">
+                {new Date(recoveredDraft.savedAt).toLocaleString()}
+              </strong>
+              .
             </span>
           </div>
           <div className="flex gap-2 shrink-0">
             <button
               type="button"
               onClick={discardRecovery}
-              className="text-xs font-medium px-3 py-1.5 rounded-md border border-[var(--line-2)] text-[var(--ink-2)] hover:bg-[var(--surface-2)] transition-colors"
+              className="text-xs font-medium px-3 py-1.5 rounded-md border border-amber-500/30 hover:bg-amber-500/10 transition-colors"
             >
               Discard
             </button>
             <button
               type="button"
               onClick={handleRestoreDraft}
-              className="text-xs font-semibold px-3 py-1.5 rounded-md bg-[var(--accent)] text-on-accent hover:bg-[var(--accent-deep)] transition-colors"
+              className="text-xs font-semibold px-3 py-1.5 rounded-md bg-amber-500 text-black hover:bg-amber-400 transition-colors"
             >
               Restore
             </button>
