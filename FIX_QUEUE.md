@@ -522,11 +522,46 @@ Migrating those files wholesale onto the token scale remains FIX-15c / Phase 4 T
 
 `node_modules` installed in the sandbox for the first time this round. `npx tsc --noEmit` reports **no errors originating in application logic**; the 48 remaining errors are all `has no exported member` against `@prisma/client`, caused by `prisma generate` producing a stub — the sandbox cannot reach `binaries.prisma.sh`. `next build` cannot complete here either: `next/font` cannot reach `fonts.googleapis.com`. **Both are sandbox network restrictions, not code defects.** Full typecheck and build must be run locally.
 
-### Remaining queue
+### Phase 3 — complete
+
+| Task | Status | Commit |
+|---|---|---|
+| **TASK-06** scheduled-publish executor | ✅ done | `ab44ea5` |
+| **TASK-08** date-range filter | ✅ done | `fa577a1` |
+| **TASK-09** mobile rows, thumbnails, scheduled dates | ✅ done | `23d7008` |
+| TASK-17 phase 1 — notification UI | ✅ done | `1cfbe73` |
+
+### Additional work this round
+
+| Item | Commit | Note |
+|---|---|---|
+| Reviewer reason shown to the author | `240a9a4` | requestChanges/rejectArticle demanded 20+ chars and nothing ever rendered them |
+| Console loading skeletons | `ed11f26` | there was no `loading.tsx` anywhere; also repaired three bugs in the error boundary |
+| Four hardcoded role gates → capability map | `f1eb050` | taxonomy page, taxonomy actions, invite page, profile action |
+| Hydration: no clock reads during client render | `4cd2fd2` | AuditLogsClient + NotificationBell |
+
+### Bugs found and fixed while implementing
+
+- **Broken public links.** `ArticleIndex` and the dashboard linked to `/${slug}`; the public route is `/article/[slug]`. Every "View on site" link 404'd. The other 20 article links in the codebase were already correct.
+- **`bg-accent-hover` is declared nowhere** — the error boundary's "Try again" button had no hover state.
+- **"Return to Dashboard" linked to `/admin/drafts`.**
+- **`deleteArticle` lost its public revalidation** in FIX-10 (fixed as FIX-10b).
+
+### Build health
+
+Verified in-sandbox as far as the network allows:
+
+- `npx tsc --noEmit` — **0 errors originating in application code**. The remainder are `@prisma/client has no exported member`, caused by `prisma generate` emitting a stub: the sandbox cannot reach `binaries.prisma.sh`.
+- `npx eslint` on every file touched this round — **clean**.
+- `npx next build` — **`✓ Compiled successfully`**. The whole app bundles. The build then stops at page-data collection with `@prisma/client did not initialize yet`, which is the same missing engine binary.
+- `next/font` cannot reach `fonts.googleapis.com` either; confirmed by building with the font imports stubbed.
+
+**Both blockers are sandbox network restrictions, not code defects.** Run `npx prisma generate && npm run build` locally for the real verification.
+
+### Still open
 
 | Item | Status |
 |---|---|
-| **TASK-06** scheduled-publish executor | **open — last CRITICAL finding** |
-| TASK-08 | verify tag/date filters, per-status counts, filtered-empty state |
-| TASK-09 | thumbnails from `Article.img`, stacked rows < 768px, expandable detail |
-| FIX-15c → TASK-14 | palette migration off `neutral-*` |
+| FIX-15c → Phase 4 TASK-14 | palette migration off `neutral-*` onto the token scale |
+| TASK-17 phase 2 | email delivery behind the existing `lib/notifications.ts` interface |
+| 144 pre-existing ESLint errors | mostly `no-explicit-any` (94) and `react-hooks/static-components` (25); none introduced this round |
