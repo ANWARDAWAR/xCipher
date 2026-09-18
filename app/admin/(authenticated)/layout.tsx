@@ -48,8 +48,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const { items: notifications, unreadCount } = await getNotifications();
 
+  // The wrapper below was role="dialog" aria-modal="true". That is a factual
+  // misdescription: this is the whole console, not a modal over something
+  // else. aria-modal tells assistive tech that everything outside this node is
+  // inert, so a screen reader hides the rest of the document -- and it implies
+  // an escape route back to an underlying page that does not exist here.
+  // Removing it lets the landmarks (nav, main) be reached normally.
   return (
-    <div className="console open" id="console" role="dialog" aria-modal="true" aria-label="xCipher editorial console" style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
+    <div className="console open" id="console" aria-label="xCipher editorial console" style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
+      <a href="#csMain" className="skip-link">
+        Skip to content
+      </a>
       <div className="cs-top">
         <Link href="/admin" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
           <svg width="22" height="22" viewBox="0 0 26 26" aria-hidden="true" style={{ color: "var(--ink)" }}>
@@ -138,9 +147,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             reviewCount={reviewCount}
           />
         </nav>
-        <div className="cs-main" id="csMain">
+        {/*
+          Was a plain <div>. The console's only landmark was the <nav>, so a
+          screen-reader user had no way to jump to the actual page content --
+          and the skip link above needs a focusable target to land on.
+        */}
+        <main className="cs-main" id="csMain" tabIndex={-1}>
           {children}
-        </div>
+        </main>
       </div>
     </div>
   );
