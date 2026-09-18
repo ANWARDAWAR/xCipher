@@ -5079,3 +5079,190 @@ body {
     transform: translate(0, 0);
   }
 }
+
+/* ---- Avatars: guarantee a circle ------------------------------------------
+   The avatar rules already set border-radius:50% and object-fit:cover, which
+   is enough on its own -- but only if the box stays square. Most avatars sit
+   in a flex row next to a name, and a fixed `w-10 h-10` with no shrink-0 is
+   still compressible: a long display name makes the flex algorithm squeeze the
+   image horizontally and the "circle" renders as an oval. Height is untouched,
+   so it looks like a bug in the image rather than in the layout.
+
+   aspect-ratio pins the shape and flex:none removes it from the shrink
+   calculation entirely, so the text wraps instead of deforming the portrait. */
+
+.ava,
+.ap-avatar,
+.ap-avatar-initial,
+.cs-profile-img,
+.cs-profile-initials {
+  aspect-ratio: 1 / 1;
+  flex: none;
+  object-fit: cover;
+}
+
+/* ---- Editor command bar ----------------------------------------------------
+   The bar had five buttons at near-identical visual weight: Settings, Discard,
+   Preview, Save Draft, Publish. Everything competed, so the eye had to read
+   labels to find the primary action, and Discard -- the only destructive one --
+   looked exactly as inviting as Save.
+
+   Three tiers instead:
+     .ed-act            quiet, icon-led   (Settings, Preview)
+     .ed-act.secondary  outlined          (Save Draft)
+     .ed-act.primary    solid accent      (Publish / Submit)
+     .ed-act.danger     quiet until hover (Discard)
+
+   Height is fixed at 34px across all of them: previously padding-based sizing
+   let the icon-only buttons render shorter than the text ones, so the row did
+   not sit on a shared baseline. */
+
+.ed-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--ink-2);
+  font: 500 13.5px/1 var(--f-ui);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color .15s, color .15s, border-color .15s, opacity .15s;
+}
+
+.ed-act:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.ed-act svg { flex: none; }
+
+.ed-act.secondary {
+  border-color: var(--line-2);
+  color: var(--ink);
+}
+
+.ed-act.secondary:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--ink-2);
+}
+
+.ed-act.primary {
+  padding: 0 15px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  /* Accent-tinted rather than neutral black, so the lift reads as part of the
+     button instead of a grey smudge under it. */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .12), 0 2px 8px color-mix(in oklab, var(--accent) 28%, transparent);
+}
+
+.ed-act.primary:hover:not(:disabled) {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+  color: var(--on-accent);
+}
+
+.ed-act.primary:active:not(:disabled) {
+  background: var(--accent-press);
+  border-color: var(--accent-press);
+  /* Shadow collapses on press so the button reads as pushed into the surface. */
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  transform: translateY(.5px);
+}
+
+.ed-act.danger:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--bad) 10%, transparent);
+  color: var(--bad);
+}
+
+.ed-act:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+/* The label is what collapses on small screens, never the icon -- an icon-only
+   button is still usable, a label-only button loses its meaning. */
+@media (max-width: 767px) {
+  .ed-act .ed-act-label { display: none; }
+  .ed-act { padding: 0 9px; }
+  .ed-act.primary { padding: 0 12px; }
+}
+
+/* Touch targets: the bar is dense by design on a mouse, but 34px is under the
+   44px guideline for fingers. */
+@media (pointer: coarse) {
+  .ed-act { height: 40px; }
+}
+
+/* ---- Editor inspector rail -------------------------------------------------
+   The right-hand panel repeated the same long utility string on 8 inputs, 11
+   labels and 4 section headings. Naming them makes the panel consistent by
+   construction and gives the fields a real focus ring -- they previously used
+   focus:outline-none with only a border-colour change, which is close to
+   invisible against a dark surface. */
+
+.ed-rail-h {
+  font: 700 11px/1 var(--f-ui);
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--muted);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ed-rail-label {
+  display: block;
+  font: 600 11.5px/1.4 var(--f-ui);
+  color: var(--ink-2);
+  margin-bottom: 6px;
+}
+
+.ed-rail-input {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 11px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  color: var(--ink);
+  font: 400 13.5px/1.4 var(--f-ui);
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.ed-rail-input::placeholder { color: var(--muted); }
+
+.ed-rail-input:hover:not(:disabled) { border-color: var(--muted); }
+
+.ed-rail-input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+select.ed-rail-input {
+  /* Native arrow sits too close to the edge at this padding. */
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+/* The mobile drawer scrolls, so its header needs to stay reachable -- closing
+   the panel should not require scrolling back to the top. */
+.ed-rail-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: -20px -20px 8px;
+  padding: 14px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+@media (min-width: 640px) {
+  .ed-rail-head { margin: -24px -24px 8px; padding: 16px 24px; }
+}

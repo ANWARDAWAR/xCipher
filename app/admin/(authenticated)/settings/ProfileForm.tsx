@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { updateProfile } from "@/app/actions/profile";
 import { showToast } from "@/lib/utils";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
+import RichTextField from "@/components/editorial/RichTextField";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import LinkExtension from "@tiptap/extension-link";
@@ -98,6 +99,9 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
       LinkExtension.configure({ openOnClick: false }),
     ],
     content: bio,
+    // This form is server-rendered, and Tiptap warns (and can mismatch) if it
+    // renders immediately during SSR.
+    immediatelyRender: false,
     onUpdate: ({ editor }) => {
       setBio(editor.getHTML());
     },
@@ -323,23 +327,12 @@ export default function ProfileForm({ user, author }: { user: any; author: any }
 
           <div className="cs-settings-full mt-6">
             <label className="ed-label">Full Biography</label>
-            <div className="ed-toolbar flex flex-wrap gap-1 p-2 border-b-0 rounded-b-none bg-[var(--surface-2)]">
-              <button type="button" onClick={() => bioEditor?.chain().focus().toggleBold().run()} className={`px-2 py-1 rounded text-sm ${bioEditor?.isActive("bold") ? "bg-[var(--surface-3)] text-[var(--ink)] font-bold" : "text-[var(--ink-2)]"}`} title="Bold">B</button>
-              <button type="button" onClick={() => bioEditor?.chain().focus().toggleItalic().run()} className={`px-2 py-1 rounded text-sm italic ${bioEditor?.isActive("italic") ? "bg-[var(--surface-3)] text-[var(--ink)] font-bold" : "text-[var(--ink-2)]"}`} title="Italic">I</button>
-              <button type="button" onClick={() => bioEditor?.chain().focus().toggleUnderline().run()} className={`px-2 py-1 rounded text-sm underline ${bioEditor?.isActive("underline") ? "bg-[var(--surface-3)] text-[var(--ink)] font-bold" : "text-[var(--ink-2)]"}`} title="Underline">U</button>
-              <span className="w-[1px] h-4 bg-[var(--line-2)] mx-1 self-center"></span>
-              <button type="button" onClick={() => bioEditor?.chain().focus().toggleHeading({ level: 2 }).run()} className={`px-2 py-1 rounded text-sm ${bioEditor?.isActive("heading", { level: 2 }) ? "bg-[var(--surface-3)] text-[var(--ink)] font-bold" : "text-[var(--ink-2)]"}`} title="Heading">H2</button>
-              <button type="button" onClick={() => bioEditor?.chain().focus().toggleBulletList().run()} className={`px-2 py-1 rounded text-sm ${bioEditor?.isActive("bulletList") ? "bg-[var(--surface-3)] text-[var(--ink)] font-bold" : "text-[var(--ink-2)]"}`} title="Bullet list">• List</button>
-              <button type="button" onClick={() => {
-                const url = window.prompt("Enter link URL");
-                if (url) bioEditor?.chain().focus().setLink({ href: url }).run();
-              }} className={`px-2 py-1 rounded text-sm ${bioEditor?.isActive("link") ? "bg-[var(--surface-3)] text-[var(--ink)] font-bold" : "text-[var(--ink-2)]"}`} title="Insert link">Link</button>
-            </div>
-            
-            <div className="ed-body min-h-[120px] rounded-t-none bg-[var(--surface)]">
-              <EditorContent editor={bioEditor} />
-            </div>
-            <span className="block mt-1.5 text-[11.5px] text-[var(--muted)]">Displayed on your full public author profile page.</span>
+            <RichTextField
+              editor={bioEditor}
+              ariaLabel="Full biography"
+              minHeight={140}
+              hint="Displayed on your full public author profile page."
+            />
           </div>
         </div>
       </div>

@@ -814,10 +814,10 @@ export default function ArticleEditor({
           <button 
             type="button" 
             onClick={() => setIsInspectorOpen(true)}
-            className="lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg text-[var(--ink-2)] hover:bg-[var(--surface-2)] transition-colors border border-[var(--line-2)]"
+            className="ed-act secondary lg:hidden"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-            <span className="hidden sm:inline">Settings</span>
+            <span className="ed-act-label">Settings</span>
           </button>
           
           <button
@@ -825,20 +825,20 @@ export default function ArticleEditor({
             disabled={isPending}
             onClick={handleDiscardAndRestart}
             title="Discard local changes and start over"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg text-[var(--muted)] hover:text-[var(--bad)] hover:bg-[var(--bad)]/10 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="ed-act danger"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
-            <span className="hidden md:inline">Discard</span>
+            <span className="ed-act-label">Discard</span>
           </button>
 
           <button 
             type="button" 
             disabled={isPending} 
             onClick={handlePreview}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg text-[var(--ink-2)] hover:bg-[var(--surface-2)] transition-colors"
+            className="ed-act"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            <span className="hidden sm:inline">Preview</span>
+            <span className="ed-act-label">Preview</span>
           </button>
           
           {(currentFormStatus === "DRAFT" || currentFormStatus === "REVISION_REQUESTED") && (
@@ -846,10 +846,10 @@ export default function ArticleEditor({
               type="button" 
               disabled={isPending} 
               onClick={() => handleSave(currentFormStatus)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-[var(--line-2)] text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="ed-act secondary"
             >
               {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-              {isPending ? "Saving\u2026" : "Save Draft"}
+              <span className="ed-act-label">{isPending ? "Saving\u2026" : "Save Draft"}</span>
             </button>
           )}
 
@@ -858,10 +858,12 @@ export default function ArticleEditor({
               type="button" 
               disabled={isPending} 
               onClick={() => handleSave("PUBLISHED")}
-              className="inline-flex items-center gap-1.5 bg-[var(--accent)] hover:bg-[var(--accent-deep)] active:bg-[var(--accent-press)] text-on-accent font-medium px-4 py-1.5 rounded-lg shadow-sm shadow-[var(--accent)]/20 text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="ed-act primary"
             >
-              {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-              {isPending ? "Updating\u2026" : "Update Live"}
+              {isPending
+                ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>}
+              <span>{isPending ? "Updating\u2026" : "Update Live"}</span>
             </button>
           ) : (
             (currentFormStatus === "DRAFT" || currentFormStatus === "REVISION_REQUESTED") && (
@@ -869,12 +871,16 @@ export default function ArticleEditor({
                 type="button" 
                 disabled={isPending} 
                 onClick={() => handleSave(canPublish ? "PUBLISHED" : "SUBMITTED")}
-                className="inline-flex items-center gap-1.5 bg-[var(--accent)] hover:bg-[var(--accent-deep)] active:bg-[var(--accent-press)] text-on-accent font-medium px-4 py-1.5 rounded-lg shadow-sm shadow-[var(--accent)]/20 text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="ed-act primary"
               >
-                {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                 {isPending
+                  ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  : canPublish
+                    ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                    : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>}
+                <span>{isPending
                   ? (canPublish ? "Publishing\u2026" : "Submitting\u2026")
-                  : (canPublish ? "Publish Story" : "Submit for Review")}
+                  : (canPublish ? "Publish Story" : "Submit for Review")}</span>
               </button>
             )
           )}
@@ -1019,7 +1025,7 @@ export default function ArticleEditor({
         
         {/* ── Document Inspector Rail (Right Sidebar) ── */}
         <aside className={`fixed inset-y-0 right-0 z-50 w-full max-w-[360px] lg:w-80 xl:w-96 shrink-0 border-l border-[var(--line)] bg-[var(--surface)]/30 overflow-y-auto p-5 sm:p-6 space-y-8 transform transition-transform duration-300 ease-in-out lg:static lg:transform-none lg:translate-x-0 lg:block ${isInspectorOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-          <div className="flex items-center justify-between lg:hidden mb-2 pb-4 border-b border-[var(--line-2)]">
+          <div className="ed-rail-head flex items-center justify-between lg:hidden">
             <h2 className="text-lg font-bold text-[var(--ink)]">Settings</h2>
             <button 
               type="button" 
@@ -1032,11 +1038,11 @@ export default function ArticleEditor({
 
 {/* Panel A: Publishing & Categorization */}
           <section className="space-y-4">
-            <h3 className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider border-b border-[var(--line-2)] pb-2">Categorization</h3>
+            <h3 className="ed-rail-h">Categorization</h3>
             
             <div>
-              <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5" htmlFor="edCat">Category</label>
-              <select className="w-full text-sm bg-[var(--surface-2)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--ink)] focus:outline-none focus:border-[var(--accent)]" id="edCat" {...register("cat")}>
+              <label className="ed-rail-label" htmlFor="edCat">Category</label>
+              <select className="ed-rail-input" id="edCat" {...register("cat")}>
                 {availableCategories.map((c) => (
                   <option key={c.id} value={c.slug}>{c.name}</option>
                 ))}
@@ -1044,7 +1050,7 @@ export default function ArticleEditor({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5">Tags</label>
+              <label className="ed-rail-label">Tags</label>
               <div className="flex flex-wrap gap-2 mb-2">
                 {currentTags.map(tag => (
                   <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface-3)] text-[var(--ink)] border border-[var(--line-2)]">
@@ -1061,26 +1067,26 @@ export default function ArticleEditor({
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleAddTag}
                 placeholder="Type tag & press Enter"
-                className="w-full text-sm bg-[var(--surface-2)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] placeholder:text-[var(--muted)]"
+                className="ed-rail-input"
               />
               <input type="hidden" {...register("tags")} />
             </div>
 
             <div className="space-y-3 pt-2">
               <div>
-                <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5">Author</label>
+                <label className="ed-rail-label">Author</label>
                 <input className="w-full text-sm bg-[var(--surface-3)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--muted)] cursor-not-allowed" value={watch("author")} readOnly title="Set from profile settings" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5">Author Role</label>
+                <label className="ed-rail-label">Author Role</label>
                 <input className="w-full text-sm bg-[var(--surface-3)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--muted)] cursor-not-allowed" value={watch("role")} readOnly title="Set from profile settings" />
               </div>
             </div>
 
             {canPublish && (
               <div className="pt-2">
-                <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5" htmlFor="edScheduledFor">Schedule Publication</label>
-                <input className="w-full text-sm bg-[var(--surface-2)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--ink)] focus:outline-none focus:border-[var(--accent)]" type="datetime-local" id="edScheduledFor" {...register("scheduledFor")} />
+                <label className="ed-rail-label" htmlFor="edScheduledFor">Schedule Publication</label>
+                <input className="ed-rail-input" type="datetime-local" id="edScheduledFor" {...register("scheduledFor")} />
               </div>
             )}
 
@@ -1092,8 +1098,8 @@ export default function ArticleEditor({
               
               {canPublish && (
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5" htmlFor="edHomepagePlacement">Homepage Placement</label>
-                  <select className="w-full text-sm bg-[var(--surface-2)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--ink)] focus:outline-none focus:border-[var(--accent)]" id="edHomepagePlacement" {...register("homepagePlacement")}>
+                  <label className="ed-rail-label" htmlFor="edHomepagePlacement">Homepage Placement</label>
+                  <select className="ed-rail-input" id="edHomepagePlacement" {...register("homepagePlacement")}>
                     <option value="">None (Default)</option>
                     <option value="hero">Hero Section</option>
                     <option value="featured">Featured Stories</option>
@@ -1106,10 +1112,10 @@ export default function ArticleEditor({
 
           {/* Panel B: Featured Media */}
           <section className="space-y-4">
-            <h3 className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider border-b border-[var(--line-2)] pb-2">Featured Media</h3>
+            <h3 className="ed-rail-h">Featured Media</h3>
             <div>
-              <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5" htmlFor="edImg">Image URL</label>
-              <input className="w-full text-sm bg-[var(--surface-2)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] placeholder:text-[var(--muted)]" id="edImg" placeholder="https://images.pexels.com/..." {...register("img")} />
+              <label className="ed-rail-label" htmlFor="edImg">Image URL</label>
+              <input className="ed-rail-input" id="edImg" placeholder="https://images.pexels.com/..." {...register("img")} />
               {watch("img") && (
                 <div className="mt-3 aspect-video w-full rounded-md overflow-hidden border border-[var(--line-2)] bg-[var(--surface-3)]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1121,17 +1127,17 @@ export default function ArticleEditor({
 
           {/* Panel C: SEO */}
           <section className="space-y-4">
-            <h3 className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider border-b border-[var(--line-2)] pb-2">Search & Social SEO</h3>
+            <h3 className="ed-rail-h">Search & Social SEO</h3>
             <div>
-              <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5" htmlFor="edSeoTitle">SEO Title</label>
-              <input className="w-full text-sm bg-[var(--surface-2)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] placeholder:text-[var(--muted)]" id="edSeoTitle" placeholder="Defaults to article title" {...register("seoTitle")} />
+              <label className="ed-rail-label" htmlFor="edSeoTitle">SEO Title</label>
+              <input className="ed-rail-input" id="edSeoTitle" placeholder="Defaults to article title" {...register("seoTitle")} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5" htmlFor="edSeoDesc">SEO Description</label>
-              <textarea className="w-full text-sm bg-[var(--surface-2)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] placeholder:text-[var(--muted)] resize-none" rows={3} id="edSeoDesc" placeholder="Defaults to excerpt" {...register("seoDesc")} />
+              <label className="ed-rail-label" htmlFor="edSeoDesc">SEO Description</label>
+              <textarea className="ed-rail-input resize-none" rows={3} id="edSeoDesc" placeholder="Defaults to excerpt" {...register("seoDesc")} />
             </div>
             <div className="pt-2">
-              <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5">Google SERP Preview</label>
+              <label className="ed-rail-label">Google SERP Preview</label>
               <SeoPreview 
                 title={watch("seoTitle") || watch("title") || ""} 
                 description={watch("seoDesc") || watch("deck") || ""}
@@ -1143,11 +1149,11 @@ export default function ArticleEditor({
 
           {/* Panel D: Permanent Slug */}
           <section className="space-y-4">
-            <h3 className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider border-b border-[var(--line-2)] pb-2">Permanent URL</h3>
+            <h3 className="ed-rail-h">Permanent URL</h3>
             <div>
-              <label className="block text-xs font-semibold text-[var(--ink-2)] mb-1.5" htmlFor="edSlug">Slug</label>
+              <label className="ed-rail-label" htmlFor="edSlug">Slug</label>
               <input 
-                className="w-full text-sm bg-[var(--surface-2)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] font-mono" 
+                className="ed-rail-input font-mono" 
                 id="edSlug" 
                 {...register("slug", { onChange: () => setSlugManuallyEdited(true) })} 
               />
