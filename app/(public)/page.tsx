@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getImgSrc, timeAgo, fmtViews } from "@/lib/utils";
 import { db } from "@/lib/db";
+import { ARTICLE_CARD_SELECT, HOME_ARTICLE_LIMIT } from "@/lib/queries";
 import StoryCard from "@/components/article/StoryCard";
 import StoryRow from "@/components/article/StoryRow";
 import BreakingTicker from "@/components/home/BreakingTicker";
@@ -13,7 +14,8 @@ export default async function Home() {
   const dbArticles = await db.article.findMany({
     where: { status: "PUBLISHED" },
     orderBy: { createdAt: 'desc' },
-    include: { category: true }
+    take: HOME_ARTICLE_LIMIT,
+    select: ARTICLE_CARD_SELECT,
   });
 
   if (!dbArticles.length) return <div className="wrap py-20 text-center">No articles published yet.</div>;

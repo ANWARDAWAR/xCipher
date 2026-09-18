@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { ARTICLE_CARD_SELECT, LISTING_ARTICLE_LIMIT } from "@/lib/queries";
 import { CATS } from "@/lib/mockData";
 import StoryRow from "@/components/article/StoryRow";
 import Sidebar from "@/components/layout/Sidebar";
@@ -54,7 +55,8 @@ export default async function CategoryPage({ params }: Props) {
       ...(category ? { categoryId: category.id } : { category: { slug } }),
     },
     orderBy: { createdAt: "desc" },
-    include: { category: true },
+    take: LISTING_ARTICLE_LIMIT,
+    select: ARTICLE_CARD_SELECT,
   });
 
   const feat = articles[0];

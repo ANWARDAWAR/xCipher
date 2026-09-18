@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
+import { ARTICLE_CARD_SELECT, LATEST_ARTICLE_LIMIT } from "@/lib/queries";
 import StoryRow from "@/components/article/StoryRow";
 import Sidebar from "@/components/layout/Sidebar";
 
@@ -14,7 +15,8 @@ export default async function LatestPage() {
   const articles = await db.article.findMany({
     where: { status: "PUBLISHED" },
     orderBy: { createdAt: "desc" },
-    include: { category: true },
+    take: LATEST_ARTICLE_LIMIT,
+    select: ARTICLE_CARD_SELECT,
   });
 
   const now = Date.now();

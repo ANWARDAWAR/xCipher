@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getImgSrc, fmtViews, timeAgo } from "@/lib/utils";
 import { db } from "@/lib/db";
+import { ARTICLE_CARD_SELECT } from "@/lib/queries";
 import { constructMetadata, generateNewsArticleJsonLd } from "@/lib/seo";
 import { SocialIcon } from "@/components/author/AuthorProfileView";
 import ArticleBody from "@/components/article/ArticleBody";
@@ -105,7 +106,7 @@ export default async function ArticlePage({ params }: Props) {
   const relatedDb = await db.article.findMany({
     where: { categoryId: article.categoryId, id: { not: article.id }, status: "PUBLISHED" },
     take: 3,
-    include: { category: true }
+    select: ARTICLE_CARD_SELECT,
   });
   
   const related = relatedDb.map(a => ({

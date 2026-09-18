@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { ARTICLE_CARD_SELECT, LISTING_ARTICLE_LIMIT } from "@/lib/queries";
 import AuthorProfileView from "@/components/author/AuthorProfileView";
 
 interface Props {
@@ -43,16 +44,25 @@ export default async function AuthorProfile({ params }: Props) {
   } catch { socials = []; }
 
   // Fetch articles
-  const articles = await db.article.findMany({
-    where: {
-      status: "PUBLISHED",
-      OR: [{ authorId: author.id }, { author: author.name }],
-    },
-    orderBy: { createdAt: "desc" },
-    include: { category: true },
-  });
+  const authorArticleWhere = {
+    status: "PUBLISHED" as const,
+    OR: [{ authorId: author.id }, { author: author.name }],
+  };
 
-  const totalViews = articles.reduce((sum, a) => sum + (a.views || 0), 0);
+  // The list is capped, so the view total cannot be summed from it -- that
+  // would silently under-report as soon as an author passes the cap. Postgres
+  // does the sum over every row instead, which is one cheap indexed aggregate.
+  const [articles, viewsAggregate] = await Promise.all([
+    db.article.findMany({
+      where: authorArticleWhere,
+      orderBy: { createdAt: "desc" },
+      take: LISTING_ARTICLE_LIMIT,
+      select: ARTICLE_CARD_SELECT,
+    }),
+    db.article.aggregate({ where: authorArticleWhere, _sum: { views: true } }),
+  ]);
+
+  const totalViews = viewsAggregate._sum.views || 0;
 
   return (
     <AuthorProfileView 

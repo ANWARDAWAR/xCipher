@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
+import { ARTICLE_CARD_WITH_TAGS_SELECT } from "@/lib/queries";
 import StoryRow from "@/components/article/StoryRow";
 import Sidebar from "@/components/layout/Sidebar";
 
@@ -57,7 +58,7 @@ export default async function SearchPage({ searchParams }: Props) {
         orderBy: { publishedAt: "desc" },
         skip,
         take: limit,
-        include: { category: true, tags: true },
+        select: ARTICLE_CARD_WITH_TAGS_SELECT,
       }),
       db.article.count({ where: whereClause })
     ]);
