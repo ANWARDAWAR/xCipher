@@ -480,7 +480,9 @@ export async function scheduleArticle(id: string, date: Date): Promise<ActionRes
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
-    // No public revalidation at the moment of scheduling; the cron job that performs publication will handle it.
+    // No public revalidation at the moment of scheduling: nothing public changes
+    // until the article actually goes live. /api/cron/publish-scheduled does the
+    // public revalidation when it performs the publication.
     return { ok: true };
   });
 }
