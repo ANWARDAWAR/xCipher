@@ -607,12 +607,12 @@ export default function ArticleEditor({
       </header>
 
       {autosaveStatus === "conflict" && (
-        <div className="bg-[#fffbeb] text-[#d97706] px-6 py-3 border-b border-[#f59e0b]/30 flex flex-col sm:flex-row justify-between items-center z-50">
+        <div role="status" className="bg-warn/10 text-warn px-6 py-3 border-b border-warn flex flex-col sm:flex-row justify-between items-center z-50">
           <div className="text-sm">
             <strong className="font-semibold">Autosave Conflict:</strong> This article was changed elsewhere. Your local changes were not saved.
           </div>
           <div className="flex gap-3 mt-2 sm:mt-0">
-            <button type="button" onClick={() => window.location.reload()} className="text-xs font-medium px-3 py-1.5 rounded-md bg-white/50 hover:bg-white/80 border border-[#f59e0b]/20 transition-colors text-[#92400e]">
+            <button type="button" onClick={() => window.location.reload()} className="text-xs font-medium px-3 py-1.5 rounded-md bg-[var(--surface)]/50 hover:bg-[var(--surface)]/80 border border-warn/20 transition-colors text-warn">
               Reload (Discard Local)
             </button>
             <button type="button" onClick={() => {
@@ -623,7 +623,7 @@ export default function ArticleEditor({
                 showToast("Overwriting with local changes...");
                 setTimeout(() => handleSave(getValues("status") || "DRAFT", true), 0);
               }
-            }} className="text-xs font-medium px-3 py-1.5 rounded-md bg-[#d97706] text-white hover:bg-[#b45309] transition-colors shadow-sm">
+            }} className="text-xs font-medium px-3 py-1.5 rounded-md bg-warn text-white hover:opacity-90 transition-colors shadow-sm">
               Overwrite
             </button>
           </div>
