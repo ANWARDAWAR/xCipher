@@ -30,6 +30,7 @@ async function getArticle(id: string) {
       title: true,
       slug: true,
       categoryId: true,
+      category: { select: { slug: true } },
       deck: true,
       contentHtml: true,
     }
@@ -410,6 +411,9 @@ export async function publishArticle(id: string): Promise<ActionResponse> {
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/review`);
     revalidatePath(`/admin/editor/${id}`);
+    revalidatePath("/", "layout");
+    revalidatePath(`/article/${article.slug}`, "page");
+    if (article.category?.slug) revalidatePath(`/category/${article.category.slug}`, "page");
     return { ok: true };
   });
 }
@@ -428,6 +432,9 @@ export async function unpublishArticle(id: string): Promise<ActionResponse> {
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
+    revalidatePath("/", "layout");
+    revalidatePath(`/article/${article.slug}`, "page");
+    if (article.category?.slug) revalidatePath(`/category/${article.category.slug}`, "page");
     return { ok: true };
   });
 }
@@ -453,6 +460,7 @@ export async function scheduleArticle(id: string, date: Date): Promise<ActionRes
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
+    // No public revalidation at the moment of scheduling; the cron job that performs publication will handle it.
     return { ok: true };
   });
 }
@@ -495,6 +503,9 @@ export async function archiveArticle(id: string): Promise<ActionResponse> {
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
+    revalidatePath("/", "layout");
+    revalidatePath(`/article/${article.slug}`, "page");
+    if (article.category?.slug) revalidatePath(`/category/${article.category.slug}`, "page");
     return { ok: true };
   });
 }
@@ -513,6 +524,9 @@ export async function restoreArticle(id: string): Promise<ActionResponse> {
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
+    revalidatePath("/", "layout");
+    revalidatePath(`/article/${article.slug}`, "page");
+    if (article.category?.slug) revalidatePath(`/category/${article.category.slug}`, "page");
     return { ok: true };
   });
 }
