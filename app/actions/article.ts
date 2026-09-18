@@ -243,6 +243,16 @@ export async function deleteArticle(id: string) {
 
     try {
       revalidatePath("/admin/articles", "page");
+      // Deleting a published article removes it from the public site, so it is a
+      // public-visible transition like unpublish or archive and needs the same
+      // invalidation. A draft has no public representation, so skip it there.
+      if (article.status === "PUBLISHED") {
+        revalidatePath("/", "layout");
+        revalidatePath(`/article/${article.slug}`, "page");
+        if (article.category?.slug) {
+          revalidatePath(`/category/${article.category.slug}`, "page");
+        }
+      }
     } catch (revalError) {
       console.warn(">>> [SERVER] Revalidation error:", revalError);
     }
