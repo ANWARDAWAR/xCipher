@@ -8,7 +8,13 @@ const listeners = new Set<(idx: number) => void>();
 
 export function getInitialFs(): number {
   if (typeof window === "undefined") return 1;
-  const saved = localStorage.getItem("xcipher-fs") ?? localStorage.getItem("gridx-fs");
+  // Read order is newest brand first, then each previous one. The publication
+  // has been renamed twice (gridx -> xcipher -> xsypher) and a reader's chosen
+  // reading size should survive a rename they never asked for.
+  const saved =
+    localStorage.getItem("xsypher-fs") ??
+    localStorage.getItem("xcipher-fs") ??
+    localStorage.getItem("gridx-fs");
   if (saved !== null) {
     const idx = parseInt(saved, 10);
     if (!isNaN(idx) && idx >= 0 && idx < FS.length) {
@@ -21,7 +27,7 @@ export function getInitialFs(): number {
 export function applyFs(idx: number, showFeedback: boolean = true) {
   if (typeof window === "undefined") return;
   currentFsIdx = idx;
-  localStorage.setItem("xcipher-fs", String(idx));
+  localStorage.setItem("xsypher-fs", String(idx));
   document.documentElement.style.setProperty("--prose-fs", `${FS[idx]}rem`);
   listeners.forEach((fn) => fn(idx));
   if (showFeedback) {

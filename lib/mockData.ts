@@ -54,7 +54,7 @@ export const ARTICLES: Article[] = [
                     ["p", "None of these strategies fully replaces the old loop, and most executives will say so privately. Licensing revenue is real but concentrated among the largest brands. Memberships work for distinctively voiced outlets and struggle everywhere else. The middle of the market — competent, undifferentiated, ad-dependent — is being hollowed out."],
                     ["h2", "What comes next"],
                     ["p", "The emerging shape is a two-layer internet. A mediated layer, where agents and assistants negotiate access and settle payments automatically — fast, convenient, and controlled by a handful of gatekeepers. And a deliberate layer, where humans still go on purpose: newsletters, communities, live events, trusted mastheads. The middle layer of open, indexable, ad-funded pages shrinks every quarter."],
-                    ["img", 17323801, "Rows of network equipment in a blue-lit data center", "The mediated internet runs here: inference clusters are becoming the new points of exchange between content and capital.", "xCipher / datacenter series"],
+                    ["img", 17323801, "Rows of network equipment in a blue-lit data center", "The mediated internet runs here: inference clusters are becoming the new points of exchange between content and capital.", "xSypher / datacenter series"],
                     ["p", "The next internet will not be decided by a standard or a startup. It will be decided by thousands of quiet contracts — between models and publishers, agents and merchants, assistants and the people who trust them. The sites that understand they are now negotiating partners, rather than destinations, will write the terms. Everyone else will simply be summarized."]
                 ]
             },
@@ -87,7 +87,7 @@ export const ARTICLES: Article[] = [
                     ["p", "The release bundles three components: a managed agent runtime with sandboxed execution, a persistent memory store that survives across sessions, and a payments rail that lets agents complete purchases and subscriptions through a single API. Pricing is usage-based, with free tiers for experimentation."],
                     ["quote", "Every platform shift creates a layer of plumbing that everyone relies on and nobody sees. We intend to be that layer for agent software.", "OpenAI developer relations lead, speaking at the launch event"],
                     ["ul", ["Managed runtimes with per-agent budgets and human-approval checkpoints.", "Cross-session memory with audit logs for enterprise compliance.", "A payments API integrated with major card networks, launching in 12 markets.", "A marketplace for third-party tools that agents can discover and call."]],
-                    ["p", "The announcement lands in a crowded field. Browser makers, cloud providers and a swarm of well-funded startups are all racing to define how agents authenticate, pay and get audited. Analysts xCipher spoke with called the payments integration the most consequential piece — whoever standardizes agent checkout stands to sit beneath a meaningful share of commerce. Enterprise availability begins next quarter."]
+                    ["p", "The announcement lands in a crowded field. Browser makers, cloud providers and a swarm of well-funded startups are all racing to define how agents authenticate, pay and get audited. Analysts xSypher spoke with called the payments integration the most consequential piece — whoever standardizes agent checkout stands to sit beneath a meaningful share of commerce. Enterprise availability begins next quarter."]
                 ]
             },
             {
@@ -124,12 +124,12 @@ export const ARTICLES: Article[] = [
             {
                 id: 6, slug: "ransomware-hospital-nine-days", cat: "cybersecurity",
                 title: "Inside the Ransomware Attack That Stopped a Hospital Network for Nine Days",
-                deck: "A forgotten VPN account, six weeks of silent lateral movement, and 31,000 rescheduled appointments. xCipher reconstructs how one health network went dark — and what brought it back.",
+                deck: "A forgotten VPN account, six weeks of silent lateral movement, and 31,000 rescheduled appointments. xSypher reconstructs how one health network went dark — and what brought it back.",
                 author: "Elena Vasquez", role: "Senior Security Correspondent", age: 180, updated: "3 hours ago", mins: 9, img: 5380603,
                 alt: "Dark room with code displayed on multiple monitors", views: 391800, trend: 2, most: 1, pick: 1,
                 tags: ["ransomware", "healthcare", "incident response"],
                 body: [
-                    ["p", "At 2:14 a.m. on a Tuesday, every workstation in the emergency department of St. Alder Medical Center went black, then returned with a single message: your files had been encrypted, and the price of getting them back would go up in seventy-two hours. Within forty minutes, three more hospitals in the Meridian Health network showed the same screen. What followed was nine days of paper charts, diverted ambulances and an incident log that xCipher has now reviewed in full."],
+                    ["p", "At 2:14 a.m. on a Tuesday, every workstation in the emergency department of St. Alder Medical Center went black, then returned with a single message: your files had been encrypted, and the price of getting them back would go up in seventy-two hours. Within forty minutes, three more hospitals in the Meridian Health network showed the same screen. What followed was nine days of paper charts, diverted ambulances and an incident log that xSypher has now reviewed in full."],
                     ["p", "The headline numbers are severe: four hospitals partially offline, 31,000 appointments rescheduled, elective procedures suspended for over a week, and ambulance diversions on four of the nine days. No patient deaths have been attributed to the disruption, though the network's own review describes \"multiple near-misses\" during the diversion period."],
                     ["h2", "Nine days"],
                     ["ol", ["Week −6: attackers compromise a dormant VPN account belonging to a former contractor. No login anomaly alert fires — the account was technically still entitled.", "Week −5 to −1: quiet lateral movement across imaging, lab and scheduling systems; credentials harvested from two unpatched internal tools.", "Day 0, 2:14 a.m.: coordinated encryption across four sites, timed for minimum staffing.", "Day 0, 6:00 a.m.: incident team severs external connectivity and activates the paper-fallback protocol drilled the previous quarter.", "Day 2: forensics confirms a double-extortion intrusion — patient administrative data already exfiltrated.", "Day 4–8: segmented restoration from offline backups, beginning with emergency and ICU systems.", "Day 9: scheduling systems restored; the network declares operational recovery."]],
@@ -138,7 +138,7 @@ export const ARTICLES: Article[] = [
                     ["h2", "What the attackers knew"],
                     ["p", "The intrusion follows the now-standard affiliate model: an initial-access crew sold entry, a ransomware brand executed the encryption, and a third party ran the data-leak negotiation. Stolen files included billing records and appointment histories for roughly 210,000 patients; clinical notes were encrypted but, the network says, not exfiltrated."],
                     ["ul", ["Kill dormant accounts on departure — entitlement reviews caught nothing here because nothing reviewed.", "Treat VPN anomalies as first-class alerts; a single contractor account should not be able to touch imaging.", "Segment clinical systems from scheduling and billing — the flat internal network did the attackers' work for them.", "Drill the fallback. Paper charts worked because staff had used them, not because they existed."]],
-                    ["img", 1181316, "Engineer with a laptop standing in a mirrored data center corridor", "Health networks are now among the most heavily monitored environments in critical infrastructure — a status earned the hard way.", "xCipher / infrastructure series"],
+                    ["img", 1181316, "Engineer with a laptop standing in a mirrored data center corridor", "Health networks are now among the most heavily monitored environments in critical infrastructure — a status earned the hard way.", "xSypher / infrastructure series"],
                     ["p", "Healthcare is now the most-attacked sector in critical infrastructure for the third consecutive year, and Meridian's experience suggests the gap between prepared and unprepared organizations is widening. The network spent roughly $40 million on recovery and hardening. Its post-incident report is unusually candid — worth reading in full by anyone running systems where downtime is measured in patient outcomes, not revenue."]
                 ]
             },
@@ -154,7 +154,7 @@ export const ARTICLES: Article[] = [
                     ["p", "The flaw sits in certificate-parsing code, a component so foundational that it ships inside load balancers, VPN appliances, container runtimes and embedded devices. Early analysis suggests remote exploitation is feasible in default configurations, though no in-the-wild activity had been confirmed at publication time."],
                     ["ul", ["Patch TLS libraries and base images immediately; assume anything internet-facing is affected.", "Inventory embedded devices — routers, IP cameras, industrial controllers rarely patch themselves.", "Watch for unusual ClientHello traffic; several vendors published detection signatures this morning.", "Assume exposure began at disclosure and rotate long-lived session credentials accordingly."]],
                     ["quote", "The good news is the responsible-disclosure machinery worked exactly as designed. The bad news is 'designed' includes a global scramble to find every appliance that quietly bundles the library.", "Independent security researcher involved in the disclosure"],
-                    ["p", "xCipher will update this story as vendors publish affected-product lists. The broader lesson is familiar: modern infrastructure is a dependency graph, and the most dangerous vulnerabilities live in the layers nobody remembers installing."]
+                    ["p", "xSypher will update this story as vendors publish affected-product lists. The broader lesson is familiar: modern infrastructure is a dependency graph, and the most dangerous vulnerabilities live in the layers nobody remembers installing."]
                 ]
             },
             {
@@ -221,7 +221,7 @@ export const ARTICLES: Article[] = [
                     ["ol", ["Best overall: the winner balanced skin tones, motion handling and shutter lag — the three things you actually feel. Its night mode is no longer the brightest, and it's better for it.", "Best low light: a darker, more honest rendering that preserves atmosphere instead of flattening everything into daytime.", "Best video: stabilization and audio both lead, by the widest video margin we've measured in three years."]],
                     ["h2", "The surprise"],
                     ["p", "Two phones costing half the leader's price finished inside the top five. Both made the same choice: less processing, more optics per dollar, and a willingness to leave shadows dark. Meanwhile two of the most expensive flagships oversharpened and overbrightened their way down the table — a reminder that camera marketing still sells brightness as quality."],
-                    ["quote", "The best phone camera in 2026 isn't the one that captures the most light. It's the one that makes the fewest bad decisions about what the moment looked like.", "xCipher camera lab, test notes"],
+                    ["quote", "The best phone camera in 2026 isn't the one that captures the most light. It's the one that makes the fewest bad decisions about what the moment looked like.", "xSypher camera lab, test notes"],
                     ["p", "Full scoring tables, all 2,400 frames and the methodology are on the reviews hub. If you're buying this quarter: spend less on the camera spec sheet and more on whether you like how a phone renders faces — that taste question is the only one the charts can't answer for you."]
                 ]
             },
@@ -283,7 +283,7 @@ export const ARTICLES: Article[] = [
                 tags: ["productivity", "apps", "AI"],
                 body: [
                     ["p", "Open any productivity app released or updated this year and you will find the same addition: a text field that glows, a sparkle icon, an assistant. Notes apps that summarize. Calendars that negotiate. To-do lists that write themselves. The feature-parity arms race has produced a genuine question: which of these integrations do users actually keep on?"],
-                    ["p", "Usage data shared with xCipher by three app makers points to a clear hierarchy. Features that reduce input friction — turning a voice ramble into a structured note, extracting tasks from an email thread — show retention above 60% after thirty days. Features that substitute judgment — auto-prioritizing a task list, auto-declining meetings — see most users disable them within a week."],
+                    ["p", "Usage data shared with xSypher by three app makers points to a clear hierarchy. Features that reduce input friction — turning a voice ramble into a structured note, extracting tasks from an email thread — show retention above 60% after thirty days. Features that substitute judgment — auto-prioritizing a task list, auto-declining meetings — see most users disable them within a week."],
                     ["h2", "The pattern"],
                     ["p", "The dividing line is legible: users want a faster version of their own decisions, not someone else's decisions made faster. Summarization is a typewriter; auto-prioritization is a manager. People adopted typewriters. They fired managers they didn't hire."],
                     ["quote", "The apps winning with AI didn't add intelligence. They removed friction at the exact moment of capture — the one moment when users are actually typing.", "Product lead at a major notes app"],
@@ -304,7 +304,7 @@ export const ARTICLES: Article[] = [
                     ["p", "Server-side JavaScript is in the middle of its most interesting period since Node. Deno's standards-first approach forced the ecosystem to take Web APIs seriously on the server; Bun's performance claims made startup latency a benchmark everyone now reports. Node responded with its own overhauls. The beneficiary is developers, who now choose runtimes the way they choose databases — based on workload rather than default."],
                     ["pre", "// The modern baseline: top-level await, fetch, structured cloning\nconst deploy = await fetch(\"/api/deploy\", {\n  method: \"POST\",\n  body: JSON.stringify({ env: \"production\" })\n}).then(r => r.json());\n\nconsole.log(`Live in ${deploy.ms}ms — no build step, no polyfills`);"],
                     ["quote", "JavaScript wins by absorption. Every paradigm that threatened it — classes, modules, types, functional patterns — ended up as a feature of it. It's the most successful compatibility layer ever written, and the thing it's compatible with is the entire web.", "Sara Lindqvist, TC39 delegate"],
-                    ["img", 34803999, "Close-up of a monitor displaying code and debugging tools", "Thirty-one years on, the debugger is still open — but the stack traces finally have types.", "xCipher / dev series"],
+                    ["img", 34803999, "Close-up of a monitor displaying code and debugging tools", "Thirty-one years on, the debugger is still open — but the stack traces finally have types.", "xSypher / dev series"],
                     ["ul", ["Type annotations as native, erased syntax — the largest proposed change in a decade.", "Signals-style reactivity being standardized rather than left to frameworks.", "WebAssembly carving out the numerical hot paths JS was never built for.", "Edge runtimes making cold-start time a first-class platform metric."]],
                     ["p", "Will JavaScript still be here in another decade? The question has been asked in every decade of its life, usually over the grave of whatever language was supposed to replace it. The smarter bet is the boring one: the language that runs everywhere, hires everywhere and absorbs everything will outlast most of its critics — again."]
                 ]
@@ -452,7 +452,7 @@ export const ARTICLES: Article[] = [
                     ["h2", "The details that add up"],
                     ["ul", ["Display: 120Hz, 98% DCI-P3 measured, matte coating that doesn't grain the image.", "Battery: 19.5h mixed-use — our best 14-inch result this year, by 3 hours.", "Thermals: silent below 65% load; audible but unobtrusive under sustained compile.", "Repair: socketed SSD, published service manual, standard drivers on the vendor site.", "Webcam: 1080p with a physical shutter that's actually satisfying."]],
                     ["p", "The AI story is refreshingly restrained. There's an NPU, it accelerates the things an NPU accelerates, and the default software never mentions it. You can enable on-device meeting transcription; you are never prompted to. In the current climate, that restraint is a feature worth listing."],
-                    ["callout", "xCipher score", "8.7 / 10 — Editor's Choice. Buy it for the battery and the keyboard; stay for the absence of annoyances. The configuration to get: mid-tier chip, 32GB RAM, skip the OLED unless you do color-critical work."],
+                    ["callout", "xSypher score", "8.7 / 10 — Editor's Choice. Buy it for the battery and the keyboard; stay for the absence of annoyances. The configuration to get: mid-tier chip, 32GB RAM, skip the OLED unless you do color-critical work."],
                     ["p", "Imperfections exist — the trackpad glass could be larger, and the 90W charger deserves a longer cable — but they're the complaints of a reviewer reaching for material. The X1 is the laptop we'll recommend without caveats this year. After a decade of reviewing machines that excel in the demo and fatigue in month three, 'complete' is the hardest adjective we hand out. The Nova X1 earns it."]
                 ]
             },
@@ -469,7 +469,7 @@ export const ARTICLES: Article[] = [
                     ["h2", "Everything else"],
                     ["ul", ["Sound: neutral-warm tuning, honest sub-bass, the best codec support in the category.", "Battery: 9.4h buds, 36h with case measured at 50% volume — claims verified.", "Calls: four-mic array with wind handling that finally matches the marketing.", "Comfort: 4.1g per bud, four tip sizes; three-week wear test passed without complaint.", "App: full EQ, adaptive modes that actually adapt, no account required to pair."]],
                     ["p", "Rivals retain edges in specific corners — one sounds better on classical, another integrates deeper with its phone ecosystem. But the Pro 2's combination of cancellation bandwidth, battery honesty and zero-friction software is the most complete package we've tested in the category."],
-                    ["callout", "xCipher score", "9.0 / 10 — Editor's Choice. The new reference for ANC earbuds. If your life includes open offices, trains or small children, nothing else comes close to buying you this much quiet."],
+                    ["callout", "xSypher score", "9.0 / 10 — Editor's Choice. The new reference for ANC earbuds. If your life includes open offices, trains or small children, nothing else comes close to buying you this much quiet."],
                     ["p", "One note for buyers: the case's matte finish attracts pocket lint with almost scientific efficiency, and the wireless-charging coil is picky about placement. Neither matters at 30,000 feet with the world turned down to a whisper — which is, we've decided, the entire point."]
                 ]
             },
@@ -533,7 +533,7 @@ export const ARTICLES: Article[] = [
                     ["h2", "The hard part"],
                     ["quote", "We solved walking. Walking was the press release. The real problem is the ninth hour of a twelve-hour shift, under fluorescent light that changes with the weather, when the bin is two centimeters off its mark. Reliability is a thousand boring problems, not one brilliant one.", "Robotics professor advising two humanoid startups"],
                     ["ul", ["Dexterosity: human hands remain unmatched for unstructured objects; expect grippers, not fingers, for years.", "Uptime: current pilots report 85–93% productive time; factories plan around 99%.", "Safety certification: standards for human-scale mobile robots around people are still being written.", "Unit economics: the break-even calculation moves a year closer with every hardware generation — that trajectory, not any demo, is what investors are buying."]],
-                    ["img", 8294620, "Close-up of a white robot in studio lighting", "Actuator cost has fallen faster than any component in robotics history — the trend line that matters.", "xCipher / robotics series"],
+                    ["img", 8294620, "Close-up of a white robot in studio lighting", "Actuator cost has fallen faster than any component in robotics history — the trend line that matters.", "xSypher / robotics series"],
                     ["p", "The sober forecast: humanoids will be a normal sight in specific industrial settings within five years, and a consumer product in most homes within no honest forecaster's window. The companies that win will be the ones treating this as a reliability engineering problem with a marketing department — not the other way around. The lab is behind them. The hard part is exactly what it sounds like."]
                 ]
             }
@@ -549,7 +549,7 @@ export const CATS: Record<string, Category> = {
             gaming: { name: "Gaming", full: "Gaming", desc: "Games, hardware, industry moves and esports — covered seriously." },
             reviews: { name: "Reviews", full: "Reviews", desc: "Independent, hands-on reviews. We buy our own test units. No sponsored scores, ever." },
             howto: { name: "How-To", full: "How-To Guides", desc: "Practical, tested guides that respect your time and your data." },
-            opinion: { name: "Opinion", full: "Opinion & Analysis", desc: "Arguments and analysis from xCipher writers and guest contributors." },
+            opinion: { name: "Opinion", full: "Opinion & Analysis", desc: "Arguments and analysis from xSypher writers and guest contributors." },
             science: { name: "Science", full: "Science & Future Tech", desc: "Research, robotics and the technologies that are arriving next." }
         };
 
@@ -560,29 +560,29 @@ export interface PageData {
 
 export const PAGES: Record<string, PageData> = {
   about: {
-    t: "About xCipher", h: `<h1>About xCipher</h1>
-<p>xCipher is an independent technology publication, founded in 2019 and read in more than 140 countries. We cover artificial intelligence, cybersecurity, gadgets, software, programming, startups, gaming and the business of technology — with original reporting, hands-on reviews and analysis written for people who actually use and build this stuff.</p>
+    t: "About xSypher", h: `<h1>About xSypher</h1>
+<p>xSypher is an independent technology publication, founded in 2019 and read in more than 140 countries. We cover artificial intelligence, cybersecurity, gadgets, software, programming, startups, gaming and the business of technology — with original reporting, hands-on reviews and analysis written for people who actually use and build this stuff.</p>
 <h2>What we believe</h2>
 <ul><li><b>Independence.</b> No vendor owns us, funds our coverage or approves our stories. Advertising and editorial are separate departments with a wall between them.</li>
 <li><b>Accuracy before speed.</b> We would rather be right second than wrong first, and we correct ourselves loudly when we miss.</li>
 <li><b>Respect for readers.</b> No clickbait, no artificial outrage, no dark patterns. Your attention is the product we refuse to abuse.</li>
 <li><b>Technical honesty.</b> We run the code, buy the hardware and read the filings. Claims get tested before they get published.</li></ul>
-<h2>How xCipher is funded</h2>
-<p>xCipher is funded by reader subscriptions, newsletters and clearly labelled advertising. We do not accept payment for coverage, and review units are purchased at retail wherever possible. Sponsored content — rare and always labelled — never touches the editorial desk.</p>`},
+<h2>How xSypher is funded</h2>
+<p>xSypher is funded by reader subscriptions, newsletters and clearly labelled advertising. We do not accept payment for coverage, and review units are purchased at retail wherever possible. Sponsored content — rare and always labelled — never touches the editorial desk.</p>`},
   contact: {
-    t: "Contact", h: `<h1>Contact xCipher</h1>
-<p><b>News tips &amp; corrections:</b> tips@xcipher.news — encrypted contact details available on request.<br><b>Editorial:</b> desk@xcipher.news<br><b>Reviews:</b> lab@xcipher.news<br><b>Advertising:</b> ads@xcipher.news<br><b>Press:</b> press@xcipher.news</p>
+    t: "Contact", h: `<h1>Contact xSypher</h1>
+<p><b>News tips &amp; corrections:</b> tips@xsypher.news — encrypted contact details available on request.<br><b>Editorial:</b> desk@xsypher.news<br><b>Reviews:</b> lab@xsypher.news<br><b>Advertising:</b> ads@xsypher.news<br><b>Press:</b> press@xsypher.news</p>
 <h2>Tips policy</h2>
 <p>We protect our sources. If you have information about a technology company, security incident or policy matter, reach out — we respond to every credible tip, and we never name a source without consent.</p>`},
   editorial: {
     t: "Editorial Policy", h: `<h1>Editorial Policy &amp; Standards</h1>
-<p>Every xCipher story passes through the same pipeline: reporting, verification, editing and fact-checking. Claims require named sources or documents; anonymous sourcing requires an editor's approval and a stated reason.</p>
+<p>Every xSypher story passes through the same pipeline: reporting, verification, editing and fact-checking. Claims require named sources or documents; anonymous sourcing requires an editor's approval and a stated reason.</p>
 <h2>Our rules, in short</h2>
 <ul><li>Two independent sources, or one source plus documentation, before any claim of wrongdoing.</li>
 <li>Opinion is labelled opinion. Analysis is labelled analysis. News reads like news.</li>
 <li>We disclose conflicts. If a writer holds stock in a company they cover, an editor assigns someone else.</li>
 <li>Reviews are independent: we buy our own test units, and scores are never discussed with vendors before publication.</li>
-<li>AI tools may assist research and production, but no xCipher story is written by an AI without human reporting, and generated media is always labelled.</li></ul>
+<li>AI tools may assist research and production, but no xSypher story is written by an AI without human reporting, and generated media is always labelled.</li></ul>
 <h2>Fact-checking</h2>
 <p>Statistics, quotes and technical claims are verified against primary sources wherever they exist. Where we rely on a single study or company claim, we say so in the story itself.</p>`},
   corrections: {
@@ -591,27 +591,27 @@ export const PAGES: Record<string, PageData> = {
 <h2>Recent corrections</h2>
 <ul><li><b>February 2026:</b> An earlier version of a funding story misstated a round size as $120M. The correct figure is $105M. Corrected and noted.</li>
 <li><b>January 2026:</b> A review misattributed a display panel supplier. Corrected after reader feedback.</li></ul>
-<p>Spotted something? Email corrections@xcipher.news. We read everything, and we thank readers who make us more accurate.</p>`},
+<p>Spotted something? Email corrections@xsypher.news. We read everything, and we thank readers who make us more accurate.</p>`},
   privacy: {
     t: "Privacy Policy", h: `<h1>Privacy Policy</h1>
-<p>xCipher collects the minimum data needed to run a publication: basic analytics (aggregated, never sold), newsletter addresses (used only to send the newsletter) and account details where you create them.</p>
-<ul><li>We never sell personal data. Ever.</li><li>Advertising is served without cross-site tracking wherever our partners allow it.</li><li>You can request deletion of your data at any time via privacy@xcipher.news.</li><li>This demo build stores newsletter and comment preferences locally in your browser only.</li></ul>
+<p>xSypher collects the minimum data needed to run a publication: basic analytics (aggregated, never sold), newsletter addresses (used only to send the newsletter) and account details where you create them.</p>
+<ul><li>We never sell personal data. Ever.</li><li>Advertising is served without cross-site tracking wherever our partners allow it.</li><li>You can request deletion of your data at any time via privacy@xsypher.news.</li><li>This demo build stores newsletter and comment preferences locally in your browser only.</li></ul>
 <p>Full policy text is available on request and updated as regulation requires.</p>`},
   terms: {
     t: "Terms of Use", h: `<h1>Terms of Use</h1>
-<p>By reading xCipher you agree to the simple version: our content is for personal, non-commercial use; our reporting may not be republished without a licence; and we provide journalism as-is, with corrections published when we err. The complete legal terms govern disputes and liability and are available at legal@xcipher.news.</p>`},
+<p>By reading xSypher you agree to the simple version: our content is for personal, non-commercial use; our reporting may not be republished without a licence; and we provide journalism as-is, with corrections published when we err. The complete legal terms govern disputes and liability and are available at legal@xsypher.news.</p>`},
   cookies: {
     t: "Cookie Policy", h: `<h1>Cookie Policy</h1>
-<p>xCipher uses essential cookies for theme and reading preferences (stored locally), aggregate analytics to understand which stories serve readers, and advertising cookies only where consent is given. You can clear all locally stored preferences from your browser at any time — this demo edition stores nothing server-side.</p>`},
+<p>xSypher uses essential cookies for theme and reading preferences (stored locally), aggregate analytics to understand which stories serve readers, and advertising cookies only where consent is given. You can clear all locally stored preferences from your browser at any time — this demo edition stores nothing server-side.</p>`},
   advertising: {
-    t: "Advertising", h: `<h1>Advertising on xCipher</h1>
-<p>xCipher carries clearly labelled, non-intrusive advertising in standard IAB placements — leaderboards, in-feed units and sidebar placements. We do not run native ads disguised as editorial, and our ad slots are structured for responsible programmatic partners (Google AdSense-ready).</p>
-<p>Rate cards and availability: ads@xcipher.news. Editorial never sees, approves or knows about advertising bookings before publication.</p>`},
+    t: "Advertising", h: `<h1>Advertising on xSypher</h1>
+<p>xSypher carries clearly labelled, non-intrusive advertising in standard IAB placements — leaderboards, in-feed units and sidebar placements. We do not run native ads disguised as editorial, and our ad slots are structured for responsible programmatic partners (Google AdSense-ready).</p>
+<p>Rate cards and availability: ads@xsypher.news. Editorial never sees, approves or knows about advertising bookings before publication.</p>`},
   careers: {
-    t: "Careers", h: `<h1>Careers at xCipher</h1>
+    t: "Careers", h: `<h1>Careers at xSypher</h1>
 <p>We hire reporters, editors, engineers and designers who care about accuracy as much as speed. Open roles are posted here; speculative applications with published clips are always read. Remote-first, honest salaries, no crunch culture — the newsroom we always wanted to work in.</p>`},
     newsletter: {
-    t: "Newsletters", h: `<h1>xCipher Newsletters</h1>
+    t: "Newsletters", h: `<h1>xSypher Newsletters</h1>
 <p><b>The Daily Brief</b> — every morning, the five stories that matter, in five minutes. <b>The Weekend Build</b> — long reads, reviews and analysis for Saturday coffee. Both free, both ad-light, both unsubscribe-in-one-click.</p>`}
 };
 

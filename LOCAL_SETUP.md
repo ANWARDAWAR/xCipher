@@ -1,4 +1,4 @@
-# Local Setup & Test — xCipher
+# Local Setup & Test — xSypher
 
 Branch: `arena/01a0b084-xcipher`
 
@@ -26,7 +26,7 @@ Postgres se baat karta hai.
 Agar repo pehle se cloned hai:
 
 ```bash
-cd path/to/xCipher
+cd path/to/xSypher
 git fetch origin
 git checkout arena/01a0b084-xcipher
 git pull origin arena/01a0b084-xcipher
@@ -35,8 +35,8 @@ git pull origin arena/01a0b084-xcipher
 Agar bilkul naya clone karna hai:
 
 ```bash
-git clone https://github.com/ANWARDAWAR/xCipher.git
-cd xCipher
+git clone https://github.com/ANWARDAWAR/xSypher.git
+cd xSypher
 git checkout arena/01a0b084-xcipher
 ```
 
@@ -79,8 +79,8 @@ code .env
 Kam se kam ye teen **zaroori** hain:
 
 ```env
-DATABASE_URL="postgresql://user:password@localhost:5432/xcipher"
-DIRECT_URL="postgresql://user:password@localhost:5432/xcipher"
+DATABASE_URL="postgresql://user:password@localhost:5432/xsypher"
+DIRECT_URL="postgresql://user:password@localhost:5432/xsypher"
 NEXTAUTH_SECRET="yahan-random-secret"
 NEXTAUTH_URL="http://localhost:3000"
 ```

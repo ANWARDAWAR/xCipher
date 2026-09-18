@@ -26,11 +26,11 @@ describe("settings fallbacks preserve the pre-existing site identity", () => {
   });
 
   it("reproduces the exact <title> the root layout used to hardcode", () => {
-    // Was: "xCipher — Independent Technology News, Analysis and Reviews"
+    // Was: "xSypher — Independent Technology News, Analysis and Reviews"
     const title = DEFAULT_SETTINGS.tagline
       ? `${DEFAULT_SETTINGS.siteName} — ${DEFAULT_SETTINGS.tagline}`
       : DEFAULT_SETTINGS.siteName;
-    expect(title).toBe("xCipher — Independent Technology News, Analysis and Reviews");
+    expect(title).toBe("xSypher — Independent Technology News, Analysis and Reviews");
   });
 
   it("leaves genuinely new fields null rather than inventing content", () => {

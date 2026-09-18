@@ -6,7 +6,7 @@ import Link from "next/link";
 import InviteForm from "./InviteForm";
 
 export const metadata = {
-  title: "Invite User | xCipher",
+  title: "Invite User | xSypher",
 };
 
 export default async function InvitePage() {

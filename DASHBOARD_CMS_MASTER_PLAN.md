@@ -1,6 +1,6 @@
-# xCipher — Dashboard & CMS Master Plan
+# xSypher — Dashboard & CMS Master Plan
 
-**Repository:** `ANWARDAWAR/xCipher`
+**Repository:** `ANWARDAWAR/xSypher`
 **Branch audited:** `arena/01a0b084-xcipher` (from `main` @ `580926a`)
 **Audit date:** 2026-09-17
 **Document type:** Audit + Architecture + Product Specification
@@ -66,7 +66,7 @@
 
 # 1. Executive Summary
 
-xCipher is a Next.js 16 (App Router) + Prisma/PostgreSQL technology publication with a reader-facing site under `app/(public)/` and an editorial console under `app/admin/(authenticated)/`. The console is real and functional for the basic "write → save → publish" path, but it is **not** a production-grade editorial CMS. It is a thin set of five list pages plus a large TipTap editor, wired to a two-and-a-half-step workflow.
+xSypher is a Next.js 16 (App Router) + Prisma/PostgreSQL technology publication with a reader-facing site under `app/(public)/` and an editorial console under `app/admin/(authenticated)/`. The console is real and functional for the basic "write → save → publish" path, but it is **not** a production-grade editorial CMS. It is a thin set of five list pages plus a large TipTap editor, wired to a two-and-a-half-step workflow.
 
 **The ten findings that matter most (all verified):**
 
@@ -200,10 +200,10 @@ Section-by-section audit in the required format.
 <div className="console open" role="dialog" aria-modal="true"
      style={{ position:'fixed', inset:0, zIndex:9999 }}>
 ```
-Inside: `.cs-top` (logo, "xCipher Editorial Console" tag, SignOut, View site), then `.cs-body` (grid `240px 1fr` ≥900px, single column below), containing `.cs-nav` and `.cs-main`.
+Inside: `.cs-top` (logo, "xSypher Editorial Console" tag, SignOut, View site), then `.cs-body` (grid `240px 1fr` ≥900px, single column below), containing `.cs-nav` and `.cs-main`.
 **CURRENT ACCESS:** Any authenticated user of **any** role, including `STAFF`. The layout performs **no role check at all** — only `canView*` booleans passed down to the nav for link visibility.
 **CURRENT PROBLEMS:**
-- `role="dialog" aria-modal="true"` on the entire application shell: assistive technology treats the whole console as a modal dialog with no close affordance and no focus owner. `aria-label="xCipher editorial console"` is applied to a non-dialog.
+- `role="dialog" aria-modal="true"` on the entire application shell: assistive technology treats the whole console as a modal dialog with no close affordance and no focus owner. `aria-label="xSypher editorial console"` is applied to a non-dialog.
 - `position: fixed; inset: 0` as an inline style defeats the stylesheet, prevents normal document scroll, and `z-index: 9999` sits above every other layer including toasts.
 - `.console { background: var(--bg) }` (`globals.css:2759`) — **`--bg` is never defined**. The shell has no background of its own and shows `body { background: var(--paper) }` through.
 - `.cs-nav { background: var(--bg-elevated) }` (`globals.css:2817`) — **undefined**, so the sidebar is transparent and only the `border-right` distinguishes it.
@@ -5992,8 +5992,8 @@ A prompt was written and handed to a coding agent asking it to redesign `/admin`
 
 | # | Prompt claims | Reality (verified) |
 |---|---|---|
-| 1 | "xCipher / GridX platform" | **GridX does not exist.** It is a fiction in the stale `AGENT_SKILL.md` (§13, TASK-32). Naming it invites the agent to invent components to match. |
-| 2 | "Missing Theme Toggle: no theme switcher exists" | **It already exists.** `components/layout/ThemeToggle.tsx` is a complete, hydration-safe toggle with `aria-label`, a mounted guard and sun/moon icons. `ThemeProvider` is already mounted in `app/layout.tsx` with `attribute="data-theme"`, `storageKey="xcipher-theme"`, `enableSystem` and `disableTransitionOnChange`. It is used by `SiteHeader`, `MobileDrawer`, `ArticleSidebar` and `ArticleMobileToolbar`. The only thing missing is **one import and one JSX line** in the admin header. |
+| 1 | "xSypher / GridX platform" | **GridX does not exist.** It is a fiction in the stale `AGENT_SKILL.md` (§13, TASK-32). Naming it invites the agent to invent components to match. |
+| 2 | "Missing Theme Toggle: no theme switcher exists" | **It already exists.** `components/layout/ThemeToggle.tsx` is a complete, hydration-safe toggle with `aria-label`, a mounted guard and sun/moon icons. `ThemeProvider` is already mounted in `app/layout.tsx` with `attribute="data-theme"`, `storageKey="xsypher-theme"`, `enableSystem` and `disableTransitionOnChange`. It is used by `SiteHeader`, `MobileDrawer`, `ArticleSidebar` and `ArticleMobileToolbar`. The only thing missing is **one import and one JSX line** in the admin header. |
 | 3 | "Inspect `tailwind.config.*`" | **No such file.** Tailwind v4 is configured CSS-first via `@import "tailwindcss"` + `@theme inline` in `app/globals.css`. |
 | 4 | "Check `@/components/ui/` for badge, dropdown, table, button primitives" | `components/ui/` contains exactly **one** file: `ConfirmDialog.tsx`. None of those primitives exist. |
 | 5 | "Use semantic tokens `bg-background`, `bg-card`, `text-foreground`, `text-muted-foreground`, `border-border`" | **None of these exist.** They are shadcn/ui conventions. A grep for `--background`, `--card`, `--muted-foreground` and `--border` in `app/globals.css` returns **zero**. The real tokens are `--paper`, `--surface`, `--ink`, `--muted`, `--line`, exposed to Tailwind as `bg-paper`, `bg-surface`, `text-ink`, `text-muted`, `border-line`. |

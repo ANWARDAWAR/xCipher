@@ -84,7 +84,7 @@ export default async function Sidebar() {
 
       <div className="trust-card">
         <h3>How we work</h3>
-        <p>xCipher stories are reported, fact-checked and edited before publication. We correct errors openly and label opinion clearly. We buy our own review units and accept no payment for coverage.</p>
+        <p>xSypher stories are reported, fact-checked and edited before publication. We correct errors openly and label opinion clearly. We buy our own review units and accept no payment for coverage.</p>
         <Link href="/page/editorial">Read our editorial standards →</Link>
       </div>
 

@@ -10,7 +10,7 @@ export default function SiteFooter() {
         </div>
         <div className="foot-grid">
           <div className="foot-brand">
-            <Link className="logo" href="/" aria-label="xCipher — home">
+            <Link className="logo" href="/" aria-label="xSypher — home">
               <svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true" style={{ color: "#fff" }}>
                 <rect x="1" y="1" width="10" height="10" fill="currentColor" />
                 <rect x="15" y="1" width="10" height="10" fill="currentColor" opacity=".32" />
@@ -20,7 +20,7 @@ export default function SiteFooter() {
               <span className="wm" style={{ color: "#fff" }}>x<span className="wm-x">Cipher</span></span>
             </Link>
             <p>
-              xCipher is an independent technology publication. We cover the companies, code and ideas shaping
+              xSypher is an independent technology publication. We cover the companies, code and ideas shaping
               modern life — with original reporting, hands-on reviews and analysis that respects your time.
             </p>
             <div className="foot-social">
@@ -65,8 +65,8 @@ export default function SiteFooter() {
             <Link href="/category/reviews">Reviews</Link>
           </div>
           <div>
-            <h4>xCipher</h4>
-            <Link href="/page/about">About xCipher</Link>
+            <h4>xSypher</h4>
+            <Link href="/page/about">About xSypher</Link>
             <Link href="/page/contact">Contact</Link>
             <Link href="/page/editorial">Editorial Policy</Link>
             <Link href="/page/corrections">Corrections</Link>
@@ -83,8 +83,8 @@ export default function SiteFooter() {
           </div>
         </div>
         <div className="foot-bottom">
-          <span>© 2026 xCipher. All rights reserved.</span>
-          <span>xCipher is an independent technology publication.</span>
+          <span>© 2026 xSypher. All rights reserved.</span>
+          <span>xSypher is an independent technology publication.</span>
           <span className="spacer"></span>
           <button id="consoleLink" title="Editorial console (Ctrl+Shift+E)">Staff · Editorial Console</button>
         </div>

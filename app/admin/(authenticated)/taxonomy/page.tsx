@@ -7,7 +7,7 @@ import { Role } from "@prisma/client";
 import TaxonomyManager from "./TaxonomyManager";
 
 export const metadata = {
-  title: "Taxonomy Management | xCipher",
+  title: "Taxonomy Management | xSypher",
 };
 
 export default async function TaxonomyPage() {

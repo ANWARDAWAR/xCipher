@@ -42,8 +42,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${fraunces.variable} ${spaceGrotesk.variable} ${newsreader.variable}`}>
+      <head>
+        {/* Carry a theme chosen under a previous brand over to the current
+            storage key. next-themes reads a single key, so without this a
+            rename silently resets every reader to "system". Runs before
+            hydration so the copied value is in place when the provider
+            first reads it, avoiding a flash of the wrong theme. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var k="xsypher-theme";if(localStorage.getItem(k))return;var old=["xcipher-theme","gridx-theme"];for(var i=0;i<old.length;i++){var v=localStorage.getItem(old[i]);if(v){localStorage.setItem(k,v);return;}}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body suppressHydrationWarning>
-        <ThemeProvider attribute="data-theme" defaultTheme="system" storageKey="xcipher-theme" disableTransitionOnChange enableSystem>
+        <ThemeProvider attribute="data-theme" defaultTheme="system" storageKey="xsypher-theme" disableTransitionOnChange enableSystem>
           {children}
         </ThemeProvider>
       </body>

@@ -131,9 +131,9 @@ export default async function Home() {
           </h1>
           <p className="story-deck">{lead.deck}</p>
           <div className="byline">
-            <div className="ava lg">{(lead.author || "xCipher").charAt(0)}</div>
+            <div className="ava lg">{(lead.author || "xSypher").charAt(0)}</div>
             <span>
-              <b>{lead.author || "xCipher Staff"}</b>, {lead.role || ""} <span className="dot">·</span> {timeAgo(lead.age)} <span className="dot">·</span> {lead.mins} min read
+              <b>{lead.author || "xSypher Staff"}</b>, {lead.role || ""} <span className="dot">·</span> {timeAgo(lead.age)} <span className="dot">·</span> {lead.mins} min read
             </span>
           </div>
         </article>
@@ -197,7 +197,7 @@ export default async function Home() {
 
           <div className="trust-card">
             <h3>How we work</h3>
-            <p>xCipher stories are reported, fact-checked and edited before publication. We correct errors openly and label opinion clearly. We buy our own review units and accept no payment for coverage.</p>
+            <p>xSypher stories are reported, fact-checked and edited before publication. We correct errors openly and label opinion clearly. We buy our own review units and accept no payment for coverage.</p>
             <Link href="/page/editorial">Read our editorial standards →</Link>
           </div>
         </aside>
@@ -272,7 +272,7 @@ export default async function Home() {
       <div className="trend-wrap">
         <div className="wrap">
           <div className="sec-head">
-            <h2><span className="sec-rule"></span>Trending on xCipher</h2>
+            <h2><span className="sec-rule"></span>Trending on xSypher</h2>
             <Link href="/latest" className="view-all">
               All stories 
               <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -326,8 +326,8 @@ export default async function Home() {
                 </h1>
                 <p className="story-deck">{pickFeat.deck}</p>
                 <div className="byline">
-                  <div className="ava">{(pickFeat.author || "xCipher").charAt(0)}</div>
-                  <span><b>{pickFeat.author || "xCipher Staff"}</b> <span className="dot">·</span> {timeAgo(pickFeat.age)}</span>
+                  <div className="ava">{(pickFeat.author || "xSypher").charAt(0)}</div>
+                  <span><b>{pickFeat.author || "xSypher Staff"}</b> <span className="dot">·</span> {timeAgo(pickFeat.age)}</span>
                 </div>
               </article>
             )}

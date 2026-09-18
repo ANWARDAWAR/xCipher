@@ -15,12 +15,12 @@ export default function SeoPreview({
   description,
   slug,
   image,
-  siteName = "xCipher",
+  siteName = "xSypher",
 }: SeoPreviewProps) {
   const truncatedTitle = title.length > 60 ? title.substring(0, 60) + "..." : title;
   const truncatedDesc = description.length > 155 ? description.substring(0, 155) + "..." : description;
 
-  const url = `https://xcipher.com/article/${slug}`;
+  const url = `https://xsypher.com/article/${slug}`;
 
   return (
     <div style={{ marginTop: "16px", padding: "16px", border: "1px solid var(--line)", borderRadius: "var(--r-md)", background: "var(--bg-elevated)" }}>

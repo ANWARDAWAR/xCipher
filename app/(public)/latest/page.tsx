@@ -5,8 +5,8 @@ import StoryRow from "@/components/article/StoryRow";
 import Sidebar from "@/components/layout/Sidebar";
 
 export const metadata: Metadata = {
-  title: "Latest Technology News — xCipher",
-  description: "Every xCipher story, newest first — reporting, analysis, reviews and guides as they publish.",
+  title: "Latest Technology News — xSypher",
+  description: "Every xSypher story, newest first — reporting, analysis, reviews and guides as they publish.",
 };
 
 // Cached and revalidated on a timer, rather than force-dynamic.
@@ -44,7 +44,7 @@ export default async function LatestPage() {
       <section className="cat-hero" style={{ marginBottom: 0 }}>
         <span className="kicker">The wire</span>
         <h1>Latest</h1>
-        <p>Every xCipher story, newest first — reporting, analysis, reviews and guides as they publish.</p>
+        <p>Every xSypher story, newest first — reporting, analysis, reviews and guides as they publish.</p>
       </section>
       <div className="cat-body">
         <div>

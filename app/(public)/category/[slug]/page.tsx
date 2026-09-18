@@ -23,11 +23,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const catName = cat?.name || fallbackCat?.name;
   const catDesc = cat?.description || fallbackCat?.desc;
 
-  if (!catName) return { title: "Category — xCipher" };
+  if (!catName) return { title: "Category — xSypher" };
   
   return {
-    title: `${catName} — xCipher`,
-    description: catDesc || `${catName} news and updates on xCipher.`,
+    title: `${catName} — xSypher`,
+    description: catDesc || `${catName} news and updates on xSypher.`,
   };
 }
 
@@ -56,7 +56,7 @@ export default async function CategoryPage({ params }: Props) {
 
   const catName = category?.name || fallbackCat?.name || slug;
   const catFullTitle = category?.fullTitle || fallbackCat?.full || catName;
-  const catDesc = category?.description || fallbackCat?.desc || `${catName} news and updates on xCipher.`;
+  const catDesc = category?.description || fallbackCat?.desc || `${catName} news and updates on xSypher.`;
 
   const articles = await db.article.findMany({
     where: {
@@ -75,7 +75,7 @@ export default async function CategoryPage({ params }: Props) {
   return (
     <div className="wrap">
       <section className="cat-hero">
-        <span className="kicker">xCipher section</span>
+        <span className="kicker">xSypher section</span>
         <h1>{catFullTitle}</h1>
         <p>{catDesc}</p>
         <div className="ch-meta">
@@ -111,8 +111,8 @@ export default async function CategoryPage({ params }: Props) {
                 </h3>
                 <p className="story-deck" style={{ fontSize: "15.5px" }}>{feat.deck}</p>
                 <div className="byline" style={{ marginTop: "12px" }}>
-                  <div className="ava sm">{(feat.author || "xCipher").charAt(0)}</div>
-                  <span><b>{feat.author || "xCipher Staff"}</b> <span className="dot">·</span> {timeAgo(featAgeMins)} <span className="dot">·</span> 5 min read</span>
+                  <div className="ava sm">{(feat.author || "xSypher").charAt(0)}</div>
+                  <span><b>{feat.author || "xSypher Staff"}</b> <span className="dot">·</span> {timeAgo(featAgeMins)} <span className="dot">·</span> 5 min read</span>
                 </div>
               </div>
             </article>

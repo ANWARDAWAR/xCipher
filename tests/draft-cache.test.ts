@@ -7,12 +7,12 @@ import { draftCacheKey, clearDraftCache } from "@/lib/use-draft-cache";
 
 describe("draftCacheKey", () => {
   it("buckets an unsaved story under 'new'", () => {
-    expect(draftCacheKey(null)).toBe("xcipher:draft:new");
-    expect(draftCacheKey(undefined)).toBe("xcipher:draft:new");
+    expect(draftCacheKey(null)).toBe("xsypher:draft:new");
+    expect(draftCacheKey(undefined)).toBe("xsypher:draft:new");
   });
 
   it("keys a saved story by id so two open drafts cannot collide", () => {
-    expect(draftCacheKey("abc123")).toBe("xcipher:draft:abc123");
+    expect(draftCacheKey("abc123")).toBe("xsypher:draft:abc123");
     expect(draftCacheKey("abc123")).not.toBe(draftCacheKey("def456"));
   });
 });
@@ -34,13 +34,33 @@ describe("clearDraftCache", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("removes only the targeted bucket", () => {
-    store.set("xcipher:draft:new", "{}");
+    store.set("xsypher:draft:new", "{}");
+    store.set("xsypher:draft:abc123", "{}");
+
+    clearDraftCache("abc123");
+
+    expect(store.has("xsypher:draft:abc123")).toBe(false);
+    expect(store.has("xsypher:draft:new")).toBe(true);
+  });
+
+  it("also clears the pre-rebrand key so a discarded draft cannot return", () => {
+    // Written before the xCipher -> xSypher rename. If Discard left this
+    // behind, the next visit would offer to restore work the author threw away.
     store.set("xcipher:draft:abc123", "{}");
 
     clearDraftCache("abc123");
 
     expect(store.has("xcipher:draft:abc123")).toBe(false);
-    expect(store.has("xcipher:draft:new")).toBe(true);
+  });
+
+  it("leaves another story's legacy bucket alone", () => {
+    store.set("xcipher:draft:abc123", "{}");
+    store.set("xcipher:draft:def456", "{}");
+
+    clearDraftCache("abc123");
+
+    expect(store.has("xcipher:draft:abc123")).toBe(false);
+    expect(store.has("xcipher:draft:def456")).toBe(true);
   });
 
   it("does not throw when storage is unavailable", () => {

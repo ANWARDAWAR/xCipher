@@ -170,4 +170,4 @@ GRID-X html/
 | 2026-09-17 | Antigravity | `components/editorial/ArticleEditor.tsx` | Overhauled editor save flow with direct `handleSave` for drafts and publishing, auto-saved drafts prior to preview to eliminate 404s, and updated test-data populator. |
 | 2026-09-17 | Antigravity | `app/(public)/article/[slug]/page.tsx` | Added story preview mode banner for unpublished drafts and enabled dynamic rendering. |
 | 2026-09-17 | Antigravity | `app/(public)/page.tsx`, `latest`, `category`, `search` | Added `export const dynamic = "force-dynamic"` to ensure newly published articles appear immediately across all feeds without stale cache. |
-| 2026-09-17 | Antigravity | Entire codebase (`app/`, `components/`, `lib/`, `package.json`) | Executed comprehensive brand migration from "GridX" to "xCipher" (masthead, logos, metadata, local storage migration keys, mock data, and editorial console). |
+| 2026-09-17 | Antigravity | Entire codebase (`app/`, `components/`, `lib/`, `package.json`) | Executed comprehensive brand migration from "GridX" to "xSypher" (masthead, logos, metadata, local storage migration keys, mock data, and editorial console). |

@@ -55,7 +55,7 @@ export default function StoryRow({ article: a, showDeck = true }: Props) {
         </h3>
         {showDeck && <p className="row-deck">{a.deck}</p>}
         <div className="row-meta">
-          {a.author || "xCipher Staff"} · {timeAgo(ageMins)} · {a.mins || 5} min read
+          {a.author || "xSypher Staff"} · {timeAgo(ageMins)} · {a.mins || 5} min read
         </div>
       </div>
     </article>

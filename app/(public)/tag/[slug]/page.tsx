@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const tag = await db.tag.findUnique({ where: { slug } });
   
   if (!tag) {
-    return { title: "Tag Not Found — xCipher" };
+    return { title: "Tag Not Found — xSypher" };
   }
   
   const count = await db.article.count({
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   });
 
   return {
-    title: `${tag.name} News & Articles — xCipher`,
+    title: `${tag.name} News & Articles — xSypher`,
     description: tag.description || `Read the latest news and analysis about ${tag.name}.`,
     alternates: {
       canonical: `/tag/${tag.slug}`,

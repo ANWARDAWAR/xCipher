@@ -8,7 +8,7 @@ import { UserPlus, ShieldAlert } from "lucide-react";
 import UserDirectoryTable from "./UserDirectoryTable";
 
 export const metadata = {
-  title: "User Management | xCipher",
+  title: "User Management | xSypher",
 };
 
 export default async function UsersPage() {

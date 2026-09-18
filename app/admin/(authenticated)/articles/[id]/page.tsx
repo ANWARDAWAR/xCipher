@@ -384,14 +384,14 @@ export async function generateMetadata({ params }: PageProps) {
   // correctly renders notFound() -- the actor is denied the article but still
   // reads its title off the browser tab. Caught exactly that in testing.
   const user = await getCurrentUser();
-  if (!user) return { title: "Article | xCipher" };
+  if (!user) return { title: "Article | xSypher" };
 
   const dbUser = await db.user.findUnique({
     where: { id: user.id },
     include: { authorProfile: true },
   });
   if (!dbUser || !authorize(dbUser.role as Role, "console.access")) {
-    return { title: "Article | xCipher" };
+    return { title: "Article | xSypher" };
   }
 
   const scope = buildArticleScope({
@@ -406,6 +406,6 @@ export async function generateMetadata({ params }: PageProps) {
   });
 
   return {
-    title: article ? `${article.title} | xCipher` : "Article | xCipher",
+    title: article ? `${article.title} | xSypher` : "Article | xSypher",
   };
 }

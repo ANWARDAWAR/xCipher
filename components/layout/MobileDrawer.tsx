@@ -69,7 +69,7 @@ export default function MobileDrawer() {
         aria-hidden={!isOpen}
       >
         <div className="drawer-head">
-          <Link className="logo" href="/" aria-label="xCipher — home" onClick={() => setIsOpen(false)}>
+          <Link className="logo" href="/" aria-label="xSypher — home" onClick={() => setIsOpen(false)}>
             <svg width="23" height="23" viewBox="0 0 26 26" aria-hidden="true">
               <rect x="1" y="1" width="10" height="10" fill="currentColor" />
               <rect x="15" y="1" width="10" height="10" fill="currentColor" opacity=".32" />

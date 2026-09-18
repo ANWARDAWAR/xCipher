@@ -1,10 +1,10 @@
 export const siteConfig = {
-  name: "xCipher",
-  description: "xCipher is an independent technology publication covering AI, cybersecurity, gadgets, software, programming, startups, gaming and the tech business.",
+  name: "xSypher",
+  description: "xSypher is an independent technology publication covering AI, cybersecurity, gadgets, software, programming, startups, gaming and the tech business.",
   url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-  twitter: "@xCipherTech",
+  twitter: "@xSypherTech",
   locale: "en_US",
-  publisher: "xCipher Media",
+  publisher: "xSypher Media",
   logoUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/logo.png`, // Assuming a logo exists
 };
 
@@ -72,7 +72,7 @@ export function generateNewsArticleJsonLd(article: any) {
       "url": `${siteConfig.url}/author/${article.authorModel.slug}`
     }] : [{
       "@type": "Person",
-      "name": article.author || "xCipher Staff"
+      "name": article.author || "xSypher Staff"
     }],
     "publisher": {
       "@type": "Organization",

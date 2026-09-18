@@ -131,7 +131,7 @@ export async function upsertArticle(data: any) {
       deck: data.deck || null,
       contentHtml: sanitizedBodyHtml || null,
       contentJson: data.bodyJson || null,
-      author: data.author?.trim() || user.name || "xCipher Staff",
+      author: data.author?.trim() || user.name || "xSypher Staff",
       role: data.role?.trim() || user.role || null,
       featured: Boolean(data.featured),
       img: data.img || null,

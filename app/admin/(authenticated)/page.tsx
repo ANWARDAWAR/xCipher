@@ -221,7 +221,7 @@ export default async function AdminDashboard() {
             Editorial Overview
           </h1>
           <p className="text-sm text-muted mt-1 font-[var(--f-ui)]">
-            Welcome back, {userFirstName}. Here is the current pulse of the xCipher newsroom.
+            Welcome back, {userFirstName}. Here is the current pulse of the xSypher newsroom.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -448,7 +448,7 @@ export default async function AdminDashboard() {
           <div className="divide-y divide-line">
             {topStories.length > 0 ? (
               topStories.map((story) => {
-                const authorName = story.authorModel?.name || story.author || "xCipher Staff";
+                const authorName = story.authorModel?.name || story.author || "xSypher Staff";
                 return (
                   <div
                     key={story.id}

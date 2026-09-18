@@ -56,7 +56,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // an escape route back to an underlying page that does not exist here.
   // Removing it lets the landmarks (nav, main) be reached normally.
   return (
-    <div className="console open" id="console" aria-label="xCipher editorial console" style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
+    <div className="console open" id="console" aria-label="xSypher editorial console" style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
       <a href="#csMain" className="skip-link">
         Skip to content
       </a>

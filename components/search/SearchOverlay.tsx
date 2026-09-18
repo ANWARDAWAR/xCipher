@@ -29,7 +29,7 @@ export function useSearch() {
 export function SearchButton() {
   const { setIsOpen } = useSearch();
   return (
-    <button className="icon-btn" aria-label="Search xCipher" title="Search ( / )" onClick={() => setIsOpen(true)}>
+    <button className="icon-btn" aria-label="Search xSypher" title="Search ( / )" onClick={() => setIsOpen(true)}>
       <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round">
         <circle cx="11" cy="11" r="7" />
         <path d="m20 20-3.8-3.8" />
@@ -88,7 +88,7 @@ function SearchModal() {
           <input 
             ref={inputRef}
             type="search" 
-            placeholder="Search xCipher..." 
+            placeholder="Search xSypher..." 
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             style={{ width: "100%", padding: "16px 16px 16px 48px", fontSize: "1.2rem", border: "1px solid var(--line)", borderRadius: "var(--r-md)", backgroundColor: "var(--surface)", color: "var(--ink)" }}

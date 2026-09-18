@@ -84,7 +84,7 @@ function LoginForm() {
           ref={emailInputRef}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="editor@xcipher.com"
+          placeholder="editor@xsypher.com"
           required 
           autoComplete="email"
           className="block w-full h-11 px-3.5 py-2.5 bg-neutral-900/90 border border-neutral-700/80 rounded-lg text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/40 transition-all box-border" 
@@ -197,7 +197,7 @@ export default function LoginPage() {
             </span>
           </div>
 
-          <h1 className="sr-only">Sign In to xCipher Editorial Console</h1>
+          <h1 className="sr-only">Sign In to xSypher Editorial Console</h1>
           <p className="text-neutral-400 text-xs sm:text-sm font-normal tracking-wide">
             Sign in to access editorial newsroom & CMS
           </p>
@@ -224,7 +224,7 @@ export default function LoginPage() {
           <span>Return to publication</span>
         </Link>
         <p className="text-[11px] text-neutral-500 tracking-wider uppercase">
-          &copy; {new Date().getFullYear()} xCipher Media Network · Authorized Editorial Staff Only
+          &copy; {new Date().getFullYear()} xSypher Media Network · Authorized Editorial Staff Only
         </p>
       </div>
 

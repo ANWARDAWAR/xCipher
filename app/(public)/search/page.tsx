@@ -13,7 +13,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const q = typeof params.q === "string" ? params.q : "";
   
   return {
-    title: q ? `Search results for "${q}" — xCipher` : "Search — xCipher",
+    title: q ? `Search results for "${q}" — xSypher` : "Search — xSypher",
     robots: {
       index: false,
       follow: true,
@@ -74,7 +74,7 @@ export default async function SearchPage({ searchParams }: Props) {
     <div className="wrap">
       <section className="cat-hero" style={{ marginBottom: 0 }}>
         <span className="kicker">Search</span>
-        <h1>{q ? `Results for "${q}"` : cat ? `Results in category` : "Search xCipher"}</h1>
+        <h1>{q ? `Results for "${q}"` : cat ? `Results in category` : "Search xSypher"}</h1>
         <p>{q || cat ? `Found ${totalCount} stories.` : "Enter a search term to find stories, topics, and authors."}</p>
         
         <form action="/search" method="GET" style={{ display: 'flex', gap: '8px', marginTop: '24px', maxWidth: '600px' }}>

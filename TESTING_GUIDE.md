@@ -1,4 +1,4 @@
-# xCipher — Step-by-Step Testing Guide
+# xSypher — Step-by-Step Testing Guide
 
 How to pull this branch into VS Code and verify every feature, in order, from a
 clean machine.
@@ -56,8 +56,8 @@ Ten commits, newest first:
 ### Clone (first time)
 
 ```bash
-git clone https://github.com/ANWARDAWAR/xCipher.git
-cd xCipher
+git clone https://github.com/ANWARDAWAR/xSypher.git
+cd xSypher
 git checkout arena/01a0b084-xcipher
 code .
 ```
@@ -65,7 +65,7 @@ code .
 ### Or update an existing checkout
 
 ```bash
-cd xCipher
+cd xSypher
 git fetch origin
 git checkout arena/01a0b084-xcipher
 git pull origin arena/01a0b084-xcipher
@@ -310,10 +310,10 @@ show eight rows of "—".
 
 **Now the important part.** Look at the **browser tab title**.
 
-**Expected:** `Article | xCipher`
+**Expected:** `Article | xSypher`
 
 **A failure looks like:** the real article headline in the tab, e.g.
-`Quantum chips reach viability | xCipher`.
+`Quantum chips reach viability | xSypher`.
 
 > This was a genuine bug found while building this feature. `generateMetadata`
 > runs separately from the page, so the page 404'd correctly while the title
@@ -509,7 +509,7 @@ the browser tab / page source `<title>`.
 **Expected, exactly:**
 
 ```
-xCipher — Independent Technology News, Analysis and Reviews
+xSypher — Independent Technology News, Analysis and Reviews
 ```
 
 This must be **byte-for-byte what it was before this branch**. The migration
@@ -524,7 +524,7 @@ As OWNER: **Admin → Settings**.
 Security.
 
 Open it. **Expected:** all fields are **empty**, with the current effective
-values shown as **grey placeholders** (`xCipher`, `@xCipherTech`, and so on).
+values shown as **grey placeholders** (`xSypher`, `@xSypherTech`, and so on).
 
 Empty means "use the default" — that is why they are placeholders and not
 pre-filled values. It is also how you clear a field back to the default later.
@@ -546,7 +546,7 @@ The Cipher Post — Technology, examined
 
 Go back, **clear both fields**, save, reload the homepage.
 
-**Expected:** the title returns to the original `xCipher — Independent
+**Expected:** the title returns to the original `xSypher — Independent
 Technology News...`.
 
 ### 12.5 Bad image URLs are rejected

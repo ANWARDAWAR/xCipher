@@ -1,4 +1,4 @@
-# xCipher — Code Audit & Fix Queue
+# xSypher — Code Audit & Fix Queue
 
 **Audited commit:** `85ec52c` "Added new features and fixed bugs" (merged into `arena/01a0b084-xcipher` as `906d0a8`)
 **Baseline:** `580926a`

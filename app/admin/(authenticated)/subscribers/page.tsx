@@ -8,7 +8,7 @@ import SubscribersClient from "./SubscribersClient";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Subscribers | xCipher",
+  title: "Subscribers | xSypher",
 };
 
 export default async function SubscribersPage(props: {

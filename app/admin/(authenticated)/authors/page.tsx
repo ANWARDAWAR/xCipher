@@ -7,7 +7,7 @@ import { Role } from "@prisma/client";
 import AuthorDirectoryTable from "./AuthorDirectoryTable";
 
 export const metadata = {
-  title: "Authors | xCipher",
+  title: "Authors | xSypher",
 };
 
 export const dynamic = "force-dynamic";

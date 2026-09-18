@@ -21,7 +21,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // prompts instead.
 // ──────────────────────────────────────────────────────────────────────────────
 
-const PREFIX = "xcipher:draft:";
+const PREFIX = "xsypher:draft:";
+
+/** Prefixes used before the publication was renamed. A cache holds work the
+ *  author has not saved to the server yet, so a rebrand must not be the reason
+ *  a crash recovery comes up empty. Read in order, newest brand first. */
+const LEGACY_PREFIXES = ["xcipher:draft:"];
+
 const VERSION = 1;
 
 /** Caches older than this are ignored: stale enough that restoring is likelier
@@ -45,11 +51,36 @@ export function draftCacheKey(articleId: string | null | undefined): string {
   return `${PREFIX}${articleId || "new"}`;
 }
 
+/** Suffix of a cache key: the article id, or "new". */
+function keySuffix(key: string): string {
+  return key.startsWith(PREFIX) ? key.slice(PREFIX.length) : key;
+}
+
+/** Every spelling a given draft could be stored under, newest brand first. */
+function candidateKeys(key: string): string[] {
+  const suffix = keySuffix(key);
+  return [key, ...LEGACY_PREFIXES.map((p) => `${p}${suffix}`)];
+}
+
 function readCache(key: string): CachedDraft | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(key);
+    // Fall back through the pre-rebrand prefixes so a draft written before the
+    // rename is still offered for recovery.
+    let raw: string | null = null;
+    let foundKey = key;
+    for (const candidate of candidateKeys(key)) {
+      const value = window.localStorage.getItem(candidate);
+      if (value) {
+        raw = value;
+        foundKey = candidate;
+        break;
+      }
+    }
     if (!raw) return null;
+
+    // Discards below must target the key the data actually came from.
+    key = foundKey;
 
     const parsed = JSON.parse(raw) as CachedDraft;
 
@@ -75,7 +106,11 @@ function readCache(key: string): CachedDraft | null {
 export function clearDraftCache(articleId: string | null | undefined) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.removeItem(draftCacheKey(articleId));
+    // Clear the legacy spellings too. Leaving one behind would let a discarded
+    // draft reappear as a restore prompt on the next visit.
+    for (const key of candidateKeys(draftCacheKey(articleId))) {
+      window.localStorage.removeItem(key);
+    }
   } catch {
     /* non-fatal */
   }

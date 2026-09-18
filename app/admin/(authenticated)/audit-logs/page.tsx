@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import AuditLogsClient from "./AuditLogsClient";
 
 export const metadata = {
-  title: "Audit Logs | xCipher",
+  title: "Audit Logs | xSypher",
 };
 
 export default async function AuditLogsPage(props: {

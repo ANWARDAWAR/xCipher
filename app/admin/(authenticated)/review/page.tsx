@@ -8,7 +8,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 export const metadata = {
-  title: "Review Queue · xCipher",
+  title: "Review Queue · xSypher",
 };
 
 interface SearchParams {

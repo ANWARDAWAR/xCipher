@@ -8,7 +8,7 @@ import CommentsQueueClient from "./CommentsQueueClient";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Comments Moderation | xCipher",
+  title: "Comments Moderation | xSypher",
 };
 
 export default async function CommentsPage(props: {

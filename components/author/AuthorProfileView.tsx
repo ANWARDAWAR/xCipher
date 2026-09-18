@@ -141,7 +141,7 @@ export default function AuthorProfileView({ author, articles, socials, totalView
           <div className="ap-stat-divider" />
           <div className="ap-stat">
             <span className="ap-stat-val">{new Date(author.joinedAt || Date.now()).getFullYear()}</span>
-            <span className="ap-stat-label">Joined xCipher</span>
+            <span className="ap-stat-label">Joined xSypher</span>
           </div>
         </div>
       </div>

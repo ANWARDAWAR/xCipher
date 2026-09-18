@@ -8,7 +8,7 @@ import MediaLibraryClient, { type MediaItem } from "./MediaLibraryClient";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "Media | xCipher" };
+export const metadata = { title: "Media | xSypher" };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Media library — /admin/media

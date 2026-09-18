@@ -88,17 +88,17 @@ export default function SiteHeader() {
             </select>
             <ThemeToggle />
             <div className="util-social">
-              <Link href="/page/about" aria-label="xCipher on X">
+              <Link href="/page/about" aria-label="xSypher on X">
                 <svg className="ic-s" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M18.9 2H22l-6.8 7.8L23.3 22h-6.3l-4.9-6.4L6.4 22H3.3l7.3-8.3L1 2h6.5l4.4 5.9L18.9 2zm-1.1 18h1.7L7.1 3.9H5.3L17.8 20z" />
                 </svg>
               </Link>
-              <Link href="/page/about" aria-label="xCipher on YouTube">
+              <Link href="/page/about" aria-label="xSypher on YouTube">
                 <svg className="ic-s" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M23 12s0-3.3-.4-4.9c-.2-.9-.9-1.6-1.8-1.8C19.2 5 12 5 12 5s-7.2 0-8.8.3c-.9.2-1.6.9-1.8 1.8C1 8.7 1 12 1 12s0 3.3.4 4.9c.2.9.9 1.6 1.8 1.8 1.6.3 8.8.3 8.8.3s7.2 0 8.8-.3c-.9-.2 1.6-.9 1.8-1.8.4-1.6.4-4.9.4-4.9zM9.8 15.5v-7l6 3.5-6 3.5z" />
                 </svg>
               </Link>
-              <Link href="/page/about" aria-label="xCipher on LinkedIn">
+              <Link href="/page/about" aria-label="xSypher on LinkedIn">
                 <svg className="ic-s" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM.5 8h4V24h-4V8zm7.5 0h3.8v2.2h.1c.5-1 1.8-2.2 3.8-2.2 4 0 4.8 2.7 4.8 6.1V24h-4v-8.5c0-2-.4-3.5-2.1-3.5-1.7 0-2.4 1.2-2.4 3.4V24h-4V8z" />
                 </svg>
@@ -108,7 +108,7 @@ export default function SiteHeader() {
         </div>
         <div className="wrap masthead">
           <MobileDrawer />
-          <Link className="logo" href="/" aria-label="xCipher — home">
+          <Link className="logo" href="/" aria-label="xSypher — home">
             <svg width="27" height="27" viewBox="0 0 26 26" aria-hidden="true">
               <rect x="1" y="1" width="10" height="10" fill="currentColor" />
               <rect x="15" y="1" width="10" height="10" fill="currentColor" opacity=".32" />

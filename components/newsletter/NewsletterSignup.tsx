@@ -41,7 +41,7 @@ export default function NewsletterSignup({ className = "news-band", style, sourc
     <section className={className} style={style} aria-labelledby="nlH" data-reveal>
       <div>
         <h2 id="nlH">Get the biggest tech stories, <em>without the noise.</em></h2>
-        <p>The xCipher Daily Brief — one email each morning with the stories that matter, our analysis, and nothing you didn't ask for. Free forever, unsubscribe anytime.</p>
+        <p>The xSypher Daily Brief — one email each morning with the stories that matter, our analysis, and nothing you didn't ask for. Free forever, unsubscribe anytime.</p>
       </div>
       <div>
         {status === "success" && (

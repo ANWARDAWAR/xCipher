@@ -45,7 +45,7 @@ export default async function UnsubscribePage({ params }: { params: Promise<{ to
               {result.alreadyDone ? "Already Unsubscribed" : "You've Been Unsubscribed"}
             </h1>
             <p style={{ color: "var(--ink-muted)", marginBottom: "28px", lineHeight: 1.6 }}>
-              {result.message} You will no longer receive the xCipher Daily Brief.
+              {result.message} You will no longer receive the xSypher Daily Brief.
             </p>
             <p style={{ fontSize: "13px", color: "var(--ink-muted)", marginBottom: "24px" }}>
               Changed your mind?{" "}
@@ -88,7 +88,7 @@ export default async function UnsubscribePage({ params }: { params: Promise<{ to
             fontWeight: 600,
           }}
         >
-          ← Back to xCipher
+          ← Back to xSypher
         </Link>
       </div>
     </div>

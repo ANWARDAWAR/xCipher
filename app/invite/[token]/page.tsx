@@ -3,7 +3,7 @@ import Link from "next/link";
 import AcceptInviteForm from "./AcceptInviteForm";
 
 export const metadata = {
-  title: "Accept Invitation — xCipher Editorial",
+  title: "Accept Invitation — xSypher Editorial",
 };
 
 export default async function InviteAcceptancePage({
@@ -30,9 +30,9 @@ export default async function InviteAcceptancePage({
       }}
     >
       <div className="bg-[var(--surface)] border border-[var(--line)] shadow-2xl rounded-[var(--r-lg)] p-8 max-w-md w-full relative z-10">
-        {/* Exact xCipher Brand SVG Logo */}
+        {/* Exact xSypher Brand SVG Logo */}
         <div className="flex flex-col items-center justify-center mb-8">
-          <Link href="/" className="flex items-center gap-2.5" aria-label="xCipher">
+          <Link href="/" className="flex items-center gap-2.5" aria-label="xSypher">
             <svg width="28" height="28" viewBox="0 0 26 26" aria-hidden="true" className="text-[var(--ink)]">
               <rect x="1" y="1" width="10" height="10" fill="currentColor" />
               <rect x="15" y="1" width="10" height="10" fill="currentColor" opacity=".32" />
@@ -91,7 +91,7 @@ export default async function InviteAcceptancePage({
                 Accept Invitation
               </h1>
               <p className="text-[var(--muted)] text-xs font-[family:var(--f-ui)] leading-relaxed">
-                You have been invited to join xCipher with{" "}
+                You have been invited to join xSypher with{" "}
                 <span className="inline-block font-semibold uppercase tracking-wider text-[10px] bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)]/20 px-2 py-0.5 rounded-[var(--r-sm)]">
                   {invitation.role}
                 </span>{" "}

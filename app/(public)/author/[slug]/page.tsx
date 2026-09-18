@@ -11,12 +11,12 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const author = await db.author.findUnique({ where: { slug } });
-  if (!author) return { title: "Author — xCipher" };
+  if (!author) return { title: "Author — xSypher" };
   return {
-    title: `${author.name} — xCipher`,
-    description: author.headline || author.bio?.slice(0, 160) || `${author.name} on xCipher.`,
+    title: `${author.name} — xSypher`,
+    description: author.headline || author.bio?.slice(0, 160) || `${author.name} on xSypher.`,
     openGraph: {
-      title: `${author.name} — xCipher`,
+      title: `${author.name} — xSypher`,
       description: author.bio?.slice(0, 160) || "",
       images: author.avatar ? [author.avatar] : [],
     },

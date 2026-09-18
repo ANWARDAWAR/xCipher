@@ -84,7 +84,7 @@ export default async function ArticlePage({ params }: Props) {
   const catName = article.category?.name || "News";
   const catSlug = article.category?.slug || "news";
   
-  const authorName = article.authorModel?.name || article.author || "xCipher Staff";
+  const authorName = article.authorModel?.name || article.author || "xSypher Staff";
   const authorSlug = article.authorModel?.slug || null;
   const articleAuthorRole = article.authorModel?.role || article.role || "Contributing writer";
 
@@ -97,12 +97,12 @@ export default async function ArticlePage({ params }: Props) {
     "Marcus Webb": "Programming editor — languages, frameworks, cloud and open source.", 
     "Hana Yoshida": "Business correspondent covering startups, funding and tech markets.", 
     "Tom Becker": "Gaming editor. Covers games, hardware and the industry seriously.", 
-    "Aisha Bello": "Reviews editor. Runs the xCipher test lab; buys every unit we review.", 
+    "Aisha Bello": "Reviews editor. Runs the xSypher test lab; buys every unit we review.", 
     "Nadia Osei": "How-to editor. Practical guides, tested before they're published.", 
     "James Whitfield": "Opinion columnist on platforms, policy and the economics of software.", 
-    "Liam Turner": "Staff writer across science, future tech and the wider xCipher desk." 
+    "Liam Turner": "Staff writer across science, future tech and the wider xSypher desk." 
   };
-  const authorBio = (article.author && bios[article.author]) || "Contributing writer at xCipher.";
+  const authorBio = (article.author && bios[article.author]) || "Contributing writer at xSypher.";
 
   let socials: { platform: string; url: string }[] = [];
   try {
@@ -180,7 +180,7 @@ export default async function ArticlePage({ params }: Props) {
         
         <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginTop: "14px" }}>
           <ListenButton />
-          <span className="muted" style={{ fontSize: "12px" }}>≈ 5 minutes · narrated by xCipher</span>
+          <span className="muted" style={{ fontSize: "12px" }}>≈ 5 minutes · narrated by xSypher</span>
         </div>
         
         <figure className="art-hero">
@@ -195,7 +195,7 @@ export default async function ArticlePage({ params }: Props) {
           </div>
           <figcaption>
             {article.title}
-            <span className="credit">Photo: xCipher illustration / Pexels</span>
+            <span className="credit">Photo: xSypher illustration / Pexels</span>
           </figcaption>
         </figure>
       </header>
@@ -222,7 +222,7 @@ export default async function ArticlePage({ params }: Props) {
             <circle cx="12" cy="12" r="9"/>
           </svg>
           <span>
-            <b>Fact-check & corrections:</b> This story was reported, edited and fact-checked by the xCipher desk. 
+            <b>Fact-check & corrections:</b> This story was reported, edited and fact-checked by the xSypher desk. 
             If you spot an error, tell us via our <Link href="/page/corrections" style={{ textDecoration: "underline", color: "var(--accent)" }}>corrections page</Link> — we fix mistakes openly and note every material change.
           </span>
         </div>
@@ -257,7 +257,7 @@ export default async function ArticlePage({ params }: Props) {
               </span>
             </div>
             <p className="text-sm text-[var(--muted)] leading-relaxed mt-2.5 max-w-2xl">
-              {article.authorModel?.overview || "Contributing writer at xCipher."}
+              {article.authorModel?.overview || "Contributing writer at xSypher."}
             </p>
             <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--line)]/50">
               <div className="flex items-center gap-1.5">
