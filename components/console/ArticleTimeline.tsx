@@ -1,4 +1,5 @@
 import { FileEdit, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
+import RestoreRevisionButton from "./RestoreRevisionButton";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ArticleTimeline — one chronological history for an article.
@@ -37,6 +38,12 @@ export interface TimelineReview {
 interface ArticleTimelineProps {
   revisions: TimelineRevision[];
   reviews: TimelineReview[];
+  // Resolved on the server from canEditArticle. The restore action re-checks
+  // it independently; this only decides whether the control is drawn.
+  canRestore?: boolean;
+  // A published article must be unpublished before its body can be swapped, so
+  // the control is withheld rather than offered and then refused.
+  isPublished?: boolean;
 }
 
 type Entry =
@@ -70,7 +77,12 @@ function decisionPresentation(decision: string) {
   return { icon: FileEdit, tone: "text-muted", label: decision };
 }
 
-export default function ArticleTimeline({ revisions, reviews }: ArticleTimelineProps) {
+export default function ArticleTimeline({
+  revisions,
+  reviews,
+  canRestore = false,
+  isPublished = false,
+}: ArticleTimelineProps) {
   const entries: Entry[] = [
     ...revisions.map<Entry>((r) => ({
       kind: "revision",
@@ -83,6 +95,17 @@ export default function ArticleTimeline({ revisions, reviews }: ArticleTimelineP
       data: r,
     })),
   ].sort((a, b) => b.at - a.at);
+
+  // Derived from the timestamps rather than trusting the caller's ordering --
+  // this component should not break if a future caller passes them oldest-first.
+  const newestRevisionId =
+    revisions.length > 0
+      ? revisions.reduce((newest, r) =>
+          new Date(r.createdAt).getTime() > new Date(newest.createdAt).getTime()
+            ? r
+            : newest
+        ).id
+      : null;
 
   if (entries.length === 0) {
     return (
@@ -134,6 +157,7 @@ export default function ArticleTimeline({ revisions, reviews }: ArticleTimelineP
         }
 
         const r = entry.data;
+        const isNewestRevision = r.id === newestRevisionId;
         return (
           <li key={`rev-${r.id}`} className="flex gap-4">
             <div className="flex flex-col items-center shrink-0">
@@ -155,6 +179,16 @@ export default function ArticleTimeline({ revisions, reviews }: ArticleTimelineP
                 <p className="text-sm text-muted mt-2 leading-relaxed font-[var(--f-body)]">
                   {r.notes}
                 </p>
+              )}
+              {/* Not offered on the most recent revision: restoring the version
+                  the draft already holds would append a no-op entry and read as
+                  a broken control. */}
+              {canRestore && !isPublished && !isNewestRevision && (
+                <RestoreRevisionButton
+                  revisionId={r.id}
+                  savedAt={formatWhen(r.createdAt)}
+                  actorName={r.actor}
+                />
               )}
             </div>
           </li>

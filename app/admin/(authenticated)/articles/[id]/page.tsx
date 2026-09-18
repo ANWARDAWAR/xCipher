@@ -367,6 +367,8 @@ export default async function ArticleDetailPage({ params }: PageProps) {
             createdAt: r.createdAt.toISOString(),
             actor: r.reviewer?.name || r.reviewer?.email || "Unknown",
           }))}
+          canRestore={canEdit}
+          isPublished={article.status === "PUBLISHED"}
         />
       </section>
     </div>

@@ -263,3 +263,123 @@ export async function deleteArticle(id: string) {
     return { success: false, error: error.message || "Failed to delete article" };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Revision restore
+// ---------------------------------------------------------------------------
+// Snapshots have been written on every non-autosave save since the beginning,
+// carrying the full title/deck/contentHtml/contentJson. Nothing ever read them
+// back. So the history was visible but inert: an editor could see that a good
+// version existed three saves ago and had no way to return to it.
+//
+// Restore is deliberately NOT a rollback that erases what came after. It copies
+// the old snapshot forward into the live article and writes a new revision for
+// the restore itself, so the timeline keeps growing in one direction and the
+// version being replaced stays recoverable. A destructive rollback would make
+// a misclick unrecoverable, which is the opposite of what version history is
+// for.
+
+export async function restoreRevision(revisionId: string) {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Unauthorized" };
+
+  try {
+    const revision = await db.articleRevision.findUnique({
+      where: { id: revisionId },
+      include: {
+        article: {
+          select: { id: true, slug: true, title: true, status: true, authorId: true },
+        },
+      },
+    });
+
+    if (!revision) return { success: false, error: "Revision not found" };
+
+    const article = revision.article;
+
+    // Restoring rewrites the live article body, so it needs edit rights on that
+    // specific article -- not merely the right to view its history. canEditArticle
+    // resolves ownership too, so an author can roll back their own draft while
+    // being unable to touch anyone else's.
+    const policy = canEditArticle(
+      { id: user.id, role: user.role, authorId: user.authorId },
+      { id: article.id, authorId: article.authorId }
+    );
+    if (!policy.success) {
+      return { success: false, error: policy.error || "Unauthorized" };
+    }
+
+    // A published article is live. Silently swapping its body from history is
+    // a content change readers see immediately, and the workflow has explicit
+    // transitions for taking something off the site. Refuse rather than
+    // surprise: unpublish first, restore, then republish.
+    if (article.status === "PUBLISHED") {
+      return {
+        success: false,
+        error:
+          "This article is published. Unpublish it before restoring an earlier version, so the change is reviewed before readers see it.",
+      };
+    }
+
+    // Re-sanitize on the way back in. The snapshot was sanitized when written,
+    // but the allowlist may have tightened since, and trusting stored HTML
+    // because it was once clean is how an old payload survives a policy change.
+    const restoredHtml = sanitizeArticleHtml(revision.contentHtml);
+
+    await db.$transaction(async (tx) => {
+      await tx.article.update({
+        where: { id: article.id },
+        data: {
+          title: revision.title ?? article.title,
+          deck: revision.deck,
+          contentHtml: restoredHtml,
+          contentJson: revision.contentJson
+            ? JSON.parse(JSON.stringify(revision.contentJson))
+            : null,
+        },
+      });
+
+      // The restore is itself a revision. Without this the timeline would show
+      // the article changing with no entry explaining why.
+      await tx.articleRevision.create({
+        data: {
+          articleId: article.id,
+          userId: user.id,
+          title: revision.title ?? article.title,
+          deck: revision.deck,
+          contentHtml: restoredHtml,
+          contentJson: revision.contentJson
+            ? JSON.parse(JSON.stringify(revision.contentJson))
+            : null,
+          notes: `Restored the version saved on ${new Date(
+            revision.createdAt
+          ).toLocaleString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          })}.`,
+          statusChange: null,
+        },
+      });
+    });
+
+    await logAudit("RESTORE_REVISION", "Article", article.id, {
+      revisionId,
+      revisionCreatedAt: revision.createdAt,
+      title: revision.title,
+    });
+
+    revalidatePath(`/admin/articles/${article.id}`);
+    revalidatePath(`/admin/editor/${article.id}`);
+    revalidatePath("/admin/articles");
+
+    return { success: true, articleId: article.id };
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Failed to restore revision";
+    console.error(">>> [SERVER] Restore revision failed:", message);
+    return { success: false, error: message };
+  }
+}
