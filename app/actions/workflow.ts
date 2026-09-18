@@ -2,8 +2,12 @@
 
 import { db } from "@/lib/db";
 import { getActor } from "@/lib/auth";
-import { authorize } from "@/lib/capabilities";
+import { authorize, ROLE_CAPABILITIES } from "@/lib/capabilities";
 import { ArticleStatus, Role } from "@prisma/client";
+
+const REVIEWER_ROLES = (Object.keys(ROLE_CAPABILITIES) as Role[]).filter(role => 
+  authorize(role, "article.review")
+);
 import { validateTransition, TRANSITIONS, ArticleForTransition } from "@/lib/workflow";
 import { revalidatePath } from "next/cache";
 
@@ -26,6 +30,7 @@ async function getArticle(id: string) {
       title: true,
       slug: true,
       categoryId: true,
+      category: { select: { slug: true } },
       deck: true,
       contentHtml: true,
     }
@@ -35,7 +40,7 @@ async function getArticle(id: string) {
 async function checkSelfReviewGuard(article: any, actor: any) {
   if (article.authorId && actor.authorId && article.authorId === actor.authorId) {
     const activeReviewersCount = await db.user.count({
-      where: { isActive: true, role: { in: ["OWNER", "ADMIN", "EDITOR", "REVIEWER", "MODERATOR"] } }
+      where: { isActive: true, role: { in: REVIEWER_ROLES } }
     });
     if (activeReviewersCount > 1) {
       return { ok: false, code: "FORBIDDEN", message: "A reviewer cannot decide on their own article. Please ask another editor to review it." };
@@ -406,6 +411,9 @@ export async function publishArticle(id: string): Promise<ActionResponse> {
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/review`);
     revalidatePath(`/admin/editor/${id}`);
+    revalidatePath("/", "layout");
+    revalidatePath(`/article/${article.slug}`, "page");
+    if (article.category?.slug) revalidatePath(`/category/${article.category.slug}`, "page");
     return { ok: true };
   });
 }
@@ -424,6 +432,9 @@ export async function unpublishArticle(id: string): Promise<ActionResponse> {
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
+    revalidatePath("/", "layout");
+    revalidatePath(`/article/${article.slug}`, "page");
+    if (article.category?.slug) revalidatePath(`/category/${article.category.slug}`, "page");
     return { ok: true };
   });
 }
@@ -449,6 +460,7 @@ export async function scheduleArticle(id: string, date: Date): Promise<ActionRes
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
+    // No public revalidation at the moment of scheduling; the cron job that performs publication will handle it.
     return { ok: true };
   });
 }
@@ -491,6 +503,9 @@ export async function archiveArticle(id: string): Promise<ActionResponse> {
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
+    revalidatePath("/", "layout");
+    revalidatePath(`/article/${article.slug}`, "page");
+    if (article.category?.slug) revalidatePath(`/category/${article.category.slug}`, "page");
     return { ok: true };
   });
 }
@@ -509,6 +524,9 @@ export async function restoreArticle(id: string): Promise<ActionResponse> {
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
+    revalidatePath("/", "layout");
+    revalidatePath(`/article/${article.slug}`, "page");
+    if (article.category?.slug) revalidatePath(`/category/${article.category.slug}`, "page");
     return { ok: true };
   });
 }

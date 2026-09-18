@@ -201,16 +201,12 @@ export async function upsertArticle(data: any) {
 
     // Revalidate relevant pages
     try {
-      revalidatePath("/", "layout");
-      revalidatePath("/admin", "layout");
-      revalidatePath("/admin/drafts", "page");
       revalidatePath("/admin/articles", "page");
-      revalidatePath(`/article/${article.slug}`, "page");
-      if (category.slug) {
-        revalidatePath(`/category/${category.slug}`, "page");
+      // If the article is already published, a save might fix a typo without a state transition.
+      // We revalidate the single article path only, avoiding a full site cache flush.
+      if (article.status === "PUBLISHED") {
+        revalidatePath(`/article/${article.slug}`, "page");
       }
-      revalidatePath("/latest", "page");
-      revalidatePath("/search", "page");
     } catch (revalError) {
       console.warn(">>> [SERVER] Revalidation error:", revalError);
     }
@@ -246,15 +242,7 @@ export async function deleteArticle(id: string) {
     await logAudit("DELETE_ARTICLE", "Article", id, { title: article.title });
 
     try {
-      revalidatePath("/", "layout");
-      revalidatePath("/admin", "layout");
-      revalidatePath("/admin/drafts", "page");
       revalidatePath("/admin/articles", "page");
-      if (article.category?.slug) {
-        revalidatePath(`/category/${article.category.slug}`, "page");
-      }
-      revalidatePath("/latest", "page");
-      revalidatePath("/search", "page");
     } catch (revalError) {
       console.warn(">>> [SERVER] Revalidation error:", revalError);
     }

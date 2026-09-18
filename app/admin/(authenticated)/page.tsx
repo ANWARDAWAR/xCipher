@@ -2,7 +2,8 @@ import Link from "next/link";
 import { fmtViews } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { buildArticleScope } from "@/lib/capabilities";
+import { buildArticleScope, authorize } from "@/lib/capabilities";
+import { redirect } from "next/navigation";
 import StatusChip from "@/components/console/StatusChip";
 import { 
   Plus, 
@@ -51,22 +52,27 @@ export default async function AdminDashboard() {
   let topStories: any[] = [];
   let latestDrafts: any[] = [];
 
-  let isAuthorOnly = false;
+  let canViewAll = false;
   let userFirstName = "Editor";
 
   try {
     const user = await getCurrentUser();
-    isAuthorOnly = user?.role === "AUTHOR";
-    userFirstName = user?.name?.split(" ")[0] || "Editor";
+    if (!user) {
+      redirect("/admin/login");
+    }
 
-    const dbUser = user ? await db.user.findUnique({ where: { id: user.id }, include: { authorProfile: true } }) : null;
+    userFirstName = user.name?.split(" ")[0] || "Editor";
+
+    const dbUser = await db.user.findUnique({ where: { id: user.id }, include: { authorProfile: true } });
     const authorId = dbUser?.authorProfile?.id;
     
     const actor = {
-      id: user?.id || "",
-      role: (user?.role as any) || "CONTRIBUTOR",
+      id: user.id,
+      role: user.role as any,
       authorId: authorId || null
     };
+
+    canViewAll = authorize(actor.role, "article.view.all");
 
     const scopeWhere = buildArticleScope(actor);
     const statusCounts = await db.article.groupBy({
@@ -160,7 +166,7 @@ export default async function AdminDashboard() {
         <div className="bg-surface border border-line rounded-xl p-5 shadow-sm transition-all hover:border-line-2">
           <div className="flex items-center justify-between text-muted">
             <span className="text-[11px] font-semibold tracking-wider uppercase">
-              {isAuthorOnly ? "Your Stories" : "Total Articles"}
+              {canViewAll ? "Total Articles" : "Your Stories"}
             </span>
             <div className="p-2 rounded-lg bg-surface-2 text-ink">
               <FileText className="w-4 h-4" />
@@ -238,7 +244,7 @@ export default async function AdminDashboard() {
             <div>
               <h2 className="text-sm font-bold text-ink tracking-wide uppercase font-[var(--f-ui)] flex items-center gap-2">
                 <span className="w-1.5 h-3.5 bg-red-600 rounded-sm" />
-                {isAuthorOnly ? "Your Top Stories" : "Top Stories by Reads"}
+                {canViewAll ? "Top Stories by Reads" : "Your Top Stories"}
               </h2>
               <p className="text-xs text-muted mt-0.5">
                 Most engaged articles published across all sections
@@ -336,7 +342,7 @@ export default async function AdminDashboard() {
             <div>
               <h2 className="text-sm font-bold text-ink tracking-wide uppercase font-[var(--f-ui)] flex items-center gap-2">
                 <span className="w-1.5 h-3.5 bg-amber-500 rounded-sm" />
-                {isAuthorOnly ? "Your Drafts" : "Drafts in Progress"}
+                {canViewAll ? "Drafts in Progress" : "Your Drafts"}
               </h2>
               <p className="text-xs text-muted mt-0.5">
                 Workspaces currently being written or edited
