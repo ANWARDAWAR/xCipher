@@ -22,6 +22,7 @@ import { Callout } from "@/components/editorial/extensions/Callout";
 import { YouTubeEmbed } from "@/components/editorial/extensions/YouTubeEmbed";
 import { X, Camera, Loader2, AlertCircle } from "lucide-react";
 import { uploadAvatar } from "@/app/actions/upload-avatar";
+import AvatarCropper from "@/components/editorial/AvatarCropper";
 import { UPLOAD_ACCEPT_ATTR, uploadError, formatBytes, MAX_UPLOAD_BYTES } from "@/lib/upload-constraints";
 
 const PLATFORM_OPTIONS = ["X", "LinkedIn", "GitHub", "YouTube", "Facebook", "Instagram", "Website", "Email"];
@@ -86,17 +87,43 @@ export default function ProfileForm({
   const [avatarUploadError, setAvatarUploadError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  const handleAvatarFile = useCallback(async (file: File) => {
+  // Picking a file opens the cropper rather than uploading immediately.
+  //
+  // Cloudinary's face-detection crop is a reasonable default and a poor
+  // guarantee: group shots, faces at the edge of a landscape photo, and
+  // anything without a detectable face get framed by a heuristic the author
+  // cannot see or override. Cropping first also means only the square crosses
+  // the wire, not the original.
+  const [cropSource, setCropSource] = useState<{ url: string; name: string } | null>(null);
+
+  const handleAvatarFile = useCallback((file: File) => {
     setAvatarUploadError(null);
 
-    // Rejected here before the bytes leave the machine; the server repeats
-    // every check against the actual file.
+    // Checked before the cropper opens: no point framing a file the server will
+    // refuse. The server repeats every check against the actual bytes.
     const clientError = uploadError(file);
     if (clientError) {
       setAvatarUploadError(clientError);
       return;
     }
 
+    setCropSource((prev) => {
+      // Release the previous object URL. Without this each picked file leaks
+      // its blob for the lifetime of the page.
+      if (prev) URL.revokeObjectURL(prev.url);
+      return { url: URL.createObjectURL(file), name: file.name };
+    });
+  }, []);
+
+  const closeCropper = useCallback(() => {
+    setCropSource((prev) => {
+      if (prev) URL.revokeObjectURL(prev.url);
+      return null;
+    });
+  }, []);
+
+  const uploadCropped = useCallback(async (file: File) => {
+    setAvatarUploadError(null);
     setAvatarBusy(true);
     try {
       const fd = new FormData();
@@ -107,7 +134,9 @@ export default function ProfileForm({
         // Clear the broken-image flag: a previous bad URL should not leave the
         // new upload rendering as a placeholder.
         setAvatarError(false);
+        closeCropper();
       } else {
+        // The cropper stays open so the author can retry without re-framing.
         setAvatarUploadError(res.error ?? "The upload failed.");
       }
     } catch {
@@ -115,6 +144,16 @@ export default function ProfileForm({
     } finally {
       setAvatarBusy(false);
     }
+  }, [closeCropper]);
+
+  // Release the object URL if the form unmounts mid-crop.
+  useEffect(() => {
+    return () => {
+      if (cropSource) URL.revokeObjectURL(cropSource.url);
+    };
+    // Intentionally only on unmount: re-running on every cropSource change
+    // would revoke the URL the cropper is currently displaying.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Dirty State Tracking
@@ -612,6 +651,17 @@ export default function ProfileForm({
           </div>
         </div>
       </div>
+      {cropSource && (
+        <AvatarCropper
+          imageSrc={cropSource.url}
+          fileName={cropSource.name}
+          open
+          busy={avatarBusy}
+          onCancel={closeCropper}
+          onCropped={uploadCropped}
+        />
+      )}
+
     </form>
   );
 }

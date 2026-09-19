@@ -136,7 +136,11 @@ export async function uploadAvatar(formData: FormData): Promise<AvatarUploadResu
             // original. Every delivery size is then derived from this rather
             // than from a multi-megabyte camera file.
             transformation: [
-              { width: 512, height: 512, crop: "fill", gravity: "face" },
+              // The browser already cropped this to the square the author
+              // framed, so `crop: "fill"` with face gravity would re-crop it
+              // and override their choice. "limit" only downscales an image
+              // larger than the bound and never changes the framing.
+              { width: 512, height: 512, crop: "limit" },
               { fetch_format: "auto", quality: "auto" },
             ],
           },
