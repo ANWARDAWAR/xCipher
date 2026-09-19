@@ -56,7 +56,7 @@ export default function CommentsSection({ articleSlug }: CommentsSectionProps) {
   };
 
   return (
-    <section className="comments" aria-labelledby="cmtH">
+    <section id="comments" className="comments scroll-mt-28" aria-labelledby="cmtH">
       <h2 id="cmtH">Discussion ({isLoading ? "…" : comments.length})</h2>
 
       <div id="cmtList" role="list" aria-live="polite" aria-busy={isLoading}>

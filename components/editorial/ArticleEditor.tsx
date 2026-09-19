@@ -8,6 +8,7 @@ import * as z from "zod";
 import { showToast } from "@/lib/utils";
 import { useEditor, EditorContent, ReactRenderer } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import Heading from "@tiptap/extension-heading";
 import Underline from "@tiptap/extension-underline";
 import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
@@ -21,11 +22,12 @@ import tippy from 'tippy.js';
 
 import { upsertArticle } from "@/app/actions/article";
 import { useDraftCache, clearDraftCache } from "@/lib/use-draft-cache";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft, Settings, Eye } from "lucide-react";
 import { Role, ArticleStatus } from "@prisma/client";
 import { ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
 import SeoPreview from "./SeoPreview";
 import ReviewWorkspace from "./ReviewWorkspace";
+import TableOfContents from "../article/TableOfContents";
 import { EditorToolbar } from "./EditorToolbar";
 import { Figure } from "./extensions/AdvancedImage";
 import { Callout } from "./extensions/Callout";
@@ -187,6 +189,7 @@ export default function ArticleEditor({
   // async call: state would still hold the pre-render value and the very next
   // autosave would duplicate once more before React caught up.
   const articleIdRef = useRef<string | null>(initialData?.id ? String(initialData.id) : null);
+  const lastSavedRef = useRef<Date | null>(initialData?.updatedAt ? new Date(initialData.updatedAt) : null);
   const [articleId, setArticleId] = useState<string | null>(
     initialData?.id ? String(initialData.id) : null
   );
@@ -237,10 +240,16 @@ export default function ArticleEditor({
     extensions: [
       StarterKit.configure({
         codeBlock: false, // Replaced by CodeBlockLowlight for syntax highlighting
-        heading: {
-          levels: [1, 2, 3, 4, 5, 6],
-        },
+        heading: false,
       }),
+      Heading.extend({
+        renderHTML({ node, HTMLAttributes }) {
+          const hasLevel = this.options.levels.includes(node.attrs.level);
+          const level = hasLevel ? node.attrs.level : this.options.levels[0];
+          const id = slugify(node.textContent);
+          return [`h${level}`, { ...HTMLAttributes, id }, 0];
+        },
+      }).configure({ levels: [1, 2, 3, 4, 5, 6] }),
       CodeBlockLowlight,
       Underline,
       Highlight.configure({ multicolor: false }),
@@ -267,6 +276,7 @@ export default function ArticleEditor({
       TableHeader,
       CharacterCount.configure({
         limit: 50000,
+        wordCounter: (text) => Array.from(text.matchAll(/\w+/g)).length,
       }),
       SlashMenu.configure({
         suggestion: {
@@ -549,6 +559,7 @@ export default function ArticleEditor({
     editor?.commands.setContent("<p>Start writing...</p>");
     setSlugManuallyEdited(false);
     setLastSaved(null);
+    lastSavedRef.current = null;
     setAutosaveStatus("idle");
     showToast("Editor reset.", "success");
   };
@@ -619,7 +630,7 @@ export default function ArticleEditor({
         seoDesc: watch("seoDesc") || getValues("seoDesc") || null,
         bodyHtml: editor?.getHTML() || "",
         bodyJson: editor?.getJSON() ? JSON.parse(JSON.stringify(editor.getJSON())) : null,
-        lastUpdatedAt: lastSaved ? lastSaved.toISOString() : undefined,
+        lastUpdatedAt: lastSavedRef.current ? lastSavedRef.current.toISOString() : undefined,
         isAutosave: Boolean(isAutosave),
         notes: notesOverride || null,
         scheduledFor: watch("scheduledFor") || getValues("scheduledFor") || null,
@@ -631,7 +642,9 @@ export default function ArticleEditor({
       const result = await upsertArticle(plainPayload);
 
       if (result.success && result.article) {
-        setLastSaved(new Date(result.article.updatedAt));
+        const newSavedDate = new Date(result.article.updatedAt);
+        setLastSaved(newSavedDate);
+        lastSavedRef.current = newSavedDate;
 
         // Claim the id on EVERY successful save, autosave included, and before
         // the autosave early-return below. This is the line the duplication bug
@@ -784,33 +797,32 @@ export default function ArticleEditor({
       {/* sticky top-0 as well as flex-shrink-0: the form is a flex column with
           its own scroll containers, but the header still needs to pin when a
           narrow viewport lets the whole form scroll. */}
-      <header className="h-14 flex-shrink-0 sticky top-0 z-40 bg-[var(--bg)]/95 backdrop-blur-md border-b border-[var(--line)] px-4 sm:px-6 flex items-center justify-between gap-3 shadow-sm">
+      <header className="h-14 flex-shrink-0 sticky top-0 z-40 bg-[var(--surface)]/90 backdrop-blur border-b border-[var(--line)] px-4 sm:px-6 flex items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button 
             type="button"
             onClick={() => router.push('/admin/articles')}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--muted)] hover:text-[var(--ink)] transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--muted)] hover:text-[var(--ink)] transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-[var(--surface-2)]"
+            title="Back to articles"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            <ArrowLeft className="w-4 h-4" />
             <span className="hidden sm:inline">Back</span>
           </button>
           
           <div className="w-px h-4 bg-[var(--line)] hidden sm:block mx-1"></div>
           
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
             currentFormStatus === 'PUBLISHED' ? 'bg-[var(--ok)]/10 text-[var(--ok)] border border-[var(--ok)]/20' :
             currentFormStatus === 'SUBMITTED' ? 'bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20' :
-            'bg-[#f59e0b]/10 text-[#d97706] border border-[#f59e0b]/20'
+            'bg-[var(--surface-3)] text-[var(--muted)] border border-[var(--line-2)]'
           }`}>
             {currentFormStatus === 'SUBMITTED' ? 'In Review' : currentFormStatus}
           </span>
           
-          <span className="text-xs text-[var(--muted)] hidden md:inline ml-2">
-            {editor.storage.characterCount.words()} words · {editor.storage.characterCount.characters()} chars
+          <span className="text-xs text-[var(--muted)] hidden md:inline ml-2 font-medium">
+            {editor.storage.characterCount.words()} words
           </span>
 
-          {/* Sync status. aria-live="polite" so a screen reader hears the
-              outcome without having the sentence in progress interrupted. */}
           <span
             role="status"
             aria-live="polite"
@@ -832,38 +844,24 @@ export default function ArticleEditor({
           </span>
         </div>
 
-        {/* shrink-0 so the action buttons keep their size and the left-hand
-            meta cluster is what gives way when the bar runs out of room. */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Mobile Inspector Toggle */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button 
             type="button" 
             onClick={() => setIsInspectorOpen(true)}
-            className="ed-act secondary lg:hidden"
+            className="p-2 text-[var(--muted)] hover:text-[var(--ink)] rounded-lg hover:bg-[var(--surface-2)] transition-colors lg:hidden"
+            title="Settings"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-            <span className="ed-act-label">Settings</span>
+            <Settings className="w-4 h-4" />
           </button>
           
-          <button
-            type="button"
-            disabled={busy}
-            onClick={handleDiscardAndRestart}
-            title="Discard local changes and start over"
-            className="ed-act danger"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
-            <span className="ed-act-label">Discard</span>
-          </button>
-
           <button 
             type="button" 
             disabled={busy} 
             onClick={handlePreview}
-            className="ed-act"
+            className="p-2 text-[var(--muted)] hover:text-[var(--ink)] rounded-lg hover:bg-[var(--surface-2)] transition-colors"
+            title="Preview"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            <span className="ed-act-label">Preview</span>
+            <Eye className="w-4 h-4" />
           </button>
           
           {(currentFormStatus === "DRAFT" || currentFormStatus === "REVISION_REQUESTED") && (
@@ -871,10 +869,10 @@ export default function ArticleEditor({
               type="button" 
               disabled={busy} 
               onClick={() => handleSave(currentFormStatus)}
-              className="ed-act secondary"
+              className="px-3.5 py-1.5 text-sm font-medium rounded-md text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-50 flex items-center gap-2 border border-transparent hover:border-[var(--line)]"
             >
-              {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-              <span className="ed-act-label">{busy ? "Saving\u2026" : "Save Draft"}</span>
+              {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+              <span>{busy ? "Saving\u2026" : "Save Draft"}</span>
             </button>
           )}
 
@@ -883,11 +881,11 @@ export default function ArticleEditor({
               type="button" 
               disabled={busy} 
               onClick={() => handleSave("PUBLISHED")}
-              className="ed-act primary"
+              className="px-4 py-1.5 text-sm font-semibold rounded-md bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
             >
               {busy
-                ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>}
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>}
               <span>{busy ? "Updating\u2026" : "Update Live"}</span>
             </button>
           ) : (
@@ -896,13 +894,13 @@ export default function ArticleEditor({
                 type="button" 
                 disabled={busy} 
                 onClick={() => handleSave(canPublish ? "PUBLISHED" : "SUBMITTED")}
-                className="ed-act primary"
+                className="px-4 py-1.5 text-sm font-semibold rounded-md bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
               >
                 {busy
-                  ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                   : canPublish
-                    ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-                    : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>}
+                    ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                    : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>}
                 <span>{busy
                   ? (canPublish ? "Publishing\u2026" : "Submitting\u2026")
                   : (canPublish ? "Publish Story" : "Submit for Review")}</span>
@@ -974,8 +972,8 @@ export default function ArticleEditor({
       <div className="flex flex-row flex-1 overflow-hidden w-full relative">
         
         {/* ── Main Writing Canvas (Left/Center) ── */}
-        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden px-4 sm:px-10 py-8 bg-[var(--paper)]">
-          <div className="max-w-4xl mx-auto space-y-6 pb-24">
+        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden px-4 sm:px-10 py-8 bg-[var(--surface-2)]">
+          <div className="max-w-4xl mx-auto bg-[var(--paper)] shadow-sm border border-[var(--line)] rounded-xl p-8 sm:p-12 mb-32 space-y-6">
             
             {/* Title Input */}
             <div>
@@ -1012,7 +1010,7 @@ export default function ArticleEditor({
                 />
                 
                 <div 
-                  className="ed-body mt-2 prose prose-lg dark:prose-invert max-w-none min-h-[500px]" 
+                  className="ed-body mt-2 prose min-h-[500px]" 
                   id="edBody" 
                   aria-label="Article body editor"
                   style={isFullscreen ? { minHeight: "calc(100vh - 150px)" } : { border: 'none', padding: 0 }}
@@ -1050,7 +1048,7 @@ export default function ArticleEditor({
         )}
         
         {/* ── Document Inspector Rail (Right Sidebar) ── */}
-        <aside className={`fixed inset-y-0 right-0 z-50 w-full max-w-[360px] lg:w-80 xl:w-96 shrink-0 border-l border-[var(--line)] bg-[var(--surface)]/30 overflow-y-auto p-5 sm:p-6 space-y-8 transform transition-transform duration-300 ease-in-out lg:static lg:transform-none lg:translate-x-0 lg:block ${isInspectorOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <aside className={`fixed inset-y-0 right-0 z-50 w-full max-w-[360px] lg:w-80 xl:w-96 shrink-0 border-l border-[var(--line)] bg-[var(--surface)] overflow-y-auto p-6 sm:p-8 space-y-6 transform transition-transform duration-300 ease-in-out lg:static lg:transform-none lg:translate-x-0 lg:block ${isInspectorOpen ? 'translate-x-0' : 'translate-x-full'}`}>
           <div className="ed-rail-head flex items-center justify-between lg:hidden">
             <h2 className="text-lg font-bold text-[var(--ink)]">Settings</h2>
             <button 
@@ -1216,6 +1214,14 @@ export default function ArticleEditor({
               </button>
             </div>
           )}
+
+          {/* TOC Preview for Editors */}
+          <section className="pt-6 border-t border-[var(--line-2)]">
+            <h3 className="ed-rail-h mb-2">TOC Preview</h3>
+            <div className="bg-[var(--surface-3)] p-4 rounded-md border border-[var(--line-2)]">
+              <TableOfContents containerSelector=".ProseMirror" />
+            </div>
+          </section>
         </aside>
       </div>
     </form>

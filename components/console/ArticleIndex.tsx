@@ -192,7 +192,7 @@ export default function ArticleIndex({
         {!isFiltered && emptyAction && (
           <Link 
             href={emptyAction.href} 
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-deep text-on-accent text-xs sm:text-sm font-semibold rounded-lg shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-deep text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>{emptyAction.label}</span>
@@ -269,7 +269,7 @@ export default function ArticleIndex({
               <tr
                 key={a.id}
                 className={`transition-colors ${
-                  selected.has(a.id) ? "bg-accent/5" : "hover:bg-surface-2/70"
+                  selected.has(a.id) ? "bg-surface-3" : "hover:bg-surface-2/70"
                 }`}
               >
                 {anyBulk && (
@@ -414,7 +414,7 @@ export default function ArticleIndex({
           return (
             <li
               key={a.id}
-              className={`p-3.5 ${selected.has(a.id) ? "bg-accent/5" : ""}`}
+              className={`p-3.5 ${selected.has(a.id) ? "bg-surface-3" : ""}`}
             >
               <div className="flex gap-3">
                 {anyBulk && (

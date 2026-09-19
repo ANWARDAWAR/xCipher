@@ -2,6 +2,7 @@ import type { Metadata, ResolvingMetadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { MessageSquare } from "lucide-react";
 import { getImgSrc, fmtViews, timeAgo } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { getRecentArticleSlugs } from "@/lib/cached-queries";
@@ -10,6 +11,7 @@ import { constructMetadata, generateNewsArticleJsonLd } from "@/lib/seo";
 import { SocialIcon } from "@/components/author/AuthorProfileView";
 import ArticleBody from "@/components/article/ArticleBody";
 import ArticleSidebar from "@/components/article/ArticleSidebar";
+import TableOfContents from "@/components/article/TableOfContents";
 import StoryCard from "@/components/article/StoryCard";
 import CommentsSection from "@/components/article/CommentsSection";
 import ProgressBar from "@/components/article/ProgressBar";
@@ -173,39 +175,54 @@ export default async function ArticlePage({ params }: Props) {
         <h1 className="art-title" itemProp="headline">{article.title}</h1>
         <p className="art-deck" itemProp="description">{article.deck}</p>
         
-        <div className="art-byline">
-          {authorSlug ? (
-            <Link href={`/author/${authorSlug}`} style={{ flexShrink: 0, display: 'block' }}>
-              {article.authorModel?.avatar ? (
-                <img src={article.authorModel.avatar} alt={authorName} className="ava lg object-cover" />
-              ) : (
-                <div className="ava lg">{authorName.charAt(0)}</div>
-              )}
-            </Link>
-          ) : (
-            article.authorModel?.avatar ? (
-              <img src={article.authorModel.avatar} alt={authorName} className="ava lg object-cover" />
-            ) : (
-              <div className="ava lg">{authorName.charAt(0)}</div>
-            )
-          )}
-          <div className="ab-txt">
+        <div className="py-4 my-6 border-t border-b border-[var(--line)]">
+          <div className="flex items-center gap-3 mb-4">
             {authorSlug ? (
-              <Link href={`/author/${authorSlug}`} style={{ fontWeight: 700, color: 'inherit', textDecoration: 'none' }} itemProp="author">{authorName}</Link>
+              <Link href={`/author/${authorSlug}`} className="shrink-0">
+                {article.authorModel?.avatar ? (
+                  <img src={article.authorModel.avatar} alt={authorName} className="w-10 h-10 rounded-full shrink-0 object-cover" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold shrink-0">{authorName.charAt(0)}</div>
+                )}
+              </Link>
             ) : (
-              <b itemProp="author">{authorName}</b>
-            )}<br/>
-            <span className="muted">{articleAuthorRole}</span>
+              article.authorModel?.avatar ? (
+                <img src={article.authorModel.avatar} alt={authorName} className="w-10 h-10 rounded-full shrink-0 object-cover" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold shrink-0">{authorName.charAt(0)}</div>
+              )
+            )}
+            <div className="flex flex-col justify-center flex-1 min-w-0">
+              {authorSlug ? (
+                <Link href={`/author/${authorSlug}`} className="text-sm font-bold text-[var(--ink)] hover:text-[var(--accent)] truncate" itemProp="author">{authorName}</Link>
+              ) : (
+                <span className="text-sm font-bold text-[var(--ink)] truncate" itemProp="author">{authorName}</span>
+              )}
+              <span className="text-xs text-[var(--muted)] whitespace-normal break-words">{articleAuthorRole}</span>
+            </div>
           </div>
-          <div className="ab-meta" style={{ marginLeft: "auto", textAlign: "right" }}>
-            Published <b><time itemProp="datePublished">{article.createdAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</time></b><br/>
-            Updated {article.updatedAt.toLocaleDateString("en-US")} · 5 min read · {fmtViews(article.views)} reads
+          <div className="font-mono text-[11px] text-[var(--muted)] tracking-tight flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>Published <b><time itemProp="datePublished" className="text-[var(--ink)]">{article.createdAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</time></b></span>
+            <span className="hidden sm:inline">·</span>
+            <span>Updated <b>{article.updatedAt.toLocaleDateString("en-US")}</b></span>
+            <span className="hidden sm:inline">·</span>
+            <span><b>5 min</b> read</span>
+            <span className="hidden sm:inline">·</span>
+            <span><b>{fmtViews(article.views)}</b> reads</span>
           </div>
         </div>
         
         <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginTop: "14px" }}>
           <ListenButton />
-          <span className="muted" style={{ fontSize: "12px" }}>≈ 5 minutes · narrated by xSypher</span>
+          <a
+            href="#comments"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold !text-white bg-red-600 hover:bg-red-700 active:scale-95 transition-all shadow-sm shrink-0"
+            aria-label="Jump to comments section"
+          >
+            <MessageSquare className="w-3.5 h-3.5 !text-white"/>
+            <span>Comments</span>
+          </a>
+          <span className="muted" style={{ fontSize: "12px" }}>• 5 min listen</span>
         </div>
         
         <figure className="art-hero">
@@ -227,9 +244,14 @@ export default async function ArticlePage({ params }: Props) {
 
       <div className="wrap art-cols">
         <ArticleSidebar title={article.title} />
-        <div className="prose" id="prose" itemProp="articleBody">
+        <div className="prose min-w-0" id="prose" itemProp="articleBody">
           <ArticleBody html={article.contentHtml} />
         </div>
+        <aside className="hidden xl:block w-72 shrink-0">
+          <div className="sticky top-28 space-y-4">
+            <TableOfContents containerSelector=".prose" />
+          </div>
+        </aside>
       </div>
 
       <div className="wrap art-foot">
@@ -252,60 +274,61 @@ export default async function ArticlePage({ params }: Props) {
           </span>
         </div>
 
-        <section className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl p-6 sm:p-7 shadow-sm flex flex-col sm:flex-row gap-6 mt-12 mb-10" aria-label="About the author">
-          <div className="flex-shrink-0">
-            {authorSlug ? (
-              <Link href={`/author/${authorSlug}`} className="block">
-                {article.authorModel?.avatar ? (
-                  <img src={article.authorModel.avatar} alt={authorName} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-[var(--line)] shadow-sm shrink-0" />
-                ) : (
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold text-xl sm:text-2xl border-2 border-[var(--line)] shadow-sm shrink-0">{authorName.charAt(0)}</div>
-                )}
-              </Link>
-            ) : (
-              article.authorModel?.avatar ? (
-                <img src={article.authorModel.avatar} alt={authorName} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-[var(--line)] shadow-sm shrink-0" />
+        <section className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl p-4 sm:p-7 shadow-sm flex flex-col mt-12 mb-10" aria-label="About the author">
+          <div className="flex items-center gap-3 sm:gap-4 mb-3">
+            <div className="flex-shrink-0">
+              {authorSlug ? (
+                <Link href={`/author/${authorSlug}`} className="block">
+                  {article.authorModel?.avatar ? (
+                    <img src={article.authorModel.avatar} alt={authorName} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]" />
+                  ) : (
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold text-xl sm:text-2xl shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]">{authorName.charAt(0)}</div>
+                  )}
+                </Link>
               ) : (
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold text-xl sm:text-2xl border-2 border-[var(--line)] shadow-sm shrink-0">{authorName.charAt(0)}</div>
-              )
-            )}
-          </div>
-          <div className="flex-1 w-full">
-            <div className="flex flex-col mb-2">
-              <span className="text-lg sm:text-xl font-bold text-[var(--ink)] tracking-tight">
+                article.authorModel?.avatar ? (
+                  <img src={article.authorModel.avatar} alt={authorName} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]" />
+                ) : (
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold text-xl sm:text-2xl shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]">{authorName.charAt(0)}</div>
+                )
+              )}
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col justify-center">
+              <span className="text-base font-bold sm:text-lg leading-tight truncate text-[var(--ink)]">
                 {authorSlug ? (
                   <Link href={`/author/${authorSlug}`} className="hover:text-[var(--accent)] transition-colors">{authorName}</Link>
                 ) : authorName}
               </span>
-              <span className="inline-block mt-0.5 text-xs font-semibold text-[var(--accent)] tracking-wider uppercase">
+              <span className="text-[9px] sm:text-[11px] leading-snug line-clamp-2 mt-0.5 text-[var(--accent)] tracking-wider uppercase">
                 {articleAuthorRole}
               </span>
             </div>
-            <p className="text-sm text-[var(--muted)] leading-relaxed mt-2.5 max-w-2xl">
-              {article.authorModel?.overview || "Contributing writer at xSypher."}
-            </p>
-            <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--line)]/50">
-              <div className="flex items-center gap-1.5">
-                {socials.map((s, i) => (
-                  <Link key={i} href={s.url} target="_blank" rel="noopener noreferrer" aria-label={`${authorName} on ${s.platform}`} className="inline-flex items-center justify-center w-8 h-8 rounded-full text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors">
-                    <SocialIcon platform={s.platform} />
-                  </Link>
-                ))}
-              </div>
-              {authorSlug && (
-                <Link href={`/author/${authorSlug}`} className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--ink)] hover:text-[var(--accent)] transition-colors group">
-                  View all articles 
-                  <span aria-hidden="true" className="group-hover:translate-x-1 transition-transform duration-150">→</span>
+          </div>
+          
+          <p className="text-sm text-[var(--muted)] leading-relaxed max-w-2xl">
+            {article.authorModel?.overview || "Contributing writer at xSypher."}
+          </p>
+          <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--line)]/50">
+            <div className="flex items-center gap-1.5">
+              {socials.map((s, i) => (
+                <Link key={i} href={s.url} target="_blank" rel="noopener noreferrer" aria-label={`${authorName} on ${s.platform}`} className="inline-flex items-center justify-center w-8 h-8 rounded-full text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors">
+                  <SocialIcon platform={s.platform} />
                 </Link>
-              )}
+              ))}
             </div>
+            {authorSlug && (
+              <Link href={`/author/${authorSlug}`} className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--ink)] hover:text-[var(--accent)] transition-colors group">
+                View all articles 
+                <span aria-hidden="true" className="group-hover:translate-x-1 transition-transform duration-150">→</span>
+              </Link>
+            )}
           </div>
         </section>
 
         <CommentsSection articleSlug={article.slug} />
 
-        <section aria-label="Continue reading" style={{ marginTop: "48px", paddingTop: "40px", borderTop: "1px solid var(--line)" }}>
-          <h2 style={{ fontFamily: "var(--f-ui)", fontSize: "16px", fontWeight: 700, letterSpacing: ".02em", marginBottom: "20px" }}>Continue reading</h2>
+        <section aria-label="Read Next" style={{ marginTop: "48px", paddingTop: "40px", borderTop: "1px solid var(--line)" }}>
+          <h2 style={{ fontFamily: "var(--f-ui)", fontSize: "16px", fontWeight: 700, letterSpacing: ".02em", marginBottom: "20px" }}>Read Next</h2>
           <div className="grid4">
             {related.map(a => (
               <StoryCard key={a.id} article={a} showDeck={false} />

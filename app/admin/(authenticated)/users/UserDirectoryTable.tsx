@@ -129,7 +129,7 @@ function UserAvatar({ user }: { user: UserProfile }) {
         {user.authorProfile && (
           <span
             title="Author Profile Linked"
-            className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-accent rounded-full border-2 border-surface flex items-center justify-center text-[8px] text-on-accent font-bold"
+            className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-accent rounded-full border-2 border-surface flex items-center justify-center text-[8px] text-white font-bold"
           >
             ✓
           </span>
@@ -146,7 +146,7 @@ function UserAvatar({ user }: { user: UserProfile }) {
       {user.authorProfile && (
         <span
           title="Author Profile Linked"
-          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-accent rounded-full border-2 border-surface flex items-center justify-center text-[8px] text-on-accent font-bold"
+          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-accent rounded-full border-2 border-surface flex items-center justify-center text-[8px] text-white font-bold"
         >
           ✓
         </span>
@@ -361,7 +361,7 @@ export default function UserDirectoryTable({
                                 disabled={!hasChangedRole || isSaving}
                                 className={`inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg transition-all ${
                                   hasChangedRole
-                                    ? "bg-accent hover:bg-accent-deep text-on-accent shadow-2xs"
+                                    ? "bg-accent hover:bg-accent-deep text-white shadow-2xs"
                                     : "bg-surface-2 text-faint border border-line cursor-not-allowed opacity-60"
                                 }`}
                                 title={hasChangedRole ? "Save role change" : "No changes made"}

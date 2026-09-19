@@ -59,7 +59,7 @@ export default function AdminNavLinks({
    * assistive tech actually reads for this, and it costs nothing visually.
    */
   const navProps = (active: boolean) => ({
-    className: active ? "on" : "",
+    className: active ? "on text-white !text-white" : "",
     "aria-current": active ? ("page" as const) : undefined,
   });
 

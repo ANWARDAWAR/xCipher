@@ -114,7 +114,7 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
 
   return (
     <div 
-      className="sticky top-[61px] z-20 bg-[var(--bg)]/95 backdrop-blur-md border border-[var(--line)] rounded-xl p-1.5 my-6 flex flex-wrap items-center gap-1 shadow-sm"
+      className="sticky top-4 sm:top-6 z-30 bg-[var(--surface)]/95 backdrop-blur-md border border-[var(--line)] rounded-xl p-1.5 mb-8 flex flex-wrap items-center gap-1 shadow-sm"
       role="toolbar" 
       aria-label="Formatting"
     >

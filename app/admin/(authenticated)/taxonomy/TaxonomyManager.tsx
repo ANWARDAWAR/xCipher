@@ -470,7 +470,7 @@ export default function TaxonomyManager({
                 <button
                   type="submit"
                   disabled={isCreatingCat || !catName.trim()}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-deep active:bg-accent-press disabled:opacity-50 disabled:cursor-not-allowed text-on-accent text-xs font-semibold rounded-lg shadow-xs transition-all"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-deep active:bg-accent-press disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg shadow-xs transition-all"
                 >
                   {isCreatingCat ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -883,7 +883,7 @@ export default function TaxonomyManager({
                 <button
                   type="submit"
                   disabled={isUpdatingCat || !editCatName.trim()}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-accent hover:bg-accent-deep text-on-accent transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-accent hover:bg-accent-deep text-white transition-colors disabled:opacity-50"
                 >
                   {isUpdatingCat && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Save Changes</span>
@@ -963,7 +963,7 @@ export default function TaxonomyManager({
                 <button
                   type="submit"
                   disabled={isUpdatingTag || !editTagName.trim()}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-accent hover:bg-accent-deep text-on-accent transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-accent hover:bg-accent-deep text-white transition-colors disabled:opacity-50"
                 >
                   {isUpdatingTag && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Save Changes</span>
@@ -1075,7 +1075,7 @@ export default function TaxonomyManager({
                 type="button"
                 onClick={handleConfirmMergeCat}
                 disabled={!mergeCatTarget || isMerging}
-                className="px-4 py-2 text-sm font-semibold bg-accent text-on-accent rounded-md hover:bg-accent-deep transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                className="px-4 py-2 text-sm font-semibold bg-accent text-white rounded-md hover:bg-accent-deep transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
               >
                 {isMerging && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 {isMerging ? "Merging…" : "Merge & Delete"}
@@ -1149,7 +1149,7 @@ export default function TaxonomyManager({
                 type="button"
                 onClick={handleConfirmMergeTag}
                 disabled={!mergeTagTarget || isMerging}
-                className="px-4 py-2 text-sm font-semibold bg-accent text-on-accent rounded-md hover:bg-accent-deep transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                className="px-4 py-2 text-sm font-semibold bg-accent text-white rounded-md hover:bg-accent-deep transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
               >
                 {isMerging && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 {isMerging ? "Merging…" : "Merge & Delete"}

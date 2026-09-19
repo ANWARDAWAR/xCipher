@@ -17,7 +17,7 @@ export default function SiteFooter() {
                 <rect x="1" y="15" width="10" height="10" fill="currentColor" opacity=".32" />
                 <path d="M15.5 15.5 24.5 24.5M24.5 15.5l-9 9" stroke="var(--accent)" strokeWidth="3.2" strokeLinecap="round" />
               </svg>
-              <span className="wm" style={{ color: "#fff" }}>x<span className="wm-x">Sypher</span></span>
+              <span className="wm flex items-baseline" style={{ color: "#fff" }}><span>x</span><span className="wm-x font-kremlin font-normal tracking-wide">Sypher</span></span>
             </Link>
             <p>
               xSypher is an independent technology publication. We cover the companies, code and ideas shaping
@@ -54,39 +54,38 @@ export default function SiteFooter() {
             </div>
           </div>
           <div>
-            <h4>Sections</h4>
+            <h4 className="text-xs font-bold tracking-widest uppercase !text-red-500 mb-4 block">Coverage</h4>
+            <Link href="/latest">Latest Intelligence</Link>
             <Link href="/category/ai">AI & Machine Learning</Link>
             <Link href="/category/cybersecurity">Cybersecurity</Link>
-            <Link href="/category/gadgets">Gadgets</Link>
-            <Link href="/category/software">Software</Link>
-            <Link href="/category/programming">Programming</Link>
+            <Link href="/category/software">Software Architecture</Link>
+            <Link href="/category/gadgets">Hardware & Gadgets</Link>
             <Link href="/category/business">Tech Business</Link>
-            <Link href="/category/gaming">Gaming</Link>
-            <Link href="/category/reviews">Reviews</Link>
+            <Link href="/series">Editorial Collections</Link>
           </div>
           <div>
-            <h4>xSypher</h4>
+            <h4 className="text-xs font-bold tracking-widest uppercase !text-red-500 mb-4 block">The Newsroom</h4>
             <Link href="/page/about">About xSypher</Link>
-            <Link href="/page/contact">Contact</Link>
-            <Link href="/page/editorial">Editorial Policy</Link>
-            <Link href="/page/corrections">Corrections</Link>
-            <Link href="/page/advertising">Advertising</Link>
+            <Link href="/page/contact">Contact Desk</Link>
+            <Link href="/page/advertising">Advertising & Partnerships</Link>
             <Link href="/page/careers">Careers</Link>
-            <Link href="/latest">Latest Stories</Link>
+            <Link href="/page/media-kit">Media Kit</Link>
+            <Link href="/page/newsletters">Newsletters</Link>
+            <Link href="/feed.xml">RSS Feed</Link>
           </div>
           <div>
-            <h4>Legal</h4>
-            <Link href="/page/privacy">Privacy Policy</Link>
-            <Link href="/page/terms">Terms of Use</Link>
-            <Link href="/page/cookies">Cookie Policy</Link>
-            <Link href="/page/newsletter">Newsletters</Link>
+            <h4 className="text-xs font-bold tracking-widest uppercase !text-red-500 mb-4 block">Standards & Legal</h4>
+            <Link href="/page/editorial-standards">Editorial Standards</Link>
+            <Link href="/page/corrections">Corrections Policy</Link>
+            <Link href="/page/transparency">Transparency Report</Link>
+            <Link href="/page/privacy-policy">Privacy Policy</Link>
+            <Link href="/page/terms-of-use">Terms of Use</Link>
+            <Link href="/page/cookie-policy">Cookie Policy</Link>
+            <Link href="/page/disclaimer">Technical Disclaimer</Link>
           </div>
         </div>
-        <div className="foot-bottom">
-          <span>© 2026 xSypher. All rights reserved.</span>
-          <span>xSypher is an independent technology publication.</span>
-          <span className="spacer"></span>
-          <button id="consoleLink" title="Editorial console (Ctrl+Shift+E)">Staff · Editorial Console</button>
+        <div className="foot-bottom flex items-center justify-center w-full">
+          <span className="text-center">© 2026 xSypher. All rights reserved.</span>
         </div>
       </div>
     </footer>

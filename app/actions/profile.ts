@@ -48,7 +48,7 @@ export async function updateProfile(data: any) {
       throw new Error("User not found in database.");
     }
 
-    const { name, headline, role, overview, bio, avatar, location, website, email, socialLinks, expertise, verifiedTitle, disclosure, publicContact, slug: submittedSlug } = data;
+    const { name, headline, role, overview, bio, avatar, location, website, email, socialLinks, expertise, verifiedTitle, disclosure, publicContact, slug: submittedSlug, pgpPublicKey } = data;
 
     // Generate base slug
     const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || `user-${dbUser.id.substring(0, 6)}`;
@@ -134,12 +134,16 @@ export async function updateProfile(data: any) {
       },
     });
 
-    if (!dbUser.authorId || dbUser.name !== name) {
+    if (!dbUser.authorId || dbUser.name !== name || pgpPublicKey !== undefined) {
       await db.user.update({
         // dbUser, not the actor: when an owner edits someone else's profile
         // the author record must attach to that user's account.
         where: { id: dbUser.id },
-        data: { authorId: author.id, name },
+        data: { 
+          authorId: author.id, 
+          name, 
+          ...(pgpPublicKey !== undefined ? { pgpPublicKey } : {})
+        },
       });
     }
 

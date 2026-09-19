@@ -1,6 +1,6 @@
 import { showToast } from "./utils";
 
-export const FS = [0.9375, 1.075, 1.2, 1.35];
+export const FS = [1.0625, 1.125, 1.25, 1.375];
 const LABELS = ["Small", "Default", "Large", "Extra large"];
 
 let currentFsIdx = 1;
@@ -37,7 +37,7 @@ export function applyFs(idx: number, showFeedback: boolean = true) {
 
 export function stepFs(delta: number) {
   const newIdx = Math.min(FS.length - 1, Math.max(0, currentFsIdx + delta));
-  applyFs(newIdx, true);
+  applyFs(newIdx, false);
 }
 
 export function subscribeFs(fn: (idx: number) => void) {

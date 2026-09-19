@@ -133,7 +133,11 @@ export default async function Home() {
           </h1>
           <p className="story-deck">{lead.deck}</p>
           <div className="byline">
-            <div className="ava lg">{(lead.author || "xSypher").charAt(0)}</div>
+            {lead.authorModel?.avatar ? (
+              <img src={lead.authorModel.avatar} alt={lead.authorModel.name || lead.author || ""} className="ava lg object-cover rounded-full" />
+            ) : (
+              <div className="ava lg">{(lead.author || "xSypher").charAt(0)}</div>
+            )}
             <span>
               <b>{lead.author || "xSypher Staff"}</b>, {lead.role || ""} <span className="dot">·</span> {<RelativeTime dateTime={new Date(lead.createdAt).toISOString()} />} <span className="dot">·</span> {lead.mins} min read
             </span>
@@ -328,7 +332,11 @@ export default async function Home() {
                 </h1>
                 <p className="story-deck">{pickFeat.deck}</p>
                 <div className="byline">
-                  <div className="ava">{(pickFeat.author || "xSypher").charAt(0)}</div>
+                  {pickFeat.authorModel?.avatar ? (
+                    <img src={pickFeat.authorModel.avatar} alt={pickFeat.authorModel.name || pickFeat.author || ""} className="ava object-cover rounded-full" />
+                  ) : (
+                    <div className="ava">{(pickFeat.author || "xSypher").charAt(0)}</div>
+                  )}
                   <span><b>{pickFeat.author || "xSypher Staff"}</b> <span className="dot">·</span> {<RelativeTime dateTime={new Date(pickFeat.createdAt).toISOString()} />}</span>
                 </div>
               </article>
@@ -409,7 +417,11 @@ function CatSplit({ cat, articles, reverse = false }: { cat: string, articles: a
               </h3>
               <p className="story-deck">{feat.deck}</p>
               <div className="byline" style={{ marginTop: "12px" }}>
-                <div className="ava sm">{feat.author.charAt(0)}</div>
+                {feat.authorModel?.avatar ? (
+                  <img src={feat.authorModel.avatar} alt={feat.authorModel.name || feat.author || ""} className="ava sm object-cover rounded-full" />
+                ) : (
+                  <div className="ava sm">{feat.author.charAt(0)}</div>
+                )}
                 <span><b>{feat.author}</b> <span className="dot">·</span> {<RelativeTime dateTime={new Date(feat.createdAt).toISOString()} />} <span className="dot">·</span> {feat.mins} min read</span>
               </div>
             </div>

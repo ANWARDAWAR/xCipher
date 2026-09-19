@@ -44,6 +44,7 @@ export const ALLOWED_MEDIA_DOMAINS = [
   "avatars.githubusercontent.com",
   "lh3.googleusercontent.com",
   "upload.wikimedia.org",
+  "res.cloudinary.com",
   ...uploadHosts(),
 ];
 

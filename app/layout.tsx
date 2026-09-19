@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import { getPublicationSettings } from "@/lib/settings";
 import { Space_Grotesk, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
+
+const kremlin = localFont({
+  src: './fonts/kremlin.woff2',
+  variable: '--f-kremlin',
+  display: 'swap',
+});
 import "./globals.css";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 
@@ -73,7 +80,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${spaceGrotesk.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`scroll-pt-28 lg:scroll-pt-32 ${spaceGrotesk.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} ${kremlin.variable}`}>
       <body suppressHydrationWarning>
         {/* Carry a theme chosen under a previous brand over to the current
             storage key. next-themes reads a single key, so without this a

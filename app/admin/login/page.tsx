@@ -125,7 +125,7 @@ function LoginForm() {
           type="submit" 
           disabled={loading} 
           style={{ backgroundColor: loading ? '#b91c1c' : '#dc2626' }}
-          className="w-full h-11 flex items-center justify-center gap-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-on-accent font-medium text-sm tracking-wide rounded-lg shadow-md shadow-accent/25 transition-all duration-200 active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer"
+          className="w-full h-11 flex items-center justify-center gap-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-white font-medium text-sm tracking-wide rounded-lg shadow-md shadow-accent/25 transition-all duration-200 active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer"
         >
           {loading ? (
             <>
@@ -143,7 +143,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center text-neutral-200 p-4 sm:p-6 lg:p-8 relative selection:bg-accent selection:text-on-accent">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center text-neutral-200 p-4 sm:p-6 lg:p-8 relative selection:bg-accent selection:text-white">
       {/* High-Performance Animated Tech Background */}
       <div 
         className="fixed inset-0 overflow-hidden pointer-events-none -z-10 bg-[#0c0d10]"

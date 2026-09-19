@@ -43,6 +43,7 @@ model User {
   password          String?
   role              Role              @default(AUTHOR)
   authorId          String?           @unique
+  pgpPublicKey      String?           @db.Text
   notificationPrefs Json?
   isActive          Boolean           @default(true)
   sessionVersion    Int               @default(1)

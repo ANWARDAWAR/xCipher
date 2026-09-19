@@ -155,33 +155,40 @@ export default async function PreviewPage({ params }: Props) {
         <h1 className="art-title" itemProp="headline">{article.title}</h1>
         <p className="art-deck" itemProp="description">{article.deck}</p>
         
-        <div className="art-byline">
-          {authorSlug ? (
-            <Link href={`/author/${authorSlug}`} style={{ flexShrink: 0, display: 'block' }}>
-              {article.authorModel?.avatar ? (
-                <img src={article.authorModel.avatar} alt={authorName} className="ava lg object-cover" />
-              ) : (
-                <div className="ava lg">{authorName.charAt(0)}</div>
-              )}
-            </Link>
-          ) : (
-            article.authorModel?.avatar ? (
-              <img src={article.authorModel.avatar} alt={authorName} className="ava lg object-cover" />
-            ) : (
-              <div className="ava lg">{authorName.charAt(0)}</div>
-            )
-          )}
-          <div className="ab-txt">
+        <div className="py-4 my-6 border-t border-b border-[var(--line)]">
+          <div className="flex items-center gap-3 mb-4">
             {authorSlug ? (
-              <Link href={`/author/${authorSlug}`} style={{ fontWeight: 700, color: 'inherit', textDecoration: 'none' }} itemProp="author">{authorName}</Link>
+              <Link href={`/author/${authorSlug}`} className="shrink-0">
+                {article.authorModel?.avatar ? (
+                  <img src={article.authorModel.avatar} alt={authorName} className="w-10 h-10 rounded-full shrink-0 object-cover" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold shrink-0">{authorName.charAt(0)}</div>
+                )}
+              </Link>
             ) : (
-              <b itemProp="author">{authorName}</b>
-            )}<br/>
-            <span className="muted">{authorHeadline}</span>
+              article.authorModel?.avatar ? (
+                <img src={article.authorModel.avatar} alt={authorName} className="w-10 h-10 rounded-full shrink-0 object-cover" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold shrink-0">{authorName.charAt(0)}</div>
+              )
+            )}
+            <div className="flex flex-col justify-center flex-1 min-w-0">
+              {authorSlug ? (
+                <Link href={`/author/${authorSlug}`} className="text-sm font-bold text-[var(--ink)] hover:text-[var(--accent)] truncate" itemProp="author">{authorName}</Link>
+              ) : (
+                <span className="text-sm font-bold text-[var(--ink)] truncate" itemProp="author">{authorName}</span>
+              )}
+              <span className="text-xs text-[var(--muted)] whitespace-normal break-words">{authorHeadline}</span>
+            </div>
           </div>
-          <div className="ab-meta" style={{ marginLeft: "auto", textAlign: "right" }}>
-            Published <b><time itemProp="datePublished">{article.createdAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</time></b><br/>
-            Updated {article.updatedAt.toLocaleDateString("en-US")} · 5 min read · {fmtViews(article.views)} reads
+          <div className="font-mono text-[11px] text-[var(--muted)] tracking-tight flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>Published <b><time itemProp="datePublished" className="text-[var(--ink)]">{article.createdAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</time></b></span>
+            <span className="hidden sm:inline">·</span>
+            <span>Updated <b>{article.updatedAt.toLocaleDateString("en-US")}</b></span>
+            <span className="hidden sm:inline">·</span>
+            <span><b>5 min</b> read</span>
+            <span className="hidden sm:inline">·</span>
+            <span><b>{fmtViews(article.views || 0)}</b> reads</span>
           </div>
         </div>
         

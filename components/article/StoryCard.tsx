@@ -45,7 +45,7 @@ export default function StoryCard({ article: a, showDeck = true }: Props) {
       : null;
   
   return (
-    <article className="story-card" data-reveal>
+    <article className="story-card" data-reveal suppressHydrationWarning>
       <Link href={`/article/${a.slug}`} className="ph r-32" tabIndex={-1} aria-hidden="true">
         <Image 
           src={getImgSrc(a.img || "", 640, 427)} 
@@ -65,7 +65,7 @@ export default function StoryCard({ article: a, showDeck = true }: Props) {
         </h3>
         {showDeck && <p className="story-deck">{a.deck}</p>}
         <div className="byline" style={{ marginTop: "8px" }}>
-          <span>{a.author || "xSypher Staff"} · {ageNode} · {a.mins || 5} min read</span>
+          <span><span className="text-[var(--accent)] hover:underline">{a.author || "xSypher Staff"}</span> · {ageNode} · {a.mins || 5} min read</span>
         </div>
       </div>
     </article>

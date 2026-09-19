@@ -137,7 +137,7 @@ export default function Pagination({
                 aria-current={p === clampedPage ? "page" : undefined}
                 className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                   p === clampedPage
-                    ? "bg-accent border-accent text-on-accent shadow-xs"
+                    ? "bg-accent border-accent text-white shadow-xs"
                     : "bg-surface border-line text-ink hover:bg-surface-2"
                 }`}
               >

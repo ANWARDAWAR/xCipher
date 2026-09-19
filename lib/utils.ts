@@ -41,37 +41,55 @@ export function showToast(msg: string, type?: 'default' | 'success' | 'error' | 
   const resolved = type ?? inferToastType(msg);
 
   let t = document.getElementById("toast");
-  if (!t) {
-    t = document.createElement("div");
-    t.id = "toast";
-    document.body.appendChild(t);
+  if (t) {
+    t.remove(); // Remove existing toast to re-trigger animation
   }
 
-  // Errors are announced assertively so a screen reader interrupts rather than
-  // waiting for a pause; everything else stays polite. role must match, or the
-  // announcement is inconsistent between browsers.
+  t = document.createElement("div");
+  t.id = "toast";
+  
+  // Set accessibility attributes
   const assertive = resolved === 'error';
   t.setAttribute("role", assertive ? "alert" : "status");
   t.setAttribute("aria-live", assertive ? "assertive" : "polite");
 
-  t.className = resolved !== 'default' ? resolved : '';
-  t.innerHTML = `${TOAST_ICONS[resolved]}<span></span>`;
+  // Sleek, centered pill design with top-middle positioning and animate-in
+  t.className = "fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 bg-[var(--surface)] text-[var(--ink)] shadow-2xl rounded-full px-6 py-3 border border-[var(--line)] animate-in slide-in-from-top-5 fade-in duration-300";
 
-  // textContent, not innerHTML: messages interpolate article titles, which are
-  // author-supplied. A headline containing markup would otherwise be injected
-  // into the page.
-  const span = t.querySelector("span");
+  // Color-coded icon wrapper
+  const iconColors: Record<string, string> = {
+    error: "text-red-500",
+    success: "text-green-500",
+    warning: "text-yellow-500",
+    info: "text-blue-500",
+    default: "text-gray-500",
+  };
+  const iconColor = iconColors[resolved] || iconColors.default;
+
+  t.innerHTML = `<span class="${iconColor}">${TOAST_ICONS[resolved]}</span><span class="text-sm font-medium"></span>`;
+
+  // Safely inject text content
+  const span = t.querySelector("span.text-sm");
   if (span) span.textContent = msg;
 
-  void t.offsetWidth;
+  document.body.appendChild(t);
 
-  t.classList.add("show");
   if (toastTimer) clearTimeout(toastTimer);
-  // Errors linger: they usually carry a reason worth reading, and a failure
-  // that vanishes in four seconds is a failure the user never understood.
+  
+  // Auto-dismiss after 3.5 seconds
   toastTimer = setTimeout(() => {
-    t?.classList.remove("show");
-  }, assertive ? 7000 : 4000);
+    const currentToast = document.getElementById("toast");
+    if (currentToast) {
+      // Add animate-out before removing
+      currentToast.classList.remove("animate-in", "slide-in-from-top-5", "fade-in");
+      currentToast.classList.add("animate-out", "slide-out-to-top-5", "fade-out");
+      setTimeout(() => {
+        if (currentToast.parentNode) {
+          currentToast.parentNode.removeChild(currentToast);
+        }
+      }, 300); // Wait for exit animation
+    }
+  }, 3500);
 }
 
 function inferToastType(msg: string): 'default' | 'success' | 'error' | 'warning' | 'info' {
@@ -95,4 +113,14 @@ const TOAST_ICONS: Record<string, string> = {
   default: `<svg class="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
 };
 
-
+export function slugify(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')       // Replace spaces with -
+    .replace(/[^\w\-]+/g, '')   // Remove all non-word chars
+    .replace(/\-\-+/g, '-')     // Replace multiple - with single -
+    .replace(/^-+/, '')         // Trim - from start of text
+    .replace(/-+$/, '');        // Trim - from end of text
+}

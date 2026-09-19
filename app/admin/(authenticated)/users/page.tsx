@@ -45,7 +45,7 @@ export default async function UsersPage() {
           </Link>
           <Link
             href="/api/auth/signout"
-            className="px-4 py-2 text-sm font-semibold rounded-lg bg-accent hover:bg-accent-deep text-on-accent transition-colors"
+            className="px-4 py-2 text-sm font-semibold rounded-lg bg-accent hover:bg-accent-deep text-white transition-colors"
           >
             Switch Account
           </Link>
@@ -94,7 +94,7 @@ export default async function UsersPage() {
 
         <Link
           href="/admin/users/invite"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-on-accent text-xs sm:text-sm font-semibold rounded-lg shadow-xs hover:shadow transition-all duration-150 active:scale-[0.99] self-start sm:self-auto"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs hover:shadow transition-all duration-150 active:scale-[0.99] self-start sm:self-auto"
         >
           <UserPlus className="w-4 h-4" />
           <span>+ Invite User</span>

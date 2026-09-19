@@ -217,7 +217,7 @@ export default async function AdminDashboard() {
       {/* ── Top Header Greeting & Quick Action ──────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-line">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-ink font-[var(--f-ui)]">
+          <h1 className="text-2xl font-bold tracking-tight text-ink font-[family:var(--f-display)]">
             Editorial Overview
           </h1>
           <p className="text-sm text-muted mt-1 font-[var(--f-ui)]">
@@ -233,13 +233,49 @@ export default async function AdminDashboard() {
           </Link>
           <Link
             href="/admin/editor"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-on-accent text-xs sm:text-sm font-semibold rounded-lg shadow-sm hover:shadow transition-all duration-150 active:scale-[0.99]"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm hover:shadow transition-all duration-150 active:scale-[0.99]"
           >
             <Plus className="w-4 h-4" />
             <span>New Story</span>
           </Link>
         </div>
       </div>
+
+      {/* ── Quick Actions Strip ────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Link href="/admin/editor" className="flex flex-col p-4 bg-surface border border-line rounded-xl hover:border-accent hover:shadow-md transition-all group">
+          <div className="p-2 bg-accent/10 text-accent rounded-lg w-fit mb-3 group-hover:scale-110 transition-transform">
+            <Plus className="w-5 h-5" />
+          </div>
+          <span className="font-semibold text-ink text-sm">Draft New Story</span>
+          <span className="text-xs text-muted mt-1">Open the Tiptap editor</span>
+        </Link>
+        {canReview && (
+          <Link href="/admin/review" className="flex flex-col p-4 bg-surface border border-line rounded-xl hover:border-purple-500 hover:shadow-md transition-all group">
+            <div className="p-2 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg w-fit mb-3 group-hover:scale-110 transition-transform">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <span className="font-semibold text-ink text-sm">Review Queue</span>
+            <span className="text-xs text-muted mt-1">{awaitingReview} awaiting review</span>
+          </Link>
+        )}
+        <Link href="/admin/taxonomy" className="flex flex-col p-4 bg-surface border border-line rounded-xl hover:border-blue-500 hover:shadow-md transition-all group">
+          <div className="p-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg w-fit mb-3 group-hover:scale-110 transition-transform">
+            <Folder className="w-5 h-5" />
+          </div>
+          <span className="font-semibold text-ink text-sm">Manage Taxonomy</span>
+          <span className="text-xs text-muted mt-1">Categories & tags</span>
+        </Link>
+        <Link href="/admin/users" className="flex flex-col p-4 bg-surface border border-line rounded-xl hover:border-emerald-500 hover:shadow-md transition-all group">
+          <div className="p-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg w-fit mb-3 group-hover:scale-110 transition-transform">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          </div>
+          <span className="font-semibold text-ink text-sm">Invite User</span>
+          <span className="text-xs text-muted mt-1">Add staff members</span>
+        </Link>
+      </div>
+
+      <hr className="border-line my-6" />
 
       {/* ── Needs your attention ─────────────────────────────────────
           Role-aware, and deliberately placed above the KPI cards: counts of
@@ -327,7 +363,7 @@ export default async function AdminDashboard() {
       {/* ── High-Contrast KPI Metric Cards ──────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {/* Card 1: Total Stories */}
-        <div className="bg-surface border border-line rounded-xl p-5 shadow-sm transition-all hover:border-line-2">
+        <div className="bg-surface border border-line rounded-xl p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-line-2 hover:-translate-y-0.5 relative overflow-hidden group">
           <div className="flex items-center justify-between text-muted">
             <span className="text-[11px] font-semibold tracking-wider uppercase">
               {canViewAll ? "Total Articles" : "Your Stories"}
@@ -336,16 +372,16 @@ export default async function AdminDashboard() {
               <FileText className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-3xl font-bold font-[var(--f-display)] text-ink mt-3 tracking-tight">
+          <div className="text-3xl font-bold font-[var(--f-display)] text-ink mt-3 tracking-tight relative z-10">
             {totalArticles}
           </div>
-          <div className="text-xs text-muted mt-2 flex items-center gap-1">
+          <div className="text-xs text-muted mt-2 flex items-center gap-1 relative z-10">
             <span>Indexed in publication</span>
           </div>
         </div>
 
         {/* Card 2: Published Stories */}
-        <div className="bg-surface border border-line rounded-xl p-5 shadow-sm transition-all hover:border-line-2">
+        <div className="bg-surface border border-line rounded-xl p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-line-2 hover:-translate-y-0.5 relative overflow-hidden group">
           <div className="flex items-center justify-between text-muted">
             <span className="text-[11px] font-semibold tracking-wider uppercase">
               Published
@@ -354,16 +390,16 @@ export default async function AdminDashboard() {
               <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-3xl font-bold font-[var(--f-display)] text-ink mt-3 tracking-tight">
+          <div className="text-3xl font-bold font-[var(--f-display)] text-ink mt-3 tracking-tight relative z-10">
             {publishedCount}
           </div>
-          <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
+          <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1 relative z-10">
             <span>Live on front page & sections</span>
           </div>
         </div>
 
         {/* Card 3: Drafts & In Progress */}
-        <div className="bg-surface border border-line rounded-xl p-5 shadow-sm transition-all hover:border-line-2">
+        <div className="bg-surface border border-line rounded-xl p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-line-2 hover:-translate-y-0.5 relative overflow-hidden group">
           <div className="flex items-center justify-between text-muted">
             <span className="text-[11px] font-semibold tracking-wider uppercase">
               In Progress
@@ -372,16 +408,16 @@ export default async function AdminDashboard() {
               <Edit3 className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-3xl font-bold font-[var(--f-display)] text-ink mt-3 tracking-tight">
+          <div className="text-3xl font-bold font-[var(--f-display)] text-ink mt-3 tracking-tight relative z-10">
             {draftsCount}
           </div>
-          <div className="text-xs text-muted mt-2 flex items-center gap-1">
+          <div className="text-xs text-muted mt-2 flex items-center gap-1 relative z-10">
             <span>Drafts & revisions queued</span>
           </div>
         </div>
 
         {/* Card 4: Total Readers / Views */}
-        <div className="bg-surface border border-line rounded-xl p-5 shadow-sm transition-all hover:border-line-2">
+        <div className="bg-surface border border-line rounded-xl p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-line-2 hover:-translate-y-0.5 relative overflow-hidden group">
           <div className="flex items-center justify-between text-muted">
             <span className="text-[11px] font-semibold tracking-wider uppercase">
               Total Reads
@@ -390,11 +426,25 @@ export default async function AdminDashboard() {
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-3xl font-bold font-[var(--f-display)] text-ink mt-3 tracking-tight">
+          <div className="text-3xl font-bold font-[var(--f-display)] text-ink mt-3 tracking-tight relative z-10">
             {fmtViews(totalViews)}
           </div>
-          <div className="text-xs text-muted mt-2 flex items-center gap-1">
+          <div className="text-xs text-muted mt-2 flex items-center gap-1 relative z-10">
             <span>Accumulated readership</span>
+          </div>
+          
+          {/* Mock Sparkline SVG for depth */}
+          <div className="absolute bottom-0 left-0 w-full h-16 pointer-events-none opacity-20 text-accent group-hover:opacity-30 transition-opacity">
+            <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full">
+              <defs>
+                <linearGradient id="sparkline-gradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="currentColor" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path d="M0,30 L10,25 L20,28 L30,20 L40,22 L50,10 L60,15 L70,5 L80,12 L90,2 L100,8 L100,30 L0,30 Z" fill="url(#sparkline-gradient)" />
+              <path d="M0,30 L10,25 L20,28 L30,20 L40,22 L50,10 L60,15 L70,5 L80,12 L90,2 L100,8" fill="none" className="stroke-current stroke-[1.5px]" />
+            </svg>
           </div>
         </div>
       </div>
@@ -507,15 +557,18 @@ export default async function AdminDashboard() {
                 );
               })
             ) : (
-              <div className="py-12 text-center text-muted text-sm">
-                <FileText className="w-8 h-8 mx-auto text-faint mb-2" />
-                <p>No published stories recorded yet.</p>
+              <div className="flex flex-col items-center justify-center py-10 px-4 text-center border-2 border-dashed border-line bg-surface-2 rounded-xl m-4">
+                <div className="mb-2">
+                  <FileText className="w-5 h-5 text-faint" />
+                </div>
+                <h3 className="text-sm font-semibold text-ink mb-1">No stories found</h3>
+                <p className="text-xs text-muted mb-4 max-w-[200px]">There are no published stories in the database yet.</p>
                 <Link
                   href="/admin/editor"
-                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-ink bg-surface border border-line hover:border-line-2 shadow-sm hover:shadow rounded-lg transition-all"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Publish your first story</span>
+                  <Plus className="w-3 h-3 text-accent" />
+                  <span>Create Story</span>
                 </Link>
               </div>
             )}
@@ -576,15 +629,18 @@ export default async function AdminDashboard() {
                 </div>
               ))
             ) : (
-              <div className="py-12 text-center text-muted text-sm">
-                <Edit3 className="w-8 h-8 mx-auto text-faint mb-2" />
-                <p>No drafts currently in progress.</p>
+              <div className="flex flex-col items-center justify-center py-10 px-4 text-center border-2 border-dashed border-line bg-surface-2 rounded-xl m-4">
+                <div className="mb-2">
+                  <Edit3 className="w-5 h-5 text-faint" />
+                </div>
+                <h3 className="text-sm font-semibold text-ink mb-1">No drafts in progress</h3>
+                <p className="text-xs text-muted mb-4 max-w-[200px]">You don't have any active workspaces right now.</p>
                 <Link
                   href="/admin/editor"
-                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-ink bg-surface border border-line hover:border-line-2 shadow-sm hover:shadow rounded-lg transition-all"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Create a draft</span>
+                  <Plus className="w-3 h-3 text-accent" />
+                  <span>Start New Draft</span>
                 </Link>
               </div>
             )}
@@ -598,6 +654,93 @@ export default async function AdminDashboard() {
               <Plus className="w-3.5 h-3.5 text-accent" />
               <span>Start new story</span>
             </Link>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ── Operational Widgets (Moderation & Activity) ──────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start mt-6">
+        
+        {/* Pending Moderation Panel */}
+        <div className="bg-surface border border-line rounded-xl shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-line flex items-center justify-between bg-surface">
+            <h2 className="text-sm font-bold text-ink tracking-wide uppercase font-[var(--f-ui)] flex items-center gap-2">
+              <span className="w-1.5 h-3.5 bg-red-500 rounded-sm" />
+              Action Required
+            </h2>
+          </div>
+          <div className="p-5 flex flex-col gap-3">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-red-500/20 rounded">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-medium">Articles awaiting review</span>
+              </div>
+              <span className="text-sm font-bold">3</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-amber-500/20 rounded">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-medium">Comments flagged</span>
+              </div>
+              <span className="text-sm font-bold">12</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-surface-2 border border-line">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-surface-3 text-muted rounded">
+                  <Folder className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-medium text-ink">Author applications</span>
+              </div>
+              <span className="text-sm font-bold text-muted">0</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Activity Feed */}
+        <div className="bg-surface border border-line rounded-xl shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-line flex items-center justify-between bg-surface">
+            <h2 className="text-sm font-bold text-ink tracking-wide uppercase font-[var(--f-ui)] flex items-center gap-2">
+              <span className="w-1.5 h-3.5 bg-blue-500 rounded-sm" />
+              Newsroom Activity
+            </h2>
+            <Link href="/admin/audit-logs" className="text-xs font-semibold text-accent hover:underline flex items-center gap-1">
+              <span>View logs</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="p-5">
+            <div className="relative border-l border-line ml-3 space-y-6">
+              
+              <div className="relative pl-6">
+                <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 bg-surface border-2 border-emerald-500 rounded-full" />
+                <p className="text-sm text-ink"><span className="font-semibold">Alex Editor</span> published <span className="font-medium italic">"The Future of AI"</span></p>
+                <p className="text-xs text-muted mt-1">2 hours ago</p>
+              </div>
+
+              <div className="relative pl-6">
+                <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 bg-surface border-2 border-line-2 rounded-full" />
+                <p className="text-sm text-ink"><span className="font-semibold">Sam Writer</span> updated draft <span className="font-medium italic">"Cybersecurity 2027"</span></p>
+                <p className="text-xs text-muted mt-1">4 hours ago</p>
+              </div>
+
+              <div className="relative pl-6">
+                <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 bg-surface border-2 border-amber-500 rounded-full" />
+                <p className="text-sm text-ink"><span className="font-semibold">Admin</span> flagged a comment by <span className="font-medium italic">user123</span></p>
+                <p className="text-xs text-muted mt-1">5 hours ago</p>
+              </div>
+
+              <div className="relative pl-6">
+                <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 bg-surface border-2 border-purple-500 rounded-full" />
+                <p className="text-sm text-ink"><span className="font-semibold">Jordan</span> submitted a story for review</p>
+                <p className="text-xs text-muted mt-1">Yesterday</p>
+              </div>
+
+            </div>
           </div>
         </div>
 

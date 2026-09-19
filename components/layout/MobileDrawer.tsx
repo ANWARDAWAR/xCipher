@@ -48,8 +48,10 @@ export default function MobileDrawer() {
         aria-expanded={isOpen} 
         aria-controls="drawer"
       >
-        <svg className="ic-l" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <path d="M3 6h18M3 12h18M3 18h12" />
+        <svg className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="18" x2="21" y2="18" />
         </svg>
       </button>
 
@@ -68,7 +70,7 @@ export default function MobileDrawer() {
         aria-label="Menu"
         aria-hidden={!isOpen}
       >
-        <div className="drawer-head">
+        <div className="drawer-head sticky top-0 z-50 bg-[var(--surface)] border-b border-[var(--line)]">
           <Link className="logo" href="/" aria-label="xSypher — home" onClick={() => setIsOpen(false)}>
             <svg width="23" height="23" viewBox="0 0 26 26" aria-hidden="true">
               <rect x="1" y="1" width="10" height="10" fill="currentColor" />
@@ -76,7 +78,11 @@ export default function MobileDrawer() {
               <rect x="1" y="15" width="10" height="10" fill="currentColor" opacity=".32" />
               <path d="M15.5 15.5 24.5 24.5M24.5 15.5l-9 9" stroke="var(--accent)" strokeWidth="3.2" strokeLinecap="round" />
             </svg>
-            <span className="wm" style={{ fontSize: "22px" }}>x<span className="wm-x">Sypher</span></span>
+            <span className="wm flex items-baseline" style={{ fontSize: "22px" }}><span>x</span><span className="wm-x font-kremlin font-normal tracking-wide">Sypher</span></span>
+            <div className="flex flex-col text-[8px] font-bold tracking-widest text-[var(--muted)] uppercase leading-tight ml-2 border-l border-[var(--line)] pl-2">
+              <span>ADVANCED TECH &</span>
+              <span>SECURITY INSIGHTS</span>
+            </div>
           </Link>
           <button className="icon-btn" aria-label="Close menu" onClick={() => setIsOpen(false)}>
             <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round">

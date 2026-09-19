@@ -34,6 +34,7 @@ export const ARTICLE_CARD_SELECT = {
   homepagePlacement: true,
   categoryId: true,
   category: { select: { id: true, name: true, slug: true } },
+  authorModel: { select: { avatar: true, name: true, slug: true } },
 } as const;
 
 /** Card fields plus tag chips, for the tag and search listings. */

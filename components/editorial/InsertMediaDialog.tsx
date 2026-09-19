@@ -153,7 +153,7 @@ export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsert
   const Icon = isImage ? ImagePlus : MonitorPlay;
 
   return (
-    <div className="imd-scrim" onMouseDown={onClose} role="presentation">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" onMouseDown={onClose} role="presentation">
       <div
         ref={panelRef}
         className="imd-panel"

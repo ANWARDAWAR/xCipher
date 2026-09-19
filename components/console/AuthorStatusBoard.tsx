@@ -110,7 +110,7 @@ export default function AuthorStatusBoard({
         </p>
         <Link
           href="/admin/editor"
-          className="inline-flex items-center gap-2 mt-5 px-4 py-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-on-accent text-sm font-semibold rounded-lg transition-colors"
+          className="inline-flex items-center gap-2 mt-5 px-4 py-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-white text-sm font-semibold rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
           Start your first story

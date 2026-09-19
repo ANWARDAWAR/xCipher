@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import "tailwindcss"; /* forced rebuild */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root {
@@ -120,28 +120,26 @@
 }
 
 [data-theme="dark"] {
-  --paper: #0c0d10;
-  --surface: #14171c;
-  --surface-2: #1b1f26;
-  --surface-3: #232832;
+  --paper: #0d1117;
+  --surface: #161b22;
+  --surface-2: #21262d;
+  --surface-3: #30363d;
   --bg: var(--paper);
   --bg-elevated: var(--surface);
-  --ink: #f0f2f5;
-  --ink-2: #c5cbd3;
-  --muted: #838d99;
-  --faint: #5a636e;
-  --line: #22272f;
-  --line-2: #2d343e;
+  --ink: #e2e8f0;
+  --ink-2: #94a3b8;
+  --muted: #64748b;
+  --faint: #475569;
+  --line: #30363d;
+  --line-2: #3d444d;
   --accent: #f04552;
   --accent-deep: #ff6973;
   --accent-soft: rgba(240, 69, 82, .1);
   /* Dark theme brightens rather than darkens, so the press step continues up. */
   --accent-press: #ff8a92;
-  /* The dark theme's accent steps get BRIGHTER, so white text falls through the
-     floor as the button is pressed: 3.70 at rest, 2.79 on hover, 2.26 on active.
-     Near-black instead scores 5.25 / 6.96 / 8.61 -- it improves exactly where
-     white degrades, because both move with the fill's luminance. */
-  --on-accent: #0c0d10;
+  /* Foreground for text/icons sitting ON an accent fill. Must always remain pure white (#ffffff)
+     in both light and dark modes to guarantee contrast against the red accent background. */
+  --on-accent: #ffffff;
   /* Status tokens must be re-stated for dark: the light values are mid-tone and
      fall to ~3.3:1 against the dark surfaces. These are lifted to read on dark
      and are dark enough to carry black text when used as a solid fill. */
@@ -222,6 +220,8 @@ body {
   }
 }
 
+
+
         html {
             scroll-behavior: smooth;
             -webkit-text-size-adjust: 100%
@@ -233,7 +233,6 @@ body {
             font-family: var(--f-ui);
             font-size: 15px;
             line-height: 1.55;
-            overflow-x: hidden;
             min-height: 100vh;
             transition: background .3s ease, color .3s ease
         }
@@ -329,6 +328,12 @@ body {
         .ic-l {
             width: 22px;
             height: 22px
+        }
+
+        @media (max-width: 640px) {
+            .ic { width: 16px; height: 16px; }
+            .ic-s { width: 13px; height: 13px; }
+            .ic-l { width: 20px; height: 20px; }
         }
 
         /* type helpers */
@@ -639,7 +644,7 @@ body {
 
         @media(max-width:860px) {
             .util-tag {
-                display: none;
+                padding-left: 8px;
             }
         }
 
@@ -845,21 +850,14 @@ body {
             color: var(--accent)
         }
 
-        /* The selected section reads as a solid chip, matching the Subscribe
-           button, rather than the tinted wash it used before. At 12px uppercase
-           a soft background was easy to mistake for hover, so the current
-           section was not reliably legible at a glance.
-
-           --on-accent is a flipping token (white on the light accent, near-black
-           on the brighter dark-mode accent), so the label keeps its contrast in
-           both themes instead of being pinned to white. */
+        /* Active category tabs with red accent background must strictly have pure white text. */
         .navrow a.on {
-            color: var(--on-accent);
+            color: #ffffff !important;
             background: var(--accent)
         }
 
         .navrow a.on:hover {
-            color: var(--on-accent);
+            color: #ffffff !important;
             background: var(--accent-deep)
         }
 
@@ -871,7 +869,7 @@ body {
         /* Home carries its own colour, so it needs the fill restated or the
            more specific rule above would lose to it when Home is selected. */
         .navrow .nr-home.on {
-            color: var(--on-accent);
+            color: #ffffff !important;
             background: var(--accent)
         }
 
@@ -896,6 +894,9 @@ body {
             align-items: center;
             gap: 14px;
             height: 46px
+        }
+        @media(max-width: 640px) {
+            .ticker-in { gap: 6px; }
         }
 
         .tick-label {
@@ -1914,7 +1915,7 @@ body {
 
         .art-title {
             font-family: var(--f-display);
-            font-size: clamp(1.9rem, 4.4vw, 3rem);
+            font-size: clamp(1.55rem, 4vw, 3rem);
             font-weight: 700;
             line-height: 1.05;
             letter-spacing: var(--track-display);
@@ -2078,6 +2079,12 @@ body {
             }
         }
 
+        @media(min-width:1280px) {
+            .art-cols {
+                grid-template-columns: 56px minmax(0, var(--w-prose)) 260px;
+            }
+        }
+
         .rail {
             display: none
         }
@@ -2116,9 +2123,10 @@ body {
         .prose {
             font-family: var(--f-body);
             font-size: var(--prose-fs);
-            line-height: 1.72;
+            line-height: 1.75;
             color: var(--ink);
             max-width: var(--w-prose);
+            margin-inline: auto;
             font-optical-sizing: auto
         }
 
@@ -2189,17 +2197,10 @@ body {
             height: auto;
         }
 
-        .prose table,
-        .ed-body table,
-        .tiptap-content table {
-            display: block;
-            max-width: 100%;
-            overflow-x: auto;
-        }
 
-        .prose p, .ed-body p, .tiptap-content p {
-            margin: 0 0 1.45em;
-            font-size: inherit;
+        .prose p, .ed-body p, .tiptap-content p, .prose ul, .prose ol, .prose li {
+            margin: 0 0 1.5rem;
+            font-size: 1em;
             line-height: inherit;
         }
 
@@ -2218,8 +2219,8 @@ body {
             font-size: 1.55em;
             font-weight: 660;
             letter-spacing: var(--track-display-sm);
-            line-height: 1.2;
-            margin: 1.8em 0 .7em;
+            line-height: 1.3;
+            margin: 3rem 0 1rem;
             color: var(--ink);
         }
 
@@ -2228,7 +2229,8 @@ body {
             letter-spacing: var(--track-display-sm);
             font-size: 1.25em;
             font-weight: 640;
-            margin: 1.6em 0 .6em;
+            line-height: 1.4;
+            margin: 2rem 0 0.75rem;
             color: var(--ink);
         }
 
@@ -2285,7 +2287,7 @@ body {
 
         .prose ul,
         .prose ol {
-            margin: 0 0 1.5em;
+            margin: 0 0 1.5rem;
             padding-left: 1.4em
         }
 
@@ -2344,19 +2346,25 @@ body {
             background: var(--ink-panel);
             color: #dce3ea;
             border-radius: var(--r-md);
-            padding: 20px 22px;
-            overflow-x: auto;
-            font: 400 13.5px/1.65 var(--f-mono);
             margin: 1.9em 0;
-            position: relative
+            position: relative;
+            padding-top: 3rem !important;
+            padding-bottom: 1.25rem !important;
+            padding-inline: 1.25rem !important;
+            max-width: 100%;
+            overflow-x: auto;
         }
 
         .prose pre code {
-            background: none;
-            padding: 0;
-            font-size: inherit;
+            display: block;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: transparent !important;
+            border: none !important;
+            font-family: var(--f-mono);
             color: inherit;
-            border-radius: 0
+            font-size: 0.875rem;
+            line-height: 1.65;
         }
 
         .prose pre .cm {
@@ -2365,10 +2373,11 @@ body {
 
         .prose code {
             background: var(--surface-2);
-            padding: 2px 6px;
-            border-radius: 3px;
+            color: var(--ink);
+            border: 1px solid var(--line);
+            border-radius: 0.25rem;
+            padding: 0.15em 0.3em;
             font: 400 0.85em var(--f-mono);
-            color: var(--accent)
         }
 
         .prose mark {
@@ -3093,63 +3102,60 @@ body {
         /* Profile card in sidebar */
         .cs-profile-card {
             display: none;
-            flex-direction: column;
+            flex-direction: row;
             align-items: center;
-            text-align: center;
-            padding: 16px 10px 14px;
-            margin-bottom: 4px;
+            text-align: left;
+            padding: 8px 12px;
+            margin-bottom: 12px;
             border-radius: var(--r-md);
             border: 1px solid var(--line);
-            background: linear-gradient(160deg, var(--bg-elevated) 0%, var(--bg-elevated) 100%);
+            background: var(--surface-2);
             cursor: pointer;
             transition: border-color .2s, background .2s;
             text-decoration: none;
             position: relative;
-            overflow: hidden
+            overflow: hidden;
+            gap: 12px;
         }
 
         .cs-profile-card::before {
-            content: '';
-            position: absolute;
-            inset: 0 0 auto 0;
-            height: 42px;
-            background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-elevated) 50%, var(--bg-elevated) 100%);
-            z-index: 0
+            display: none;
         }
 
         @media(min-width:900px) {
             .cs-profile-card {
-                display: flex
+                display: flex;
             }
         }
 
         .cs-profile-card:hover {
-            border-color: var(--line);
-            background: linear-gradient(160deg, var(--bg-elevated) 0%, var(--bg-elevated) 100%)
+            border-color: var(--line-2);
+            background: var(--surface-3);
         }
 
         .cs-profile-avatar {
             position: relative;
             z-index: 1;
-            margin-top: 8px
+            margin-top: 0;
+            flex-shrink: 0;
         }
 
         .cs-profile-img,
         .cs-profile-initials {
-            width: 64px;
-            height: 64px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
-            border: 2.5px solid var(--accent);
+            border: 2px solid var(--accent);
             display: flex;
             align-items: center;
             justify-content: center;
-            font: 700 24px var(--f-ui);
+            font: 700 15px var(--f-ui);
             color: var(--ink);
-            background: var(--bg-elevated)
+            background: var(--bg-elevated);
         }
 
         .cs-profile-img {
-            object-fit: cover
+            object-fit: cover;
         }
 
         .cs-profile-edit-overlay {
@@ -3169,28 +3175,26 @@ body {
             opacity: 1
         }
 
+        .cs-profile-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+        }
+
         .cs-profile-name {
-            margin-top: 10px;
-            font: 700 13.5px/1.2 var(--f-ui);
+            margin-top: 0;
+            font: 700 13px/1.2 var(--f-ui);
             color: var(--ink);
-            max-width: 190px;
+            max-width: 100%;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            z-index: 1
+            z-index: 1;
         }
 
         .cs-profile-headline {
-            margin-top: 4px;
-            font: 400 11px/1.35 var(--f-ui);
-            color: var(--muted);
-            max-width: 200px;
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            line-clamp: 2;
-            -webkit-box-orient: vertical;
-            z-index: 1
+            display: none;
         }
 
         .cs-profile-role-badge {
@@ -3426,23 +3430,22 @@ body {
         .cs-nav button.on,
         .cs-nav a.on:not(.cs-profile-card) {
             background: var(--accent);
-            color: var(--on-accent);
-            border-left: 3px solid var(--accent-deep);
-            padding-left: 11px;
+            color: #ffffff !important;
+            padding-left: 14px;
             font-weight: 600;
         }
 
         .cs-nav button.on:hover,
         .cs-nav a.on:not(.cs-profile-card):hover {
-            background: var(--accent-deep);
-            color: var(--on-accent);
+            background: var(--accent);
+            color: #ffffff !important;
         }
 
         /* Icons inherit the on-accent foreground rather than staying accent
            coloured, which would leave them invisible against the new fill. */
         .cs-nav button.on svg,
         .cs-nav a.on:not(.cs-profile-card) svg {
-            color: currentColor;
+            color: #ffffff;
         }
 
 
@@ -4312,11 +4315,7 @@ body {
             gap: 8px;
         }
 
-        @media(min-width:700px) {
-            .ap-hero-info {
-                /* removed bottom padding to align with avatar */
-            }
-        }
+
 
         h1.ap-name {
             font: 700 28px/1.1 var(--f-display);
@@ -4744,14 +4743,17 @@ body {
 
         .code-lang-badge {
             position: absolute;
-            top: 8px;
-            left: 12px;
-            font: 600 10px var(--f-ui);
-            letter-spacing: .04em;
+            top: 0.85rem;
+            left: 1.25rem;
+            font-family: var(--f-mono, monospace);
+            font-size: 0.725rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
             text-transform: uppercase;
-            color: rgba(255,255,255,0.35);
+            color: var(--muted) !important;
             pointer-events: none;
-            z-index: 1
+            line-height: 1;
+            z-index: 1;
         }
 
         /* ── Editor toolbar selects ── */
@@ -6420,4 +6422,244 @@ select.ed-rail-input {
 @media (pointer: coarse) {
   .crop-stage { height: 280px; }
   .crop-btn { width: 40px; height: 40px; }
+}
+
+/* Typography & Prose Overrides */
+.prose p, .prose li, .prose ul, .prose ol {
+  font-size: 0.9375rem; /* 15px */
+  line-height: 1.6;
+}
+@media (min-width: 768px) {
+  .prose p, .prose li, .prose ul, .prose ol {
+    font-size: 1.0625rem; /* 17px */
+    line-height: 1.7;
+  }
+}
+
+.prose p {
+  width: 100%;
+  word-break: break-word;
+  white-space: normal;
+  text-wrap: balance;
+}
+
+.prose table {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+  border-collapse: collapse;
+  white-space: nowrap; /* Prevents text from crushing */
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+
+.prose th,
+.prose td {
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  white-space: nowrap !important;
+  min-width: auto !important;
+  border: 1px solid var(--line);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  text-align: left;
+}
+
+.prose th {
+  background-color: var(--surface-2);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.prose blockquote {
+  background: none;
+  border-left: 3px solid var(--accent);
+  padding: 0 0 0 1.25rem;
+  margin: 1.5rem 0;
+  font-size: 1rem;
+  font-style: italic;
+  color: var(--muted);
+  font-family: var(--f-ui);
+  font-weight: normal;
+  letter-spacing: normal;
+}
+@media (min-width: 768px) {
+  .prose blockquote {
+    font-size: 1.125rem;
+  }
+}
+.prose blockquote p {
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  font-style: inherit;
+  margin: 0;
+}
+
+
+/* Basic Syntax Highlighting Theme */
+.prose pre { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); overflow-x: auto; padding: 1rem; width: 100%; max-width: 100%; }
+.prose pre code { color: var(--ink); background: none; font-family: 'JetBrains Mono', monospace; font-size: 0.85em; word-break: break-word; white-space: pre-wrap; }
+.hljs-comment, .hljs-quote { color: #6b7280; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-addition { color: var(--accent); font-weight: bold; }
+.hljs-string, .hljs-meta .hljs-meta-string, .hljs-doctag, .hljs-regexp { color: #10b981; }
+.hljs-title, .hljs-section, .hljs-name, .hljs-selector-id, .hljs-selector-class { color: #3b82f6; font-weight: bold; }
+.hljs-attribute, .hljs-attr, .hljs-variable, .hljs-template-variable, .hljs-class .hljs-title, .hljs-type { color: #8b5cf6; }
+.hljs-symbol, .hljs-bullet, .hljs-subst, .hljs-meta, .hljs-meta .hljs-keyword, .hljs-selector-attr, .hljs-selector-pseudo, .hljs-link { color: #f59e0b; }
+.hljs-built_in, .hljs-deletion { color: #ef4444; }
+
+.prose { max-width: 100% !important; box-sizing: border-box; }
+.prose pre { max-width: 100%; overflow-x: auto; box-sizing: border-box; white-space: pre-wrap !important; word-wrap: break-word !important; }
+.prose pre code { white-space: pre-wrap !important; word-break: break-all; display: block; max-width: 100%; }
+
+/* Strictly target block-level text to prevent recursive span scaling */
+body.is-article .prose > p,
+body.is-article .prose > ul > li,
+body.is-article .prose > ol > li,
+body.is-article .prose > blockquote > p {
+  font-size: var(--prose-fs, 1.075rem) !important;
+}
+
+/* Protect code blocks from any scaler bleed */
+body.is-article .prose pre,
+body.is-article .prose pre span,
+body.is-article .prose code {
+  font-size: 0.875em !important; /* Standard prose code size */
+}
+
+/* ==========================================================================
+   Editorial Table System (Industry Standard)
+   ========================================================================== */
+
+/* 1. Scrollable Table Wrapper */
+.prose .tableWrapper,
+.tableWrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-block: 2rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+/* 2. Table Element: Enforce Minimum Width and Reset TipTap Layout */
+.prose table {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 0.5rem !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  table-layout: auto !important;
+}
+
+/* Reset TipTap inline colgroup widths so columns size naturally */
+.prose table colgroup col {
+  width: auto !important;
+  min-width: 120px !important;
+}
+
+/* 3. Headers and Cells */
+.prose table th,
+.prose table td {
+  padding: 0.875rem 1.25rem !important;
+  min-width: 140px !important;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  vertical-align: middle !important;
+  border-bottom: 1px solid var(--line) !important;
+  border-right: 1px solid var(--line) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  color: var(--ink) !important;
+}
+
+.prose table th:last-child,
+.prose table td:last-child {
+  border-right: none !important;
+}
+
+.prose table thead th {
+  background-color: var(--surface-2) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  font-family: var(--f-ui, sans-serif) !important;
+  font-size: 0.75rem !important;
+}
+
+/* Clean last row border */
+.prose table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* Row hover effect */
+.prose table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.prose table tbody tr:hover {
+  background-color: color-mix(in srgb, var(--surface-2) 50%, transparent);
+}
+
+/* Inline badges inside tables */
+.prose table td code {
+  white-space: nowrap !important;
+  display: inline-block !important;
+  padding: 0.2rem 0.45rem !important;
+  font-size: 0.8125rem !important;
+  background: var(--surface-2) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 4px !important;
+}
+
+/* ==========================================================================
+   Mobile Back-to-Top Toolbar Clearance
+   ========================================================================== */
+body.is-article .back-to-top-btn {
+  bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  right: 1rem;
+}
+
+@media (min-width: 768px) {
+  body.is-article .back-to-top-btn {
+    bottom: 2.5rem;
+    right: 2.5rem;
+  }
+}
+
+body.is-article .prose pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.font-kremlin {
+  font-family: var(--f-kremlin), sans-serif;
+}
+
+.art-cols {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.prose {
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
+}
+
+.prose p, .prose a, .prose li, .prose h1, .prose h2, .prose h3, .prose h4 {
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
 }

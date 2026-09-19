@@ -45,7 +45,7 @@ export default function StoryRow({ article: a, showDeck = true }: Props) {
       : null;
   
   return (
-    <article className="story-row" data-reveal>
+    <article className="story-row" data-reveal suppressHydrationWarning>
       <Link href={`/article/${a.slug}`} className="ph" tabIndex={-1} aria-hidden="true">
         <Image 
           src={getImgSrc(a.img || "", 300, 225)} 

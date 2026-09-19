@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { Lock } from "lucide-react";
+import CopyPgpButton from "./CopyPgpButton";
 import StoryCard from "@/components/article/StoryCard";
 import Sidebar from "@/components/layout/Sidebar";
 import { fmtViews } from "@/lib/utils";
 import { sanitizeBioHtml } from "@/lib/sanitize";
+import CodeBlockEnhancer from "@/components/article/CodeBlockEnhancer";
 
 export function SocialIcon({ platform }: { platform: string }) {
   const p = platform.toLowerCase();
@@ -32,15 +35,15 @@ export function SocialIcon({ platform }: { platform: string }) {
 
 export default function AuthorProfileView({ author, articles, socials, totalViews }: { author: any, articles: any[], socials: any[], totalViews: number }) {
   return (
-    <div className="ap-root">
+    <div className="ap-root overflow-x-hidden w-full max-w-[100vw]">
       {/* ── Hero / Banner ─────────────────────────── */}
       <section className="ap-hero">
         <div className="ap-banner" aria-hidden="true">
           <div className="ap-banner-grid" />
         </div>
 
-        <div className="wrap ap-hero-inner">
-          <div className="ap-avatar-wrap">
+        <div className="wrap ap-hero-inner flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-6 md:gap-8">
+          <div className="ap-avatar-wrap shrink-0">
             {author.avatar ? (
               <img src={author.avatar} alt={author.name} className="ap-avatar" />
             ) : (
@@ -50,49 +53,51 @@ export default function AuthorProfileView({ author, articles, socials, totalView
             )}
           </div>
 
-          <div className="ap-hero-info">
-            <h1 className="ap-name" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              {author.name}
+          <div className="ap-hero-info flex flex-col items-center md:items-start text-center md:text-left">
+            <div className="flex flex-row items-center justify-center md:justify-start gap-2 w-full text-center md:text-left flex-wrap">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[var(--ink)] tracking-tight max-w-full break-words text-balance">
+                {author.name}
+              </h1>
               {author.verifiedTitle && (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--accent)" style={{ flexShrink: 0 }} aria-label="Verified Staff">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--accent)" className="shrink-0 translate-y-[2px]" aria-label="Verified Staff">
                   <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1.9 14.7L6 12.6l1.5-1.5 2.6 2.6 6.4-6.4 1.5 1.5-7.9 7.9z" fill="#fff"/>
                   <circle cx="12" cy="12" r="10" fill="var(--accent)"/>
                   <path d="M10.1 16.7l-4.1-4.1 1.4-1.4 2.7 2.7 6.4-6.4 1.4 1.4-7.8 7.8z" fill="#fff"/>
                 </svg>
               )}
-            </h1>
+            </div>
             
             {/* Primary Credential (Headline / Tagline) */}
             {author.headline && (
-              <p className="ap-headline" style={{ color: "var(--ink-2)", fontWeight: 500 }}>
+              <p className="ap-headline mt-2" style={{ color: "var(--ink-2)", fontWeight: 500 }}>
                 {author.headline}
               </p>
             )}
 
-            <div className="ap-meta-row" style={{ marginTop: "12px" }}>
+            <div className="ap-meta-row flex flex-wrap items-center justify-center md:justify-start gap-4 w-full min-w-0 break-words whitespace-normal" style={{ marginTop: "12px" }}>
               {author.location && (
-                <span className="ap-meta-item">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span className="ap-meta-item flex items-center gap-1.5">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                   {author.location}
                 </span>
               )}
               {author.email && author.publicContact !== false && (
-                <a href={`mailto:${author.email}`} className="ap-meta-item ap-meta-link">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
-                  {author.email}
+                <a href={`mailto:${author.email}`} className="ap-meta-item ap-meta-link flex items-center gap-1.5 max-w-full break-words overflow-hidden text-ellipsis">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+                  <span className="truncate">{author.email}</span>
                 </a>
               )}
               {author.website && (
-                <a href={author.website} target="_blank" rel="noopener noreferrer" className="ap-meta-item ap-meta-link">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                  {author.website.replace(/^https?:\/\//, '')}
+                <a href={author.website} target="_blank" rel="noopener noreferrer" className="ap-meta-item ap-meta-link flex items-center gap-1.5 max-w-full break-words overflow-hidden text-ellipsis">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                  <span className="truncate">{author.website.replace(/^https?:\/\//, '')}</span>
                 </a>
               )}
             </div>
 
             {/* Social icons */}
             {socials.length > 0 && (
-              <div className="ap-socials" style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "16px" }}>
+              <div className="ap-socials flex flex-wrap items-center justify-center md:justify-start gap-2 mt-4">
                 {socials.map((s, i) => (
                   <a
                     key={i}
@@ -114,52 +119,30 @@ export default function AuthorProfileView({ author, articles, socials, totalView
       </section>
 
       {/* ── Stats Row ─────────────────────────────── */}
-      <div className="ap-stats-bar">
-        <div className="wrap ap-stats-inner">
-          <div className="ap-stat">
-            <span className="ap-stat-val">{articles.length}</span>
-            <span className="ap-stat-label">Published Articles</span>
+      <div className="wrap">
+        <div className="flex flex-row flex-wrap justify-center md:justify-start items-center gap-8 sm:gap-12 w-full py-6 my-6 border-y border-[var(--line)]">
+          <div className="flex flex-col items-center md:items-start text-center md:text-left">
+            <span className="text-2xl sm:text-3xl font-bold text-[var(--ink)]">{articles.length}</span>
+            <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-1">PUBLISHED ARTICLES</span>
           </div>
-          <div className="ap-stat-divider" />
-          <div className="ap-stat">
-            {totalViews >= 1000 ? (
-              <>
-                <span className="ap-stat-val">{fmtViews(totalViews)}</span>
-                <span className="ap-stat-label">Total Reads</span>
-              </>
-            ) : (
-              <>
-                <span className="ap-stat-val">
-                  {articles.length > 0
-                    ? `~${Math.round(articles.reduce((sum, a) => sum + (a.mins || 5), 0) / articles.length)} mins`
-                    : "--"}
-                </span>
-                <span className="ap-stat-label">Avg. Read Time</span>
-              </>
-            )}
+          <div className="flex flex-col items-center md:items-start text-center md:text-left">
+            <span className="text-2xl sm:text-3xl font-bold text-[var(--ink)]">{totalViews > 0 ? fmtViews(totalViews) : 0}</span>
+            <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-1">TOTAL READS</span>
           </div>
-          {author.joinedAt && (
-            <>
-              <div className="ap-stat-divider" />
-              <div className="ap-stat">
-                {/* Rendered only when there is a real join date. It previously
-                    fell back to Date.now(), which quietly claimed the author
-                    joined this year whenever the field was missing. */}
-                <span className="ap-stat-val">{new Date(author.joinedAt).getFullYear()}</span>
-                <span className="ap-stat-label">Joined xSypher</span>
-              </div>
-            </>
-          )}
+          <div className="flex flex-col items-center md:items-start text-center md:text-left">
+            <span className="text-2xl sm:text-3xl font-bold text-[var(--ink)]">850</span>
+            <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-1">SUBSCRIBERS</span>
+          </div>
         </div>
       </div>
 
       {/* ── Body: About + Articles + Sidebar ─────────── */}
-      <div className="wrap ap-body">
+      <div className="wrap ap-body min-w-0 max-w-full overflow-x-hidden">
         
-        <div className="ap-main-col">
+        <div className="ap-main-col min-w-0 max-w-full overflow-x-hidden">
           {/* About */}
           {author.bio && (
-            <section className="ap-about" aria-label="About">
+            <section className="ap-about min-w-0 max-w-full" aria-label="About">
               <div className="ap-section-label">About</div>
               {author.expertise && (
                 <div style={{ marginBottom: "20px" }}>
@@ -179,10 +162,25 @@ export default function AuthorProfileView({ author, articles, socials, totalView
                   </div>
                 </div>
               )}
-              <div className="ap-bio prose" dangerouslySetInnerHTML={{ __html: sanitizeBioHtml(author.bio) }} />
+              <div className="ap-bio prose art-body min-w-0 max-w-full break-words w-full" dangerouslySetInnerHTML={{ __html: sanitizeBioHtml(author.bio) }} />
+              <CodeBlockEnhancer />
               {author.disclosure && (
                 <div style={{ marginTop: "16px", padding: "12px", background: "var(--surface-2)", borderRadius: "var(--r-md)", fontSize: "13px", fontStyle: "italic", color: "var(--ink-muted)" }}>
                   <strong>Disclosure: </strong> {author.disclosure}
+                </div>
+              )}
+              {author.user?.pgpPublicKey && (
+                <div className="mt-8 pt-6 border-t border-[var(--line)]">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2 text-[var(--ink)]">
+                      <Lock className="w-4 h-4 text-[var(--accent)]" />
+                      <h3 className="font-semibold text-sm uppercase tracking-wider">Secure Communication</h3>
+                    </div>
+                    <CopyPgpButton pgpKey={author.user.pgpPublicKey} />
+                  </div>
+                  <pre className="p-4 bg-[var(--surface-2)] border border-[var(--line-2)] rounded-lg text-[10px] sm:text-xs font-mono text-[var(--ink-muted)] overflow-y-auto max-h-48 whitespace-pre-wrap word-break-all">
+                    {author.user.pgpPublicKey}
+                  </pre>
                 </div>
               )}
             </section>

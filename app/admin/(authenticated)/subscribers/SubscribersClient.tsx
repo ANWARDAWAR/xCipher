@@ -123,7 +123,7 @@ export default function SubscribersClient({
             <Download className="w-4 h-4" />
             Export CSV
           </button>
-          <button className="flex items-center justify-center flex-1 md:flex-none h-[38px] px-4 gap-2 text-sm font-medium bg-accent text-on-accent hover:bg-accent-deep border border-transparent rounded-md transition-colors whitespace-nowrap">
+          <button className="flex items-center justify-center flex-1 md:flex-none h-[38px] px-4 gap-2 text-sm font-medium bg-accent text-white hover:bg-accent-deep border border-transparent rounded-md transition-colors whitespace-nowrap">
             <Plus className="w-4 h-4" />
             Add Subscriber
           </button>

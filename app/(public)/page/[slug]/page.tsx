@@ -13,7 +13,9 @@ interface Props {
  * here, which is why this route was already the fastest on the site.
  */
 export function generateStaticParams() {
-  return Object.keys(PAGES).map((slug) => ({ slug }));
+  return Object.keys(PAGES)
+    .filter((slug) => slug !== "about" && slug !== "contact" && slug !== "editorial-policy" && slug !== "corrections" && slug !== "advertising" && slug !== "careers" && slug !== "editorial-standards")
+    .map((slug) => ({ slug }));
 }
 
 /** Nothing here reads a request, so the output never needs to be recomputed

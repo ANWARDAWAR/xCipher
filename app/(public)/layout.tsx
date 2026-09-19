@@ -1,6 +1,8 @@
 import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 import ScrollReveal from "@/components/common/ScrollReveal";
+import BackToTop from "@/components/common/BackToTop";
+import ScrollReset from "@/components/common/ScrollReset";
 
 export default function PublicLayout({
   children,
@@ -19,12 +21,14 @@ export default function PublicLayout({
       <a href="#view" className="skip-link">
         Skip to content
       </a>
+      <ScrollReset />
       <ScrollReveal />
       <SiteHeader />
       <main id="view" tabIndex={-1}>
         {children}
       </main>
       <SiteFooter />
+      <BackToTop />
       <div id="toast" role="status" aria-live="polite"></div>
     </>
   );

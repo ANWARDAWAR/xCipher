@@ -10,7 +10,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const author = await db.author.findUnique({ where: { slug } });
+  const author = await db.author.findUnique({ where: { slug }, include: { user: true } });
   if (!author) return { title: "Author — xSypher" };
   return {
     title: `${author.name} — xSypher`,
@@ -37,7 +37,7 @@ export const revalidate = 600; // author profile
 export default async function AuthorProfile({ params }: Props) {
   const { slug } = await params;
 
-  const author = await db.author.findUnique({ where: { slug } });
+  const author = await db.author.findUnique({ where: { slug }, include: { user: true } });
   if (!author) notFound();
 
   // Parse social links

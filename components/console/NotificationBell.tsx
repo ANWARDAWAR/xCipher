@@ -121,7 +121,7 @@ export default function NotificationBell({ items, unreadCount }: Props) {
           // Count is rendered as text, not just a dot, so the number is
           // available without relying on colour alone.
           <span
-            className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-accent text-on-accent text-[10px] font-bold leading-4 text-center tabular-nums"
+            className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-accent text-white text-[10px] font-bold leading-4 text-center tabular-nums"
             aria-hidden="true"
           >
             {unreadCount > 9 ? "9+" : unreadCount}
