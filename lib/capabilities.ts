@@ -110,22 +110,31 @@ const ADMIN_CAPS: ReadonlySet<Capability> = new Set<Capability>([
 
 const EDITOR_CAPS: ReadonlySet<Capability> = new Set<Capability>([
   "console.access",
+  // Sees every article in the console (needed to navigate the newsroom) but
+  // can only change their own. view.all without edit.any is the difference
+  // between visibility and authority.
   "article.view.all", "article.view.own", "article.view.published",
-  "article.create", "article.edit.own", "article.edit.any",
-  // No "article.review". An editor ships their own work directly -- they hold
-  // article.publish and need no approval queue -- but they do not adjudicate
-  // other people's submissions. Approve/reject/request-changes is a separate
-  // duty held by REVIEWER, ADMIN and OWNER.
+  "article.create", "article.edit.own",
+  // No "article.edit.any". An editor is a self-sufficient writer: they publish
+  // their own work without waiting for an approval queue, but another person's
+  // article is not theirs to rewrite. Changing someone else's copy is an
+  // ADMIN/OWNER act because it overrides an author's byline.
   //
-  // Consequence: EDITOR no longer sees the review queue or the decision
-  // actions on a submitted article. They can still open, edit and publish any
-  // article, so nothing they could previously ship becomes unreachable.
+  // No "article.review". Adjudicating submissions -- approve, reject, request
+  // changes -- belongs to REVIEWER, ADMIN and OWNER. An editor who could both
+  // publish at will and rule on other people's work would be an admin in all
+  // but name.
   "article.submit",
+  // Publishing verbs apply to what they can edit, which is their own work.
+  // The server pairs every one of these with an ownership check.
   "article.publish", "article.schedule", "article.unpublish", "article.archive",
   "article.delete.own.draft", "article.feature",
   "taxonomy.create", "taxonomy.rename",
-  "author.manage.all", "author.manage.own",
-  "comment.moderate",
+  // No "author.manage.all": editing other people's profiles is a directory
+  // duty, not an editorial one.
+  "author.manage.own",
+  // No "comment.moderate": comment adjudication sits with MODERATOR, ADMIN
+  // and OWNER.
   "subscriber.view",
   "settings.personal",
 ]);

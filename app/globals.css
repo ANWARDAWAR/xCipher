@@ -4138,13 +4138,19 @@ body {
          * Opt-in instead of opt-out means the animation is a progressive
          * enhancement: content is visible by default and only animates when
          * there is JavaScript to animate it. */
-        .reveal-ready [data-reveal] {
+                /* Keyed off data attributes, not classes.
+         *
+         * ScrollReveal sets these from an effect. className is owned by React on
+         * these elements, so mutating it desynchronised the DOM from the JSX and
+         * produced a hydration attribute mismatch on the next render. React never
+         * sets data-revealed, so toggling it is invisible to reconciliation. */
+        [data-reveal-ready] [data-reveal] {
             opacity: 0;
-            transform: translateY(14px);
-            transition: opacity .55s ease, transform .55s ease
+            transition: opacity .55s ease, transform .55s ease;
+            transform: translateY(14px)
         }
 
-        .reveal-ready [data-reveal].revealed {
+        [data-reveal-ready] [data-reveal][data-revealed] {
             opacity: 1;
             transform: none
         }

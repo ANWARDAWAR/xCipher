@@ -25,17 +25,17 @@ export default function ScrollReveal() {
       document.querySelectorAll("[data-reveal]").forEach((el) => {
         const box = el.getBoundingClientRect();
         if (box.top < window.innerHeight && box.bottom > 0) {
-          el.classList.add("revealed");
+          el.setAttribute("data-revealed", "");
         }
       });
-      root.classList.add("reveal-ready");
+      root.setAttribute("data-reveal-ready", "");
     }
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add("revealed");
+            entry.target.setAttribute("data-revealed", "");
             observer.unobserve(entry.target);
           }
         });
@@ -47,10 +47,10 @@ export default function ScrollReveal() {
     );
 
     const observeElements = () => {
-      const elements = document.querySelectorAll("[data-reveal]:not(.revealed)");
+      const elements = document.querySelectorAll("[data-reveal]:not([data-revealed])");
       elements.forEach((el) => {
         if (isReduced) {
-          el.classList.add("revealed");
+          el.setAttribute("data-revealed", "");
         } else {
           observer.observe(el);
         }
@@ -72,7 +72,7 @@ export default function ScrollReveal() {
       observer.disconnect();
       mutationObserver.disconnect();
       // Drop the gate on teardown so nothing can be left hidden by a stale class.
-      root.classList.remove("reveal-ready");
+      root.removeAttribute("data-reveal-ready");
     };
   }, [pathname]);
 

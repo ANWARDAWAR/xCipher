@@ -159,6 +159,11 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
                 user={dbUser || user}
                 author={author}
                 targetUserId={isManagingOther ? targetUserId : undefined}
+                // The ACTOR's role, not the edited user's. isAdmin was being
+                // derived from `user` -- which is the profile being edited --
+                // so an owner editing an author saw "Admin only" and a
+                // read-only Official Role field.
+                actorRole={user.role as string}
                 editingOtherName={isManagingOther ? (dbUser?.name || dbUser?.email || "this user") : undefined}
               />
             </>

@@ -110,7 +110,10 @@ describe("authorize", () => {
       // that lets them reach /admin/authors but not /admin/users.
       expect(authorize("EDITOR", "user.manage")).toBe(false);
       expect(authorize("EDITOR", "user.invite")).toBe(false);
-      expect(authorize("EDITOR", "author.manage.all")).toBe(true);
+      // Nor other people's author profiles: editing a colleague's byline is a
+      // directory duty, not an editorial one.
+      expect(authorize("EDITOR", "author.manage.all")).toBe(false);
+      expect(authorize("EDITOR", "author.manage.own")).toBe(true);
     });
 
     it("does not let an EDITOR permanently delete or read the audit log", () => {
@@ -144,9 +147,12 @@ describe("authorize", () => {
       // Editors publish their own work without an approval queue, but they do
       // not approve, reject or request changes on other people's submissions.
       expect(authorize("EDITOR", "article.review")).toBe(false);
-      // What they keep: they can still ship anything.
+      // What they keep: publishing their own work with no approval queue.
       expect(authorize("EDITOR", "article.publish")).toBe(true);
-      expect(authorize("EDITOR", "article.edit.any")).toBe(true);
+      expect(authorize("EDITOR", "article.edit.own")).toBe(true);
+      // What they do not: another author's article. article.publish is paired
+      // with an ownership check in validateTransition for exactly this reason.
+      expect(authorize("EDITOR", "article.edit.any")).toBe(false);
     });
 
     it("reserves review decisions for REVIEWER, ADMIN and OWNER", () => {

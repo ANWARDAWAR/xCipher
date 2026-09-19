@@ -152,7 +152,29 @@ export function validateTransition(
       }
     }
   }
-  
+
+  // Blanket ownership rule for anyone without newsroom-wide authority.
+  //
+  // Only three transitions carry requiresOwnership, which was sufficient while
+  // every role holding article.publish also held article.edit.any. EDITOR no
+  // longer does -- it may publish, but only its own work -- and without this an
+  // editor could publish, archive or unpublish another author's article purely
+  // because the capability check passed.
+  //
+  // Expressed as "no edit.any means own-content only" rather than as a flag on
+  // each transition, so a transition added later is covered by default instead
+  // of being open until someone remembers to mark it.
+  //
+  // Review decisions are exempt: judging a submission is precisely an act on
+  // someone else's article, and it is gated by article.review, which EDITOR
+  // does not hold.
+  const isReviewDecision = def.capability === "article.review";
+  if (!isReviewDecision && !authorize(actor.role, "article.edit.any")) {
+    if (!actor.authorId || actor.authorId !== article.authorId) {
+      return "You can only do this to your own articles.";
+    }
+  }
+
   return null; // transition is valid
 }
 

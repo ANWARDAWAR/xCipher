@@ -29,6 +29,7 @@ export default function ProfileForm({
   author,
   targetUserId,
   editingOtherName,
+  actorRole,
 }: {
   user: any;
   author: any;
@@ -37,6 +38,10 @@ export default function ProfileForm({
    *  write. */
   targetUserId?: string;
   editingOtherName?: string;
+  /** Role of the signed-in user. Distinct from `user.role`, which belongs to
+   *  the profile on screen -- they differ whenever an owner edits someone
+   *  else. The server re-checks this; it only decides what to render. */
+  actorRole?: string;
 }) {
   const [isPending, setIsPending] = useState(false);
   const router = useRouter();
@@ -95,7 +100,9 @@ export default function ProfileForm({
   }, [name, headline, role, avatar, overview, bio, location, website, email, expertise, verifiedTitle, disclosure, publicContact, slug, socials]);
 
 
-  const isAdmin = ["OWNER", "ADMIN"].includes(user?.role || "");
+  // Falls back to the edited user's role only when no actor role was supplied,
+  // which is the self-edit case where the two are the same person.
+  const isAdmin = ["OWNER", "ADMIN"].includes(actorRole ?? user?.role ?? "");
 
   const addSocial = () => setSocials([...socials, { platform: "Website", url: "" }]);
   const updateSocial = (index: number, key: 'platform' | 'url', value: string) => {

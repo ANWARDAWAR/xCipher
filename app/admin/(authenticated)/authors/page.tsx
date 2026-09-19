@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
  * left orphaned Author rows (a byline with no login, which is legitimate for
  * guest contributors) completely invisible and unmanageable.
  *
- * Gated on `author.manage.all`, which OWNER, ADMIN and EDITOR hold. This is a
+ * Gated on `author.manage.all`, which OWNER and ADMIN hold. This is a
  * newsroom concern rather than an account-administration one, so EDITOR having
  * it -- while not having `user.manage` -- is the intended split.
  */

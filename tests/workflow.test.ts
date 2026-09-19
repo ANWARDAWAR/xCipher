@@ -75,12 +75,34 @@ describe("validateTransition", () => {
       expect(err).toMatch(/ownership/i);
     });
 
-    it("lets an editor submit an article they do not own", () => {
-      // Deliberate exception in validateTransition: article.edit.any overrides
-      // the ownership requirement for submission specifically, so an editor can
-      // move someone else's draft along.
+    it("stops an editor acting on an article they do not own", () => {
+      // EDITOR publishes its own work without an approval queue but holds no
+      // article.edit.any, so another author's story is out of reach. This used
+      // to be allowed, because the ownership rule only covered the three
+      // transitions flagged requiresOwnership and publish was not one of them.
+      // Asserted as "refused", not on the wording: submit trips the older
+      // requiresOwnership branch while publish/archive/unpublish trip the
+      // blanket rule, and both are correct refusals.
       const a = actor("EDITOR", "author-9");
-      expect(validateTransition("DRAFT", "SUBMITTED", a, article("author-1"))).toBeNull();
+      expect(validateTransition("DRAFT", "SUBMITTED", a, article("author-1"))).not.toBeNull();
+      expect(validateTransition("DRAFT", "PUBLISHED", a, article("author-1"))).not.toBeNull();
+      expect(validateTransition("PUBLISHED", "ARCHIVED", a, article("author-1"))).not.toBeNull();
+      expect(validateTransition("PUBLISHED", "DRAFT", a, article("author-1"))).not.toBeNull();
+    });
+
+    it("lets an editor publish their own article directly", () => {
+      // The other half of the rule: no approval queue for their own work.
+      const a = actor("EDITOR", "author-9");
+      expect(validateTransition("DRAFT", "PUBLISHED", a, article("author-9"))).toBeNull();
+    });
+
+    it("keeps newsroom-wide roles able to act on anyone's article", () => {
+      // ADMIN and OWNER hold article.edit.any, so the blanket rule does not
+      // apply to them.
+      for (const role of ["OWNER", "ADMIN"] as const) {
+        const a = actor(role, "author-9");
+        expect(validateTransition("DRAFT", "PUBLISHED", a, article("author-1"))).toBeNull();
+      }
     });
 
     it("does not extend that exception to withdrawal by a non-owner author", () => {
