@@ -1,13 +1,50 @@
 import DOMPurify from 'isomorphic-dompurify';
 import { isAllowedEmbedSrc } from './embeds';
 
+// Hosts an <img src> may point at, enforced server-side on every article save,
+// avatar change and publication setting.
+//
+// The two upload destinations are read from the environment rather than
+// hardcoded, because the R2 public base is per-deployment and the Cloudinary
+// cloud name is per-account. If they were literals here, an upload would
+// succeed and then be silently stripped on save -- the exact failure this
+// codebase already hit with <iframe> and <mark>.
+function uploadHosts(): string[] {
+  const hosts: string[] = [];
+
+  const r2 = process.env.NEXT_PUBLIC_R2_PUBLIC_BASE;
+  if (r2) {
+    try {
+      hosts.push(new URL(r2).hostname);
+    } catch {
+      // A malformed base is a configuration error, not a reason to crash every
+      // sanitize call. Uploads to it will fail the allow-list check visibly.
+    }
+  }
+
+  // Cloudinary serves every account from one host.
+  //
+  // Keyed off the NEXT_PUBLIC_ variable specifically. This module is imported
+  // by client components (InsertMediaDialog, ArticleEditor), and a server-only
+  // variable is undefined in the browser bundle -- the client would then build
+  // a shorter allow-list than the server and reject a URL the server would have
+  // accepted. Both sides must read the same value or the two validators
+  // disagree, which is worse than either being wrong alone.
+  if (process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
+    hosts.push("res.cloudinary.com");
+  }
+
+  return hosts;
+}
+
 export const ALLOWED_MEDIA_DOMAINS = [
   "images.pexels.com",
   "images.unsplash.com",
   "plus.unsplash.com",
   "avatars.githubusercontent.com",
   "lh3.googleusercontent.com",
-  "upload.wikimedia.org"
+  "upload.wikimedia.org",
+  ...uploadHosts(),
 ];
 
 // Reusable configurations

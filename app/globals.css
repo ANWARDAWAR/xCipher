@@ -6153,3 +6153,174 @@ select.ed-rail-input {
 }
 
 .pf-editing-other strong { font-weight: 600; }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Upload controls
+   ───────────────────────────────────────────────────────────────────────────
+   A dashed border is the one place in this design system where a dotted edge
+   earns its place: it reads as "target" rather than "container", which is the
+   whole message of a drop zone.
+   ─────────────────────────────────────────────────────────────────────────── */
+.dz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 132px;
+  padding: 20px;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color .15s ease, background-color .15s ease, color .15s ease;
+}
+
+.dz:hover:not(:disabled) {
+  border-color: var(--muted);
+  color: var(--ink);
+}
+
+/* Solid accent while a file is over the zone: the dashed edge has done its job
+   by then, and the state needs to be unmistakable mid-drag. */
+.dz[data-dragging="true"] {
+  border-style: solid;
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 8%, var(--surface-2));
+  color: var(--ink);
+}
+
+.dz[data-busy="true"] {
+  cursor: progress;
+  border-style: solid;
+  border-color: var(--line-2);
+}
+
+.dz:disabled { cursor: not-allowed; opacity: .6; }
+
+.dz:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.dz-label { font: 600 13px/1.4 var(--f-ui); }
+.dz-hint  { font: 400 11.5px/1.4 var(--f-ui); color: var(--muted); }
+
+.dz-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+  font: 500 12px/1.45 var(--f-ui);
+  color: var(--bad);
+  overflow-wrap: anywhere;
+}
+
+/* ── Avatar upload ────────────────────────────────────────────────────────── */
+.av-upload {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  /* aspect-ratio and flex:none for the same reason every other avatar in this
+     codebase carries them: a circle only stays circular while the box is
+     square, and a flex row will otherwise compress it. */
+  aspect-ratio: 1 / 1;
+  flex: none;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color .15s ease;
+}
+
+.av-upload:hover { border-color: var(--accent); }
+
+.av-upload:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.av-upload:disabled { cursor: progress; }
+
+/* Hidden until hover or focus so the photograph is not permanently obscured,
+   but always shown while uploading. */
+.av-upload-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: rgb(0 0 0 / .58);
+  color: #fff;
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+
+.av-upload:hover .av-upload-overlay,
+.av-upload:focus-visible .av-upload-overlay,
+.av-upload:disabled .av-upload-overlay {
+  opacity: 1;
+}
+
+.av-upload-overlay-text {
+  font: 600 10.5px/1 var(--f-ui);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+/* An empty circle has no photo to obscure, so the prompt is always visible. */
+.av-upload:not(:has(img)) .av-upload-overlay { opacity: 1; background: rgb(0 0 0 / .32); }
+
+/* ── Insert-media tabs ────────────────────────────────────────────────────── */
+.imd-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+
+.imd-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-2);
+  font: 600 12.5px/1 var(--f-ui);
+  cursor: pointer;
+  transition: background-color .12s ease, color .12s ease;
+}
+
+.imd-tab:hover { color: var(--ink); }
+
+.imd-tab[data-active="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-1);
+}
+
+.imd-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+@media (pointer: coarse) {
+  .imd-tab { height: 40px; }
+  .dz { min-height: 150px; }
+}

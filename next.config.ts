@@ -44,6 +44,28 @@ function localNetworkOrigins(): string[] {
   return [...origins];
 }
 
+
+/**
+ * The R2 public host as a remotePatterns entry, or nothing when unconfigured.
+ *
+ * Derived from NEXT_PUBLIC_R2_PUBLIC_BASE so a deployment pointing at a custom
+ * domain, an r2.dev subdomain or a staging bucket all work without editing this
+ * file. Returning an empty array when unset keeps the config valid on an
+ * install that has not enabled uploads yet.
+ */
+function r2RemotePattern(): NonNullable<NonNullable<NextConfig["images"]>["remotePatterns"]> {
+  const base = process.env.NEXT_PUBLIC_R2_PUBLIC_BASE;
+  if (!base) return [];
+  try {
+    const url = new URL(base);
+    return [{ protocol: url.protocol.replace(":", "") as "http" | "https", hostname: url.hostname }];
+  } catch {
+    // Malformed value: skip it rather than failing the build with a stack trace
+    // that does not mention the variable.
+    return [];
+  }
+}
+
 const nextConfig: NextConfig = {
   allowedDevOrigins: localNetworkOrigins(),
   images: {
@@ -54,6 +76,13 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "avatars.githubusercontent.com" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
       { protocol: "https", hostname: "upload.wikimedia.org" },
+      // Cloudinary, for avatars. One host for every account.
+      { protocol: "https", hostname: "res.cloudinary.com" },
+      // Cloudflare R2, for article images. The public base is per-deployment,
+      // so the host is read from the environment rather than hardcoded. Without
+      // an entry here next/image refuses the URL with "hostname is not
+      // configured" -- an upload that succeeded and then will not render.
+      ...r2RemotePattern(),
     ],
   },
 };

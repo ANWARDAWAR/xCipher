@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { X, ImagePlus, MonitorPlay, AlertCircle } from "lucide-react";
+import { X, ImagePlus, MonitorPlay, AlertCircle, UploadCloud, Link2 } from "lucide-react";
+import ImageDropzone from "./ImageDropzone";
+import { uploadArticleImage } from "@/app/actions/upload-article-image";
 import { ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
 import { parseYouTubeId, youTubeThumbnail } from "@/lib/embeds";
 
@@ -59,6 +61,11 @@ export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsert
   const [credit, setCredit] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
+
+  // Upload leads for images: it is the path most authors want, and the URL tab
+  // remains for stock photography and anything already hosted elsewhere. A
+  // video has nothing to upload, so that dialog keeps its single field.
+  const [tab, setTab] = useState<"upload" | "url">("upload");
 
   const firstFieldRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -166,8 +173,55 @@ export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsert
         </div>
 
         <div className="imd-body">
-          <label className="imd-field">
-            <span className="imd-label">{isImage ? "Image URL" : "YouTube URL"}</span>
+          {/* Tabs only for images. A video is always a link to someone else's
+              platform, so offering an Upload tab there would be a dead end. */}
+          {isImage && (
+            <div className="imd-tabs" role="tablist" aria-label="How to add the image">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "upload"}
+                onClick={() => { setTab("upload"); setError(null); }}
+                className="imd-tab"
+                data-active={tab === "upload" ? "true" : undefined}
+              >
+                <UploadCloud className="w-3.5 h-3.5" aria-hidden="true" />
+                Upload file
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "url"}
+                onClick={() => { setTab("url"); setError(null); }}
+                className="imd-tab"
+                data-active={tab === "url" ? "true" : undefined}
+              >
+                <Link2 className="w-3.5 h-3.5" aria-hidden="true" />
+                Image URL
+              </button>
+            </div>
+          )}
+
+          {isImage && tab === "upload" && (
+            <ImageDropzone
+              onUpload={async (file) => {
+                const fd = new FormData();
+                fd.append("file", file);
+                return uploadArticleImage(fd);
+              }}
+              // A successful upload fills the URL field rather than inserting
+              // straight away, so the author still writes alt text before the
+              // image reaches the article. Inserting immediately is how images
+              // end up published with no alt text at all.
+              onUploaded={(url) => { setSrc(url); setError(null); setTouched(false); }}
+              label="Drop an image here, or click to choose"
+            />
+          )}
+
+          <label className="imd-field" hidden={isImage && tab === "upload" && !src}>
+            <span className="imd-label">
+              {isImage ? (tab === "upload" ? "Uploaded image" : "Image URL") : "YouTube URL"}
+            </span>
             <input
               ref={firstFieldRef}
               type="url"
@@ -185,7 +239,9 @@ export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsert
           {!error && !imageProblem && (
             <p id={`${titleId}-hint`} className="imd-hint">
               {isImage
-                ? `Approved hosts: ${ALLOWED_MEDIA_DOMAINS.join(", ")}.`
+                ? tab === "upload"
+                  ? "Uploaded images are converted to WebP and resized to fit the article measure."
+                  : `Approved hosts: ${ALLOWED_MEDIA_DOMAINS.join(", ")}.`
                 : "Watch, youtu.be, Shorts and embed links are all accepted."}
             </p>
           )}

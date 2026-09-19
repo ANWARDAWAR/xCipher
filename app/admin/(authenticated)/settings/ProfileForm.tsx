@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useTransition } from "react";
+import { useState, useEffect, useRef, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/app/actions/profile";
 import { showToast } from "@/lib/utils";
@@ -20,7 +20,9 @@ import { CodeBlockLowlight } from "@/components/editorial/extensions/CodeBlockLo
 import { Figure } from "@/components/editorial/extensions/AdvancedImage";
 import { Callout } from "@/components/editorial/extensions/Callout";
 import { YouTubeEmbed } from "@/components/editorial/extensions/YouTubeEmbed";
-import { X } from "lucide-react";
+import { X, Camera, Loader2, AlertCircle } from "lucide-react";
+import { uploadAvatar } from "@/app/actions/upload-avatar";
+import { UPLOAD_ACCEPT_ATTR, uploadError, formatBytes, MAX_UPLOAD_BYTES } from "@/lib/upload-constraints";
 
 const PLATFORM_OPTIONS = ["X", "LinkedIn", "GitHub", "YouTube", "Facebook", "Instagram", "Website", "Email"];
 
@@ -80,6 +82,40 @@ export default function ProfileForm({
   const [socials, setSocials] = useState<{ platform: string; url: string }[]>(initialSocials);
   
   const [avatarError, setAvatarError] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarUploadError, setAvatarUploadError] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarFile = useCallback(async (file: File) => {
+    setAvatarUploadError(null);
+
+    // Rejected here before the bytes leave the machine; the server repeats
+    // every check against the actual file.
+    const clientError = uploadError(file);
+    if (clientError) {
+      setAvatarUploadError(clientError);
+      return;
+    }
+
+    setAvatarBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await uploadAvatar(fd);
+      if (res.ok && res.url) {
+        setAvatar(res.url);
+        // Clear the broken-image flag: a previous bad URL should not leave the
+        // new upload rendering as a placeholder.
+        setAvatarError(false);
+      } else {
+        setAvatarUploadError(res.error ?? "The upload failed.");
+      }
+    } catch {
+      setAvatarUploadError("The upload failed. Check your connection and try again.");
+    } finally {
+      setAvatarBusy(false);
+    }
+  }, []);
 
   // Dirty State Tracking
   const [isDirty, setIsDirty] = useState(false);
@@ -271,32 +307,101 @@ export default function ProfileForm({
           Public Identity
         </div>
         <div className="cs-settings-body">
-          {/* Avatar preview + URL */}
-          <div className="flex flex-col sm:flex-row gap-6 mb-6">
+          {/* Avatar: click the circle to upload.
+              
+              Replaces a plain URL field. Pasting a link put the burden on the
+              author to find a permanent, square, correctly-sized image -- and
+              the old help text had to warn them off Instagram and Facebook URLs
+              because those expire and silently break the byline. Uploading
+              removes all of that: Cloudinary crops to a square on the face and
+              serves an optimised format, and the URL never rots. */}
+          <div className="flex flex-col sm:flex-row gap-6 mb-6 items-start">
             <div className="flex-none">
-              <div className="w-24 h-24 rounded-full bg-[var(--surface-2)] border border-[var(--line)] overflow-hidden flex items-center justify-center shadow-sm">
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarBusy}
+                className="av-upload"
+                aria-label={avatar ? "Replace profile photo" : "Upload a profile photo"}
+              >
                 {avatar && !avatarError ? (
-                  <img src={avatar} alt="avatar preview" className="w-full h-full object-cover" onError={() => setAvatarError(true)} />
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatar} alt="" className="w-full h-full object-cover" onError={() => setAvatarError(true)} />
                 ) : (
-                  <svg width="32" height="32" fill="none" stroke="var(--muted)" strokeWidth="1.5" viewBox="0 0 24 24">
+                  <svg width="32" height="32" fill="none" stroke="var(--muted)" strokeWidth="1.5" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                   </svg>
                 )}
-              </div>
-            </div>
-            <div className="flex-1">
-              <label className="ed-label">Avatar URL</label>
-              <input 
-                type="url" 
-                className={`ed-input ${avatarError ? 'border-[var(--bad)]' : ''}`}
-                value={avatar} 
-                onChange={e => { setAvatar(e.target.value); setAvatarError(false); }} 
-                placeholder="https://example.com/your-photo.jpg" 
+
+                {/* Overlay rather than a separate button: the photo is the
+                    affordance, and a 96px circle is a comfortable target. */}
+                <span className="av-upload-overlay" aria-hidden="true">
+                  {avatarBusy ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Camera className="w-4 h-4" />
+                      <span className="av-upload-overlay-text">{avatar ? "Replace" : "Upload"}</span>
+                    </>
+                  )}
+                </span>
+              </button>
+
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept={UPLOAD_ACCEPT_ATTR}
+                className="sr-only"
+                tabIndex={-1}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  // Cleared so re-picking the same file after an error still
+                  // fires change.
+                  e.target.value = "";
+                  if (file) void handleAvatarFile(file);
+                }}
               />
-              <p className="text-[11.5px] text-[var(--muted)] mt-1.5">
-                Provide a direct link to a square photo. <br/>
-                <strong className="text-[var(--warn)]">Warning:</strong> Do not use temporary CDN links (like Instagram or Facebook) as they expire and will break your image.
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <span className="ed-label">Profile photo</span>
+              <p className="text-[12.5px] text-[var(--muted)] mt-1.5 leading-relaxed">
+                Click the circle to upload. The image is cropped to a square around
+                the face and optimised automatically — {formatBytes(MAX_UPLOAD_BYTES)} maximum,
+                JPEG, PNG, WebP or GIF.
               </p>
+
+              {avatarUploadError && (
+                <p role="alert" className="dz-error mt-2">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                  <span>{avatarUploadError}</span>
+                </p>
+              )}
+
+              {avatarBusy && (
+                <p className="text-[12px] text-[var(--muted)] mt-2" role="status" aria-live="polite">
+                  Uploading…
+                </p>
+              )}
+
+              {/* Kept, collapsed, for anything already hosted elsewhere, and so
+                  an existing pasted URL is still visible and removable. */}
+              <details className="mt-3">
+                <summary className="text-[12px] text-[var(--muted)] cursor-pointer hover:text-[var(--ink)]">
+                  Use an image URL instead
+                </summary>
+                <input
+                  type="url"
+                  className={`ed-input mt-2 ${avatarError ? 'border-[var(--bad)]' : ''}`}
+                  value={avatar}
+                  onChange={e => { setAvatar(e.target.value); setAvatarError(false); setAvatarUploadError(null); }}
+                  placeholder="https://example.com/your-photo.jpg"
+                />
+                <p className="text-[11.5px] text-[var(--muted)] mt-1.5">
+                  <strong className="text-[var(--warn)]">Note:</strong> links from Instagram or
+                  Facebook expire and will break your byline. Uploading avoids this.
+                </p>
+              </details>
             </div>
           </div>
 
