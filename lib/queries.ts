@@ -62,11 +62,16 @@ export const ARTICLE_CARD_WITH_AUTHOR_SELECT = {
 /** The homepage layout fills lead, picks, grids and rails from one query. */
 export const HOME_ARTICLE_LIMIT = 60;
 
-/** Latest groups into Today / Yesterday / This week / Earlier. */
-export const LATEST_ARTICLE_LIMIT = 60;
+/**
+ * Page size for the paginated /latest wire. Grouping into Today / Yesterday /
+ * This week / Earlier happens per page; ~30 keeps a page to roughly a day or
+ * two of output on an active desk.
+ */
+export const LATEST_PAGE_SIZE = 30;
 
-/** Category and author listings. */
-export const LISTING_ARTICLE_LIMIT = 40;
+/** Page size for the paginated category and author listings. Matches the tag
+ *  and search listings, which have always paginated at 20. */
+export const LISTING_PAGE_SIZE = 20;
 
 /**
  * Ceiling for the editorial review queue. The queue is meant to be worked down

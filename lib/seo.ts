@@ -82,9 +82,29 @@ export function generateNewsArticleJsonLd(article: any) {
         "url": siteConfig.logoUrl
       }
     },
-    "mainEntityOfPage": {
-      "@type": "WebPage",
-      "@id": `${siteConfig.url}/article/${article.slug}`
-    }
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": `${siteConfig.url}/article/${article.slug}`
+      }
   };
+}
+
+/**
+ * Serializes a JSON-LD object for safe injection into a <script> tag.
+ *
+ * A plain JSON.stringify output is NOT safe to drop into
+ * dangerouslySetInnerHTML: an article title containing `</script>` closes the
+ * script element early and whatever follows is parsed as live HTML -- a
+ * stored-XSS hole authored through the CMS. Escaping every "<" as its JSON
+ * unicode escape keeps the parsed output byte-identical (it is the same code
+ * point inside a string literal) while making a premature close tag
+ * impossible.
+ * U+2028/U+2029 are escaped for the same reason: they are valid in JSON
+ * strings but were historically treated as line terminators by JS parsers.
+ */
+export function stringifyJsonLd(data: Record<string, unknown>): string {
+  return JSON.stringify(data)
+    .replace(/</g, "\\u003c")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
 }

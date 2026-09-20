@@ -118,7 +118,7 @@ export default function AuditLogsClient({
           <div className="flex items-center bg-surface border border-line rounded-md px-3 py-1.5 h-[38px]">
             <Filter className="w-4 h-4 text-faint mr-2" />
             <select
-              className="bg-transparent text-sm focus:outline-none text-ink-2 min-w-[120px]"
+              className="bg-transparent text-sm text-ink-2 min-w-[120px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:rounded-sm"
               value={searchParams.get("category") || "All"}
               onChange={(e) => handleFilterChange("category", e.target.value)}
             >
@@ -132,7 +132,7 @@ export default function AuditLogsClient({
 
           <div className="flex items-center bg-surface border border-line rounded-md px-3 py-1.5 h-[38px]">
             <select
-              className="bg-transparent text-sm focus:outline-none text-ink-2 min-w-[100px]"
+              className="bg-transparent text-sm text-ink-2 min-w-[100px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:rounded-sm"
               value={searchParams.get("dateRange") || "All Time"}
               onChange={(e) => handleFilterChange("dateRange", e.target.value)}
             >

@@ -565,3 +565,60 @@ Verified in-sandbox as far as the network allows:
 | FIX-15c → Phase 4 TASK-14 | palette migration off `neutral-*` onto the token scale |
 | TASK-17 phase 2 | email delivery behind the existing `lib/notifications.ts` interface |
 | 144 pre-existing ESLint errors | mostly `no-explicit-any` (94) and `react-hooks/static-components` (25); none introduced this round |
+
+---
+
+## Round 6 — audit-report defects closed (this branch)
+
+Worked from `AUDIT_REPORT.md` (the product audit) rather than this queue's
+original items, which were already closed. Every audit claim below was first
+re-verified against the working tree before changing it -- several entries in
+that report were stale by the time this round started.
+
+| Audit finding | Status | Change |
+|---|---|---|
+| Primary Subscribe CTA 404s (`/page/newsletter`) | ✅ fixed | All three call sites (header, mobile drawer, HTML sitemap page) now link to the real `/page/newsletters`; six legacy static-page slugs 308 to their dedicated routes from `next.config.ts` |
+| Fake articles rendered on empty database | ✅ fixed | `Sidebar` no longer falls back to `mockData.ARTICLES`; an empty archive hides the "Most Read" panel. `lib/mockData.ts` (652 lines of fabricated articles/categories/pages) is deleted |
+| Category pages invent sections from mock data | ✅ fixed | `/category/[slug]` is DB-only; unknown slugs 404 |
+| Trust pages hardcoded in TypeScript | ✅ fixed | Legacy `/page/[slug]` catch-all deleted (its only render path was the mock `PAGES` object); dedicated routes + 308s now serve everything |
+| Author profile shows fabricated stats | ✅ fixed | "850 SUBSCRIBERS" hardcode removed (no such metric exists); "PUBLISHED ARTICLES" now counts the whole archive, not the fetched page |
+| Fake author bios on article pages | ✅ fixed | The hardcoded bio map for seed authors deleted; byline bio is the author's real `overview` |
+| Reading time hardcoded "5 min" everywhere | ✅ fixed | New `lib/reading-time.ts` computes from body at 200/150 wpm; article page shows real read/listen times; list cards show nothing when no body is selected (honest absence over fabricated constant) |
+| "Published" date showed created, not published | ✅ fixed | Article header uses `publishedAt ?? createdAt`, with machine-readable `dateTime` attributes and `itemProp` on both dates |
+| JSON-LD stored-XSS vector | ✅ fixed | `stringifyJsonLd()` escapes `<`, U+2028 and U+2029; verified by tests with an active payload (`</script><img onerror=…>`) |
+| Homepage had no metadata | ✅ fixed | `generateMetadata` with canonical `/`, OG and Twitter cards resolved from publication settings |
+| No pagination on /latest, category, author | ✅ fixed | All three paginate (`?page=N`, 30/20 per page), matching the tag/search pattern: out-of-range pages 404, self-referencing canonicals, page-of titles. Archive can no longer orphan stories |
+| feed.xml hardcoded domain + wrong item URLs | ✅ fixed | `siteConfig.url`; item links now point at `/article/<slug>` (previously bare slug — every feed item 404'd) |
+| XML sitemap missing routes | ✅ fixed | Adds `/latest`, tag pages and the 15 trust pages; legacy slugs deliberately excluded (they redirect) |
+| **Password change form was a mock** ("(Mock)" toast, 1s setTimeout) | ✅ fixed | Real `changePassword` action: bcrypt verification of the current password, 10+ char letter+digit policy, `sessionVersion` bump (invalidates all sessions), audit rows on change and on failed verification; form signs out after success |
+| No rate limiting on login (did audit gate this as Critical) | ✅ fixed | `lib/login-throttle.ts`: failure-only counters, 5/account/15min + 20/IP/15min, peek-before-bcrypt, clear-on-success, hashed IPs, audit rows for `auth.login.failed`/`auth.login.throttled` (log-write itself throttled) |
+| `setupOwner` TOCTOU race + weak validation | ✅ fixed | SERIALIZABLE transaction for the first-user guarantee + serialization-failure mapping, zod schema (12+ chars owner policy), 10/hour/IP limit, success audit |
+| Invitation accept race + weak validation | ✅ fixed | Token consumed atomically in one transaction (claim-before-create), P2002 mapped to "sign in instead", 10+ char policy |
+| `NEXT_PUBLIC_SITE_URL` missing from .env.example | ✅ fixed | Documented as required-in-production, with the failure mode spelled out |
+| Sign-out had no confirmation | ✅ fixed | ConfirmDialog-based flow with pending state and failure toast |
+| Double-submits on destructive confirms | ✅ fixed | `ConfirmDialog` gained `isPending`/`pendingText` + focus management + typed-reset; wired into article menu, user revoke, taxonomy deletes, revision restore, review take-over, bulk bar |
+| Focus outline removed with no replacement | ✅ fixed | `focus-visible:ring` on the remaining offenders; tag-remove button got an accessible name |
+| Login button used off-brand hardcoded red | ✅ fixed | Inline `backgroundColor: #dc2626` removed; token classes (`bg-accent`/`accent-deep`/`accent-press`) now effective |
+| Editor status badge hardcoded blue, wrong in dark mode | ✅ fixed | Header badge now derives from `STATUS_META`, single source with the console tables |
+| Bulk actions transition validation (audit: not verifiable) | ✅ verified safe | `runBulkTransition` runs `validateTransition` per id against the same state machine; no action needed |
+
+### Tests added
+
+- `tests/reading-time.test.ts` — 8 cases incl. "never returns the old fabricated constant"
+- `tests/seo-jsonld.test.ts` — JSON round-trip, live XSS payload, line-separator escapes
+- `tests/login-throttle.test.ts` — peek/consume/reset contract the throttle depends on
+
+### Build health (this round)
+
+- `npm test` — **all 331 tests pass** (20 files; was 313).
+- `npx tsc --noEmit` — no errors introduced; the prisma-stub cascades (`TS2305`/`TS2694`/`TS7006`) are the same sandbox artifact documented above.
+- `npx next build` — full compile + bundle **succeeds**; stops only at next/font (no Google Fonts network) and prisma engine fetch, both pre-existing sandbox restrictions. (One real bug was caught by this pass: an import of the renamed `LISTING_ARTICLE_LIMIT` in admin settings — fixed.)
+- `npx eslint` on every file touched — **no new errors**; one introduced (`set-state-in-effect` in ConfirmDialog) was found by this pass and removed. The pre-existing `any`/unescaped-entity debt (≈144 errors repo-wide) is unchanged.
+
+### Still open (unchanged)
+
+| Item | Status |
+|---|---|
+| FIX-01 history purge | password rotation/history rewrite is an owner action, not a code change |
+| FIX-15c / TASK-14 | palette migration off `neutral-*` onto the token scale |
+| Mobile treatment for the four min-width admin tables | audit: medium; overflow-x wrapper confirmed safe |

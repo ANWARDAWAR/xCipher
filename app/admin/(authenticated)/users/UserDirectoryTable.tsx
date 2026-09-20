@@ -165,6 +165,7 @@ export default function UserDirectoryTable({
   const [selectedRoles, setSelectedRoles] = useState<Record<string, Role>>({});
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [deletingUser, setDeletingUser] = useState<UserProfile | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
   const [revokingInviteId, setRevokingInviteId] = useState<string | null>(null);
   const [referenceTime] = useState(() => Date.now());
 
@@ -210,8 +211,9 @@ export default function UserDirectoryTable({
   };
 
   const handleConfirmDelete = async () => {
-    if (!deletingUser) return;
+    if (!deletingUser || isDeletingUser) return;
     const userId = deletingUser.id;
+    setIsDeletingUser(true);
     try {
       const res = await deleteUser(userId);
       if (res.success) {
@@ -224,6 +226,7 @@ export default function UserDirectoryTable({
       const msg = e instanceof Error ? e.message : "Failed to revoke user";
       showToast(`Error: ${msg}`);
     } finally {
+      setIsDeletingUser(false);
       setDeletingUser(null);
     }
   };

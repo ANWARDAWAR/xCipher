@@ -190,6 +190,8 @@ export default function ReviewWorkspace({ userRole, userId, reviewerId, reviewer
         title="Take Over Review"
         description={`This review is currently claimed by ${reviewerName || 'another reviewer'}. Are you sure you want to take it over? They will lose their claim and any unsaved progress.`}
         confirmText="Take Over"
+        isPending={isSubmitting}
+        pendingText="Taking over…"
         onConfirm={handleTakeOver}
         onCancel={() => setShowTakeOverConfirm(false)}
       />

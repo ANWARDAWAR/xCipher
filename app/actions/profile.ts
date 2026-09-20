@@ -5,6 +5,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { authorize } from "@/lib/capabilities";
 import type { Role } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import bcrypt from "bcryptjs";
 import { sanitizeBioHtml, isValidSafeUrl, ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
 
 export async function updateProfile(data: any) {
@@ -198,5 +200,101 @@ export async function updateNotificationPrefs(prefs: NotificationPrefsInput) {
     const message =
       error instanceof Error ? error.message : "Failed to update preferences";
     return { success: false, error: message };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Password change
+//
+// The settings screen shipped a fake: it set a 1-second timer, toasted
+// "Password updated successfully (Mock)" and changed nothing -- a user who had
+// just rotated a compromised credential walked away believing they had. This
+// is the real thing.
+//
+// Two properties matter:
+//   1. The current password is verified with the same bcrypt comparison login
+//      uses; otherwise anyone with brief access to an unlocked console could
+//      change the password and take the account.
+//   2. sessionVersion is bumped. The JWT callback rejects tokens whose
+//      sessionVersion no longer matches, so every other session -- including
+//      one an attacker might hold -- dies with the change. The UI then signs
+//      the user out and asks them to sign back in with the new password.
+
+const newPasswordSchema = z
+  .string()
+  .min(10, "New password must be at least 10 characters.")
+  .max(200)
+  .regex(/[a-zA-Z]/, "New password must contain at least one letter.")
+  .regex(/[0-9]/, "New password must contain at least one digit.");
+
+export async function changePassword(currentPassword: string, newPassword: string) {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Unauthorized" };
+
+  const parsed = newPasswordSchema.safeParse(newPassword);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message || "Invalid new password." };
+  }
+
+  try {
+    const dbUser = await db.user.findUnique({
+      where: { id: user.id },
+      select: { id: true, password: true, email: true },
+    });
+    if (!dbUser || !dbUser.password) {
+      return { success: false, error: "This account has no password to change." };
+    }
+
+    if (!currentPassword) {
+      return { success: false, error: "Enter your current password." };
+    }
+    const matches = await bcrypt.compare(currentPassword, dbUser.password);
+    if (!matches) {
+      // Deliberately the only feedback: which factor failed is not secret to
+      // the account holder, and "wrong current password" is the actionable
+      // answer. This is audited in case someone else is guessing.
+      try {
+        await db.auditLog.create({
+          data: {
+            userId: dbUser.id,
+            action: "auth.password.change_failed",
+            entityType: "user",
+            entityId: dbUser.id,
+            details: { reason: "current_password_mismatch" },
+          },
+        });
+      } catch { /* audit must not break the action */ }
+      return { success: false, error: "Current password is incorrect." };
+    }
+
+    if (currentPassword === newPassword) {
+      return { success: false, error: "New password must be different from the current one." };
+    }
+
+    const hashedPassword = await bcrypt.hash(parsed.data, 10);
+    await db.user.update({
+      where: { id: dbUser.id },
+      data: {
+        password: hashedPassword,
+        sessionVersion: { increment: 1 },
+      },
+    });
+
+    try {
+      await db.auditLog.create({
+        data: {
+          userId: dbUser.id,
+          action: "auth.password.changed",
+          entityType: "user",
+          entityId: dbUser.id,
+          details: null,
+        },
+      });
+    } catch { /* audit must not break the action */ }
+
+    return { success: true };
+  } catch (error: unknown) {
+    console.error("Password change error:", error);
+    return { success: false, error: "Failed to update password. Please try again." };
   }
 }

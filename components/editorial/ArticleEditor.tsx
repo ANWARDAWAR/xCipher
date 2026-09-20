@@ -24,6 +24,7 @@ import { upsertArticle } from "@/app/actions/article";
 import { useDraftCache, clearDraftCache } from "@/lib/use-draft-cache";
 import { Loader2, ArrowLeft, Settings, Eye } from "lucide-react";
 import { Role, ArticleStatus } from "@prisma/client";
+import { STATUS_META } from "@/lib/workflow";
 import { ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
 import SeoPreview from "./SeoPreview";
 import ReviewWorkspace from "./ReviewWorkspace";
@@ -767,6 +768,23 @@ export default function ArticleEditor({
   const canPublish = ["OWNER", "ADMIN", "EDITOR"].includes(userRole || "");
   const currentFormStatus = watch("status") || "DRAFT";
 
+  // Header badge, derived from the single STATUS_META map. watch() can briefly
+  // return a value the enum does not contain (legacy REVIEW included), so the
+  // lookup is defensive.
+  const headerStatusMeta =
+    STATUS_META[currentFormStatus as ArticleStatus] || STATUS_META.DRAFT;
+  const headerStatusBadge = {
+    label: headerStatusMeta.label,
+    tone:
+      headerStatusMeta.token === "--ok"
+        ? "bg-[var(--ok)]/10 text-[var(--ok)] border border-[var(--ok)]/25"
+        : headerStatusMeta.token === "--warn"
+          ? "bg-[var(--warn)]/10 text-[var(--warn)] border border-[var(--warn)]/30"
+          : headerStatusMeta.token === "--bad"
+            ? "bg-[var(--bad)]/10 text-[var(--bad)] border border-[var(--bad)]/25"
+            : "bg-[var(--surface-3)] text-[var(--muted)] border border-[var(--line-2)]",
+  };
+
   
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -811,12 +829,13 @@ export default function ArticleEditor({
           
           <div className="w-px h-4 bg-[var(--line)] hidden sm:block mx-1"></div>
           
-          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-            currentFormStatus === 'PUBLISHED' ? 'bg-[var(--ok)]/10 text-[var(--ok)] border border-[var(--ok)]/20' :
-            currentFormStatus === 'SUBMITTED' ? 'bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20' :
-            'bg-[var(--surface-3)] text-[var(--muted)] border border-[var(--line-2)]'
-          }`}>
-            {currentFormStatus === 'SUBMITTED' ? 'In Review' : currentFormStatus}
+          {/* Status visual language comes from STATUS_META, the same map the
+              console tables use -- one status must never wear two colours in
+              two screens, and every tint here is a theme token that survives
+              dark mode (the old SUBMITTED badge was a hardcoded blue that
+              failed contrast in the dark theme). */}
+          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${headerStatusBadge.tone}`}>
+            {headerStatusBadge.label}
           </span>
           
           <span className="text-xs text-[var(--muted)] hidden md:inline ml-2 font-medium">
@@ -1079,8 +1098,8 @@ export default function ArticleEditor({
                 {currentTags.map(tag => (
                   <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface-3)] text-[var(--ink)] border border-[var(--line-2)]">
                     {tag}
-                    <button type="button" onClick={() => handleRemoveTag(tag)} className="text-[var(--muted)] hover:text-[var(--bad)] transition-colors focus:outline-none">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <button type="button" onClick={() => handleRemoveTag(tag)} aria-label={`Remove tag ${tag}`} className="text-[var(--muted)] hover:text-[var(--bad)] transition-colors focus:outline-none">
+                      <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
                   </span>
                 ))}

@@ -1710,7 +1710,7 @@ body {
             color: var(--accent)
         }
 
-        .pick-feat h3 {
+        .pick-feat h2 {
             font-family: var(--f-display);
             font-size: clamp(1.4rem, 2.4vw, 1.85rem);
             font-weight: 680;

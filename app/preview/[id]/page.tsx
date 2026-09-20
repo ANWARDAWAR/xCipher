@@ -80,21 +80,11 @@ export default async function PreviewPage({ params }: Props) {
   const authorSlug = article.authorModel?.slug || null;
   const authorHeadline = article.authorModel?.headline || article.role || "Contributing writer";
 
-  // Author bio mapping
-  const bios: Record<string, string> = { 
-    "Ahmed Khan": "Writing about artificial intelligence, cybersecurity, software and the technology industry.", 
-    "Elena Vasquez": "Covering breaches, privacy and the people who defend the network. Twelve years in security journalism.", 
-    "Priya Sharma": "Senior correspondent on AI platforms, operating systems and the software industry.", 
-    "Daniel Okafor": "Gadgets editor. Reviews and reports on the hardware that carries our digital lives.", 
-    "Marcus Webb": "Programming editor — languages, frameworks, cloud and open source.", 
-    "Hana Yoshida": "Business correspondent covering startups, funding and tech markets.", 
-    "Tom Becker": "Gaming editor. Covers games, hardware and the industry seriously.", 
-    "Aisha Bello": "Reviews editor. Runs the xSypher test lab; buys every unit we review.", 
-    "Nadia Osei": "How-to editor. Practical guides, tested before they're published.", 
-    "James Whitfield": "Opinion columnist on platforms, policy and the economics of software.", 
-    "Liam Turner": "Staff writer across science, future tech and the wider xSypher desk." 
-  };
-  const authorBio = (article.author && bios[article.author]) || "Contributing writer at xSypher.";
+  // Author bio comes from the real profile only. A preview page is exactly
+  // where an editor verifies that what they wrote in Profile > Overview is
+  // what readers will eventually see -- hardcoded seed bios here would show
+  // them prose that ISN'T in the database, which is the one thing a preview
+  // must never do.
 
   let socials: { platform: string; url: string }[] = [];
   try {
@@ -112,7 +102,6 @@ export default async function PreviewPage({ params }: Props) {
   
   const related = relatedDb.map(a => ({
     ...a,
-    mins: 5,
     views: a.views,
     img: a.img || "",
     alt: a.title
@@ -264,7 +253,7 @@ export default async function PreviewPage({ params }: Props) {
               ) : authorName}
             </h4>
             <div className="ar">{authorHeadline}</div>
-            <p>{article.authorModel?.overview || authorBio}</p>
+            <p>{article.authorModel?.overview || "This author has not added an overview yet."}</p>
             {socials.length > 0 && (
               <div className="al">
                 {socials.map((s, i) => (

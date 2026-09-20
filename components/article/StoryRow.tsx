@@ -65,7 +65,7 @@ export default function StoryRow({ article: a, showDeck = true }: Props) {
         </h3>
         {showDeck && <p className="row-deck">{a.deck}</p>}
         <div className="row-meta">
-          {a.author || "xSypher Staff"} · {ageNode} · {a.mins || 5} min read
+          {a.author || "xSypher Staff"} · {ageNode}{typeof a.mins === "number" && a.mins > 0 ? ` · ${a.mins} min read` : ""}
         </div>
       </div>
     </article>

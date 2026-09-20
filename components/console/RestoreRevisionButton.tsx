@@ -69,8 +69,11 @@ export default function RestoreRevisionButton({
         isOpen={isOpen}
         title="Restore this version?"
         description={`The draft will be replaced with the version ${actorName} saved on ${savedAt}. The current version is kept in the history, so you can undo this by restoring it in turn.`}
-        confirmText={isRestoring ? "Restoring…" : "Restore version"}
+        confirmText="Restore version"
         cancelText="Cancel"
+        isDestructive={false}
+        isPending={isRestoring}
+        pendingText="Restoring…"
         onConfirm={handleRestore}
         onCancel={() => setIsOpen(false)}
       />

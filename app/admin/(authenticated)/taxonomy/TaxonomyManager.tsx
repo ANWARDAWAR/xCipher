@@ -99,6 +99,10 @@ export default function TaxonomyManager({
   // Delete dialog states
   const [deletingCat, setDeletingCat] = useState<CategoryItem | null>(null);
   const [deletingTag, setDeletingTag] = useState<TagItem | null>(null);
+  // Both delete dialogs share one in-flight flag: they can never be open at
+  // once (each requires its own target state), so one flag is enough to make
+  // a double-confirm harmless.
+  const [isDeletingEntry, setIsDeletingEntry] = useState(false);
 
   // Merge -- the term being merged AWAY is the source; the editor then picks
   // the target it should be folded into.
@@ -275,8 +279,9 @@ export default function TaxonomyManager({
 
   // Execute Delete Category
   const handleConfirmDeleteCat = async () => {
-    if (!deletingCat) return;
+    if (!deletingCat || isDeletingEntry) return;
 
+    setIsDeletingEntry(true);
     try {
       const res = await deleteCategory(deletingCat.id);
       if (res.success) {
@@ -289,14 +294,16 @@ export default function TaxonomyManager({
       const msg = err instanceof Error ? err.message : "Failed to delete category";
       showToast(`Error: ${msg}`);
     } finally {
+      setIsDeletingEntry(false);
       setDeletingCat(null);
     }
   };
 
   // Execute Delete Tag
   const handleConfirmDeleteTag = async () => {
-    if (!deletingTag) return;
+    if (!deletingTag || isDeletingEntry) return;
 
+    setIsDeletingEntry(true);
     try {
       const res = await deleteTag(deletingTag.id);
       if (res.success) {
@@ -309,6 +316,7 @@ export default function TaxonomyManager({
       const msg = err instanceof Error ? err.message : "Failed to delete tag";
       showToast(`Error: ${msg}`);
     } finally {
+      setIsDeletingEntry(false);
       setDeletingTag(null);
     }
   };
@@ -988,6 +996,8 @@ export default function TaxonomyManager({
         }
         cancelText="Cancel"
         isDestructive={true}
+        isPending={isDeletingEntry}
+        pendingText="Deleting…"
         onConfirm={
           (deletingCat?._count?.articles ?? 0) > 0
             ? () => setDeletingCat(null)

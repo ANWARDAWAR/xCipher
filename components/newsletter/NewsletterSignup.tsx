@@ -96,7 +96,7 @@ export default function NewsletterSignup({ className = "news-band", style, sourc
               </p>
             )}
             <p className="news-note" id="nlNote">
-              By subscribing you agree to our <Link href="/page/privacy" style={{ textDecoration: "underline" }}>privacy policy</Link>. We never sell your data or share your address. One email a day — that's the deal.
+              By subscribing you agree to our <Link href="/page/privacy-policy" style={{ textDecoration: "underline" }}>privacy policy</Link>. We never sell your data or share your address. One email a day — that's the deal.
             </p>
           </>
         )}

@@ -3,6 +3,13 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import {
+  isLoginAllowed,
+  recordLoginFailure,
+  recordLoginThrottled,
+  clearLoginFailures,
+  ipFromAuthorizeHeaders,
+} from "@/lib/login-throttle";
 
 export const authOptions: AuthOptions = {
   secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
@@ -14,24 +21,47 @@ export const authOptions: AuthOptions = {
         email: { label: "Email", type: "email", placeholder: "jsmith@example.com" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- next-auth's req type is not exported cleanly; headers is all we read
+      async authorize(credentials, req: any) {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
 
+        const email = credentials.email.trim();
+        const ip = ipFromAuthorizeHeaders(req?.headers);
+        const userAgent =
+          typeof req?.headers?.["user-agent"] === "string"
+            ? req.headers["user-agent"]
+            : null;
+
+        // Fail fast when the account or the source IP is inside its lockout
+        // window -- the bcrypt comparison below is not even attempted. The
+        // response is deliberately identical to a wrong password; there is no
+        // signal in telling an attacker which scope tripped.
+        if (!isLoginAllowed(email, ip)) {
+          recordLoginThrottled(email, ip, userAgent);
+          return null;
+        }
+
         const user = await db.user.findUnique({
-          where: { email: credentials.email },
+          where: { email },
         });
 
         if (!user || !user.password || !user.isActive) {
+          recordLoginFailure(email, ip, userAgent);
           return null;
         }
 
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
 
         if (!isPasswordValid) {
+          recordLoginFailure(email, ip, userAgent);
           return null;
         }
+
+        // A real sign-in resets the account's failure counter: honest users
+        // who typoed their way to the edge of the window start clean.
+        clearLoginFailures(email);
 
         return {
           id: user.id,

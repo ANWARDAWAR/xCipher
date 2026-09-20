@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { getImgSrc, fmtViews } from "@/lib/utils";
@@ -7,6 +8,26 @@ import StoryCard from "@/components/article/StoryCard";
 import StoryRow from "@/components/article/StoryRow";
 import BreakingTicker from "@/components/home/BreakingTicker";
 import NewsletterSignup from "@/components/newsletter/NewsletterSignup";
+import { getPublicationSettings } from "@/lib/settings";
+import { constructMetadata, siteConfig } from "@/lib/seo";
+
+// Audit: the homepage defined no metadata of its own, so the most-linked URL
+// on the site had no canonical, no Open Graph card and no Twitter card --
+// everything silently fell through to the root layout's title alone. Resolved
+// from publication settings so a name/tagline change in the console is
+// reflected here without a deploy.
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getPublicationSettings();
+  const title = settings.tagline
+    ? `${settings.siteName} — ${settings.tagline}`
+    : settings.siteName;
+  return constructMetadata({
+    title,
+    description: settings.description || siteConfig.description,
+    image: settings.defaultOgImage || settings.logoUrl || siteConfig.logoUrl,
+    canonical: "/",
+  });
+}
 
 // Cached and revalidated on a timer, rather than force-dynamic.
 //
@@ -46,8 +67,11 @@ export default async function Home() {
     // computed at render time is frozen into the cached HTML and served stale
     // to everyone in that window. The absolute createdAt is passed through and
     // <RelativeTime> does the arithmetic in the browser.
+    //
+    // No `mins` either: cards deliberately select no body column, so a reading
+    // time here could only be invented. The components omit the meta when it
+    // is absent.
     age: 0,
-    mins: 5,
     alt: a.title,
     breaking: a.homepagePlacement === "featured",
     pick: a.homepagePlacement === "picks",
@@ -204,7 +228,7 @@ export default async function Home() {
           <div className="trust-card">
             <h3>How we work</h3>
             <p>xSypher stories are reported, fact-checked and edited before publication. We correct errors openly and label opinion clearly. We buy our own review units and accept no payment for coverage.</p>
-            <Link href="/page/editorial">Read our editorial standards →</Link>
+            <Link href="/page/editorial-standards">Read our editorial standards →</Link>
           </div>
         </aside>
       </div>
@@ -325,11 +349,11 @@ export default async function Home() {
                 <Link href={`/category/${pickFeat.category?.slug || "news"}`} className="kicker" style={{ marginTop: "16px" }}>
                   {pickFeat.category?.name || "News"}
                 </Link>
-                <h1>
+                <h2>
                   <Link href={`/article/${pickFeat.slug}`}>
                     <span className="hlink">{pickFeat.title}</span>
                   </Link>
-                </h1>
+                </h2>
                 <p className="story-deck">{pickFeat.deck}</p>
                 <div className="byline">
                   {pickFeat.authorModel?.avatar ? (

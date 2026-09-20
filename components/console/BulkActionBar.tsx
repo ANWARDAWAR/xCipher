@@ -296,7 +296,9 @@ export default function BulkActionBar({
         isOpen={pending !== null}
         title={pending ? ACTIONS[pending].confirmTitle(n) : ""}
         description={pending ? ACTIONS[pending].confirmBody(n) : ""}
-        confirmText={running ? "Working…" : pending ? ACTIONS[pending].label : ""}
+        confirmText={pending ? ACTIONS[pending].label : ""}
+        isPending={running}
+        pendingText="Working…"
         cancelText="Cancel"
         isDestructive={pending ? !!ACTIONS[pending].destructive : false}
         // Typing the word is reserved for the one action that cannot be undone.

@@ -138,7 +138,7 @@ export default function SiteHeader() {
           <nav className="primary-nav" id="primaryNav" aria-label="Primary"></nav>
           <div className="mast-actions shrink-0">
             <SearchButton />
-            <Link className="btn btn-solid shrink-0" href="/page/newsletter" id="subscribeBtn">Subscribe</Link>
+            <Link className="btn btn-solid shrink-0" href="/page/newsletters" id="subscribeBtn">Subscribe</Link>
           </div>
         </div>
         <div className={`navrow ${isStuck ? "stuck" : ""}`} id="navrow">

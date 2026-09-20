@@ -1,5 +1,3 @@
-import { Article } from "./mockData";
-
 const PNGS = new Set([17483873]);
 
 export function getImgSrc(imgId: number | string, w: number = 1200, h: number = 800) {

@@ -42,6 +42,43 @@ interface RateLimitResult {
 }
 
 /**
+ * Read the current rate-limit state for an action + key WITHOUT recording a hit.
+ *
+ * Authentication needs this distinction: a login page that incremented on
+ * every attempt -- including correct ones -- would lock out a legitimate user
+ * for signing in a few times in a row. The correct pattern is: peek before the
+ * password check (fail fast when throttled), record only on a *failed* check,
+ * reset on success. Public form endpoints keep using checkRateLimit() because
+ * every submission is equally expensive for them.
+ */
+export function peekRateLimit(
+  action: string,
+  key: string,
+  options: RateLimitOptions
+): RateLimitResult {
+  const mapKey = `${action}:${key}`;
+  const now = Date.now();
+  const existing = store.get(mapKey);
+
+  if (!existing || existing.resetAt < now) {
+    return { allowed: true, remaining: options.limit, resetAt: now + options.windowMs };
+  }
+  if (existing.count >= options.limit) {
+    return { allowed: false, remaining: 0, resetAt: existing.resetAt };
+  }
+  return { allowed: true, remaining: options.limit - existing.count, resetAt: existing.resetAt };
+}
+
+/**
+ * Remove the counter for an action + key. Used to clear recorded login
+ * failures after a successful sign-in, so honest users recovering from a typo
+ * are not punished for the rest of the window.
+ */
+export function resetRateLimit(action: string, key: string): void {
+  store.delete(`${action}:${key}`);
+}
+
+/**
  * Check and record a rate-limit hit for a given action + key (typically an IP).
  * Returns { allowed: true } when under the limit.
  */
@@ -80,4 +117,16 @@ export function getClientIp(headers: Headers): string {
     return forwarded.split(",")[0].trim();
   }
   return "unknown";
+}
+
+/**
+ * The same extraction for the plain lowercase-keyed header record that
+ * next-auth hands to authorize(), which is not a Headers instance.
+ */
+export function getClientIpFromRecord(
+  headers: Record<string, string | string[] | undefined> | undefined
+): string {
+  const forwarded = headers?.["x-forwarded-for"];
+  const first = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  return first?.split(",")[0].trim() || "unknown";
 }

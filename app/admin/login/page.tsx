@@ -121,10 +121,9 @@ function LoginForm() {
 
       {/* Primary CTA Action */}
       <div className="pt-1">
-        <button 
-          type="submit" 
-          disabled={loading} 
-          style={{ backgroundColor: loading ? '#b91c1c' : '#dc2626' }}
+        <button
+          type="submit"
+          disabled={loading}
           className="w-full h-11 flex items-center justify-center gap-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-white font-medium text-sm tracking-wide rounded-lg shadow-md shadow-accent/25 transition-all duration-200 active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer"
         >
           {loading ? (

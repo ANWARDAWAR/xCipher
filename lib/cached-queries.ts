@@ -1,11 +1,11 @@
 import { unstable_cache } from "next/cache";
 import { db } from "./db";
-import { CACHE_TAGS, categoryTag, authorTag } from "./cache-tags";
+import { CACHE_TAGS, categoryTag } from "./cache-tags";
 import {
   ARTICLE_CARD_SELECT,
   HOME_ARTICLE_LIMIT,
-  LATEST_ARTICLE_LIMIT,
-  LISTING_ARTICLE_LIMIT,
+  LATEST_PAGE_SIZE,
+  LISTING_PAGE_SIZE,
 } from "./queries";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,52 +53,59 @@ export const getHomeArticles = unstable_cache(
   { tags: [CACHE_TAGS.articles], revalidate: 300 }
 );
 
-/** The /latest wire, newest first. */
-export const getLatestArticles = unstable_cache(
-  async () =>
-    db.article.findMany({
-      where: { status: "PUBLISHED" },
-      orderBy: { createdAt: "desc" },
-      take: LATEST_ARTICLE_LIMIT,
-      select: ARTICLE_CARD_SELECT,
-    }),
-  ["latest-articles"],
-  { tags: [CACHE_TAGS.articles], revalidate: 180 }
-);
-
 /**
- * Published articles in one category.
+ * The /latest wire, newest first, one page at a time.
  *
- * The slug is both a key part and part of the tag: `categoryTag(slug)` lets a
- * single section be invalidated when an article lands in it, without dropping
- * the other twelve categories.
+ * The listing paginates (page size in lib/queries.ts): it used to stop at a
+ * hard cap of 60 rows, which meant the 61st-oldest story was unreachable from
+ * the archive entirely -- to readers and to crawlers following internal links.
+ * Pages are 1-based; one extra row is fetched to learn whether a next page
+ * exists without paying for a COUNT(*).
  */
-export function getCategoryArticles(slug: string) {
+export function getLatestArticles(page: number) {
   return unstable_cache(
-    async () =>
-      db.article.findMany({
-        where: { status: "PUBLISHED", category: { slug } },
+    async () => {
+      const rows = await db.article.findMany({
+        where: { status: "PUBLISHED" },
         orderBy: { createdAt: "desc" },
-        take: LISTING_ARTICLE_LIMIT,
+        skip: (page - 1) * LATEST_PAGE_SIZE,
+        take: LATEST_PAGE_SIZE + 1,
         select: ARTICLE_CARD_SELECT,
-      }),
-    ["category-articles", slug],
-    { tags: [CACHE_TAGS.articles, categoryTag(slug)], revalidate: 300 }
+      });
+      return {
+        items: rows.slice(0, LATEST_PAGE_SIZE),
+        hasNextPage: rows.length > LATEST_PAGE_SIZE,
+      };
+    },
+    ["latest-articles", String(page)],
+    { tags: [CACHE_TAGS.articles], revalidate: 180 }
   )();
 }
 
-/** Published articles by one author. */
-export function getAuthorArticles(authorId: string, authorSlug: string) {
+/**
+ * Published articles in one category, one page at a time.
+ *
+ * The slug is both a key part and part of the tag: `categoryTag(slug)` lets a
+ * single section be invalidated when an article lands in it, without dropping
+ * the other twelve categories. Same page + sentineling convention as the wire.
+ */
+export function getCategoryArticles(slug: string, page: number) {
   return unstable_cache(
-    async () =>
-      db.article.findMany({
-        where: { status: "PUBLISHED", authorId },
+    async () => {
+      const rows = await db.article.findMany({
+        where: { status: "PUBLISHED", category: { slug } },
         orderBy: { createdAt: "desc" },
-        take: LISTING_ARTICLE_LIMIT,
+        skip: (page - 1) * LISTING_PAGE_SIZE,
+        take: LISTING_PAGE_SIZE + 1,
         select: ARTICLE_CARD_SELECT,
-      }),
-    ["author-articles", authorId],
-    { tags: [CACHE_TAGS.articles, authorTag(authorSlug)], revalidate: 600 }
+      });
+      return {
+        items: rows.slice(0, LISTING_PAGE_SIZE),
+        hasNextPage: rows.length > LISTING_PAGE_SIZE,
+      };
+    },
+    ["category-articles", slug, String(page)],
+    { tags: [CACHE_TAGS.articles, categoryTag(slug)], revalidate: 300 }
   )();
 }
 

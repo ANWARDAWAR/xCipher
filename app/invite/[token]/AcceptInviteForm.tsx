@@ -74,12 +74,12 @@ export default function AcceptInviteForm({ token, email }: AcceptInviteFormProps
           name="password"
           type="password"
           required
-          minLength={8}
+          minLength={10}
           placeholder="••••••••"
           className="w-full bg-[var(--surface-2)] border border-[var(--line-2)] rounded-[var(--r-sm)] px-3.5 py-2.5 text-sm text-[var(--ink)] placeholder-[var(--faint)] font-[family:var(--f-ui)] focus:border-[var(--accent)] focus:outline-none transition-colors"
         />
         <span className="text-[10px] text-[var(--muted)] font-[family:var(--f-ui)] mt-1.5 block">
-          Must be at least 8 characters long
+          At least 10 characters, with letters and digits
         </span>
       </div>
 

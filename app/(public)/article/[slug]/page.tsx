@@ -7,7 +7,8 @@ import { getImgSrc, fmtViews, timeAgo } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { getRecentArticleSlugs } from "@/lib/cached-queries";
 import { ARTICLE_CARD_SELECT } from "@/lib/queries";
-import { constructMetadata, generateNewsArticleJsonLd } from "@/lib/seo";
+import { constructMetadata, generateNewsArticleJsonLd, stringifyJsonLd } from "@/lib/seo";
+import { readingMinutesFromHtml, listeningMinutesFromHtml } from "@/lib/reading-time";
 import { SocialIcon } from "@/components/author/AuthorProfileView";
 import ArticleBody from "@/components/article/ArticleBody";
 import ArticleSidebar from "@/components/article/ArticleSidebar";
@@ -115,21 +116,17 @@ export default async function ArticlePage({ params }: Props) {
   const authorSlug = article.authorModel?.slug || null;
   const articleAuthorRole = article.authorModel?.role || article.role || "Contributing writer";
 
-  // Author bio mapping
-  const bios: Record<string, string> = { 
-    "Ahmed Khan": "Writing about artificial intelligence, cybersecurity, software and the technology industry.", 
-    "Elena Vasquez": "Covering breaches, privacy and the people who defend the network. Twelve years in security journalism.", 
-    "Priya Sharma": "Senior correspondent on AI platforms, operating systems and the software industry.", 
-    "Daniel Okafor": "Gadgets editor. Reviews and reports on the hardware that carries our digital lives.", 
-    "Marcus Webb": "Programming editor — languages, frameworks, cloud and open source.", 
-    "Hana Yoshida": "Business correspondent covering startups, funding and tech markets.", 
-    "Tom Becker": "Gaming editor. Covers games, hardware and the industry seriously.", 
-    "Aisha Bello": "Reviews editor. Runs the xSypher test lab; buys every unit we review.", 
-    "Nadia Osei": "How-to editor. Practical guides, tested before they're published.", 
-    "James Whitfield": "Opinion columnist on platforms, policy and the economics of software.", 
-    "Liam Turner": "Staff writer across science, future tech and the wider xSypher desk." 
-  };
-  const authorBio = (article.author && bios[article.author]) || "Contributing writer at xSypher.";
+  // Audit: this page used to carry a hardcoded map of fabricated bios for the
+  // seed authors ("Twelve years in security journalism", etc.), looked up by
+  // the legacy plain-text author name. Bios are editorial facts; the real
+  // source is the author profile in the database, rendered below from
+  // authorModel.overview. Nothing here is invented anymore.
+  //
+  // Reading/listening time is computed from the actual body (the list cards
+  // load no body and therefore show no reading time at all -- a fake "5 min"
+  // on every card was the old behaviour).
+  const readingMins = readingMinutesFromHtml(article.contentHtml);
+  const listeningMins = listeningMinutesFromHtml(article.contentHtml);
 
   let socials: { platform: string; url: string }[] = [];
   try {
@@ -147,7 +144,6 @@ export default async function ArticlePage({ params }: Props) {
   
   const related = relatedDb.map(a => ({
     ...a,
-    mins: 5,
     views: a.views,
     img: a.img || "",
     alt: a.title
@@ -157,7 +153,10 @@ export default async function ArticlePage({ params }: Props) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(generateNewsArticleJsonLd(article)) }}
+        // stringifyJsonLd escapes "<" so a title containing a closing script
+        // tag cannot break out of this block. Do not replace it with plain
+        // JSON.stringify here.
+        dangerouslySetInnerHTML={{ __html: stringifyJsonLd(generateNewsArticleJsonLd(article)) }}
       />
       <ProgressBar />
       <article className="art" itemScope itemType="https://schema.org/NewsArticle">
@@ -202,11 +201,15 @@ export default async function ArticlePage({ params }: Props) {
             </div>
           </div>
           <div className="font-mono text-[11px] text-[var(--muted)] tracking-tight flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span>Published <b><time itemProp="datePublished" className="text-[var(--ink)]">{article.createdAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</time></b></span>
+            <span>Published <b><time itemProp="datePublished" dateTime={(article.publishedAt ?? article.createdAt).toISOString()} className="text-[var(--ink)]">{(article.publishedAt ?? article.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</time></b></span>
             <span className="hidden sm:inline">·</span>
-            <span>Updated <b>{article.updatedAt.toLocaleDateString("en-US")}</b></span>
-            <span className="hidden sm:inline">·</span>
-            <span><b>5 min</b> read</span>
+            <span>Updated <b><time itemProp="dateModified" dateTime={article.updatedAt.toISOString()}>{article.updatedAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</time></b></span>
+            {readingMins > 0 && (
+              <>
+                <span className="hidden sm:inline">·</span>
+                <span><b>{readingMins} min</b> read</span>
+              </>
+            )}
             <span className="hidden sm:inline">·</span>
             <span><b>{fmtViews(article.views)}</b> reads</span>
           </div>
@@ -222,7 +225,9 @@ export default async function ArticlePage({ params }: Props) {
             <MessageSquare className="w-3.5 h-3.5 !text-white"/>
             <span>Comments</span>
           </a>
-          <span className="muted" style={{ fontSize: "12px" }}>• 5 min listen</span>
+          {listeningMins > 0 && (
+            <span className="muted" style={{ fontSize: "12px" }}>• {listeningMins} min listen</span>
+          )}
         </div>
         
         <figure className="art-hero">

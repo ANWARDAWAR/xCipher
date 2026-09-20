@@ -6,7 +6,20 @@ import { canAssignRole, canManageUser, hasRequiredRole } from "@/lib/permissions
 import crypto from "crypto";
 import { sendInvitationEmail } from "@/lib/email";
 import bcrypt from "bcryptjs";
+import { z } from "zod";
 import { Role } from "@prisma/client";
+
+// Staff accounts are created here, not self-registered, so the password floor
+// is real policy rather than a hint: 10+ characters with letters and digits.
+const acceptSchema = z.object({
+  name: z.string().trim().min(1, "Your name is required.").max(80),
+  password: z
+    .string()
+    .min(10, "Password must be at least 10 characters.")
+    .max(200)
+    .regex(/[a-zA-Z]/, "Password must contain at least one letter.")
+    .regex(/[0-9]/, "Password must contain at least one digit."),
+});
 
 async function logAudit(action: string, entityType: string, entityId?: string, details?: any) {
   try {
@@ -112,32 +125,45 @@ export async function revokeInvitation(id: string) {
 
 export async function acceptInvitation(token: string, formData: FormData) {
   try {
-    const name = formData.get("name") as string;
-    const password = formData.get("password") as string;
-
-    if (!name || !password || password.length < 8) {
-      return { success: false, error: "Valid name and password (min 8 chars) required." };
+    const parsed = acceptSchema.safeParse({
+      name: formData.get("name"),
+      password: formData.get("password"),
+    });
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0]?.message || "Invalid input." };
     }
-
-    const invitation = await db.invitation.findUnique({ where: { token } });
-    if (!invitation || invitation.status !== "PENDING" || invitation.expires < new Date()) {
-      return { success: false, error: "Invalid or expired invitation." };
-    }
+    const { name, password } = parsed.data;
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await db.user.create({
-      data: {
-        email: invitation.email,
-        name,
-        password: hashedPassword,
-        role: invitation.role,
+    // Claim-before-create, in one transaction. The old flow read the
+    // invitation, then created the user, then marked it accepted: two
+    // concurrent accepts both observed PENDING, and a crash between the two
+    // writes left an accepted account attached to a re-usable token. Now the
+    // token is consumed atomically -- a second accept races to count 0 and
+    // the user row is either committed with it or not at all.
+    const user = await db.$transaction(async (tx) => {
+      const claim = await tx.invitation.updateMany({
+        where: { token, status: "PENDING", expires: { gt: new Date() } },
+        data: { status: "ACCEPTED" },
+      });
+      if (claim.count === 0) {
+        throw new Error("INVITATION_UNAVAILABLE");
       }
-    });
 
-    await db.invitation.update({
-      where: { id: invitation.id },
-      data: { status: "ACCEPTED" },
+      const invitation = await tx.invitation.findUnique({ where: { token } });
+      if (!invitation) {
+        throw new Error("INVITATION_UNAVAILABLE");
+      }
+
+      return tx.user.create({
+        data: {
+          email: invitation.email,
+          name,
+          password: hashedPassword,
+          role: invitation.role,
+        }
+      });
     });
 
     await db.auditLog.create({
@@ -152,6 +178,14 @@ export async function acceptInvitation(token: string, formData: FormData) {
 
     return { success: true };
   } catch (error: any) {
+    if (error instanceof Error && error.message === "INVITATION_UNAVAILABLE") {
+      return { success: false, error: "Invalid or expired invitation." };
+    }
+    // Prisma unique-violation on User.email: an account with this address
+    // already exists (e.g. an earlier accept that crashed after create).
+    if (error?.code === "P2002") {
+      return { success: false, error: "An account with this email already exists. Sign in instead." };
+    }
     console.error("Accept invite error:", error);
     return { success: false, error: "Failed to accept invitation." };
   }

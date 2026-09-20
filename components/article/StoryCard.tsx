@@ -65,7 +65,11 @@ export default function StoryCard({ article: a, showDeck = true }: Props) {
         </h3>
         {showDeck && <p className="story-deck">{a.deck}</p>}
         <div className="byline" style={{ marginTop: "8px" }}>
-          <span><span className="text-[var(--accent)] hover:underline">{a.author || "xSypher Staff"}</span> · {ageNode} · {a.mins || 5} min read</span>
+          {/* Reading time only renders when a real value was supplied; cards
+              load no body text, so there is nothing honest to compute it
+              from. The old `|| 5` fallback printed a fabricated number on
+              every card. */}
+          <span><span className="text-[var(--accent)] hover:underline">{a.author || "xSypher Staff"}</span> · {ageNode}{typeof a.mins === "number" && a.mins > 0 ? ` · ${a.mins} min read` : ""}</span>
         </div>
       </div>
     </article>

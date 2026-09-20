@@ -72,7 +72,7 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
           {comment.body.length > 150 && (
             <button 
               onClick={() => setExpanded(!expanded)} 
-              className="ml-2 inline-flex items-center gap-0.5 text-xs font-medium text-accent hover:underline focus:outline-none"
+              className="ml-2 inline-flex items-center gap-0.5 text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:rounded-sm"
             >
               {expanded ? <>Show less <ChevronUp className="w-3 h-3" /></> : <>Read more <ChevronDown className="w-3 h-3" /></>}
             </button>

@@ -110,7 +110,7 @@ export default function MobileDrawer() {
           <Link href="/page/contact">Contact</Link>
         </nav>
         <div className="drawer-foot">
-          <Link className="btn btn-solid" href="/page/newsletter">Subscribe to the daily brief</Link>
+          <Link className="btn btn-solid" href="/page/newsletters">Subscribe to the daily brief</Link>
           <button 
             className="btn" 
             onClick={() => setTheme(isDark ? "light" : "dark")}

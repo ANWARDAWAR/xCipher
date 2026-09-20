@@ -33,7 +33,10 @@ export function SocialIcon({ platform }: { platform: string }) {
   );
 }
 
-export default function AuthorProfileView({ author, articles, socials, totalViews }: { author: any, articles: any[], socials: any[], totalViews: number }) {
+export default function AuthorProfileView({ author, articles, socials, totalViews, totalCount, page = 1, hasNextPage = false }: { author: any, articles: any[], socials: any[], totalViews: number, totalCount?: number, page?: number, hasNextPage?: boolean }) {
+  // Prefer the true archive total for the stats header; fall back to the
+  // length of the rows handed to us when a caller does not know it.
+  const publishedCount = typeof totalCount === "number" ? totalCount : articles.length;
   return (
     <div className="ap-root overflow-x-hidden w-full max-w-[100vw]">
       {/* ── Hero / Banner ─────────────────────────── */}
@@ -122,17 +125,16 @@ export default function AuthorProfileView({ author, articles, socials, totalView
       <div className="wrap">
         <div className="flex flex-row flex-wrap justify-center md:justify-start items-center gap-8 sm:gap-12 w-full py-6 my-6 border-y border-[var(--line)]">
           <div className="flex flex-col items-center md:items-start text-center md:text-left">
-            <span className="text-2xl sm:text-3xl font-bold text-[var(--ink)]">{articles.length}</span>
+            <span className="text-2xl sm:text-3xl font-bold text-[var(--ink)]">{publishedCount}</span>
             <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-1">PUBLISHED ARTICLES</span>
           </div>
           <div className="flex flex-col items-center md:items-start text-center md:text-left">
             <span className="text-2xl sm:text-3xl font-bold text-[var(--ink)]">{totalViews > 0 ? fmtViews(totalViews) : 0}</span>
             <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-1">TOTAL READS</span>
           </div>
-          <div className="flex flex-col items-center md:items-start text-center md:text-left">
-            <span className="text-2xl sm:text-3xl font-bold text-[var(--ink)]">850</span>
-            <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-1">SUBSCRIBERS</span>
-          </div>
+          {/* Audit: a hardcoded "850 SUBSCRIBERS" stat used to sit here. There
+              is no per-author subscriber figure in the data model, so any
+              number shown was fabricated. Removed rather than replaced. */}
         </div>
       </div>
 
@@ -189,8 +191,8 @@ export default function AuthorProfileView({ author, articles, socials, totalView
           {/* Articles */}
           <section aria-label="Articles" style={{ marginTop: author.bio ? '48px' : '32px' }}>
             <div className="ap-section-label" style={{ marginBottom: '24px' }}>
-              {articles.length > 0
-                ? `${articles.length} Article${articles.length !== 1 ? 's' : ''} by ${author.name}`
+              {publishedCount > 0
+                ? `${publishedCount} Article${publishedCount !== 1 ? 's' : ''} by ${author.name}${page > 1 ? ` — page ${page}` : ''}`
                 : `Articles by ${author.name}`}
             </div>
 
@@ -230,6 +232,26 @@ export default function AuthorProfileView({ author, articles, socials, totalView
                       <StoryCard key={article.id} article={article} showDeck={false} />
                     ))}
                   </div>
+                )}
+
+                {/* Archive pagination: the same control pattern as the
+                    category/tag/wire listings. */}
+                {(page > 1 || hasNextPage) && (
+                  <nav
+                    aria-label={`Articles by ${author.name} pages`}
+                    style={{ display: "flex", justifyContent: "space-between", marginTop: "32px", padding: "16px 0", borderTop: "1px solid var(--line)" }}
+                  >
+                    {page > 1 ? (
+                      <Link href={page - 1 > 1 ? `/author/${author.slug}?page=${page - 1}` : `/author/${author.slug}`} className="btn-cs">
+                        ← Newer articles
+                      </Link>
+                    ) : <span />}
+                    {hasNextPage ? (
+                      <Link href={`/author/${author.slug}?page=${page + 1}`} className="btn-cs primary">
+                        Older articles →
+                      </Link>
+                    ) : <span />}
+                  </nav>
                 )}
               </div>
             ) : (

@@ -43,7 +43,8 @@ export default function SetupForm() {
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">Password</label>
-        <input name="password" type="password" required minLength={8} className="w-full bg-white/5 border border-white/10 rounded-lg p-2 focus:border-white/30 outline-none" />
+        <input name="password" type="password" required minLength={12} className="w-full bg-white/5 border border-white/10 rounded-lg p-2 focus:border-white/30 outline-none" />
+        <p className="text-xs text-neutral-400 mt-1">At least 12 characters, with letters and digits.</p>
       </div>
       <button type="submit" disabled={loading} className="w-full py-2 bg-white text-black font-semibold rounded-lg mt-2 hover:bg-gray-200 disabled:opacity-50 transition-colors">
         {loading ? "Creating..." : "Create Owner Account"}

@@ -750,7 +750,7 @@ export default function ProfileForm({
                 <button
                   type="button"
                   onClick={() => removeBeat(beat)}
-                  className="text-[var(--muted)] hover:text-[var(--bad)] focus:outline-none transition-colors"
+                  className="text-[var(--muted)] hover:text-[var(--bad)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:rounded-full transition-colors"
                   aria-label={`Remove ${beat}`}
                 >
                   <X className="w-3.5 h-3.5" />

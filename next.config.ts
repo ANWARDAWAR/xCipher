@@ -68,6 +68,22 @@ function r2RemotePattern(): NonNullable<NonNullable<NextConfig["images"]>["remot
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: localNetworkOrigins(),
+  async redirects() {
+    // The trust pages used to live under short slugs rendered from a
+    // hardcoded PAGES object; they now have dedicated routes with richer,
+    // maintained content. These 308s keep every previously published or
+    // bookmarked URL -- and any cached search result -- working, with the
+    // canonical target baked into config rather than scattered across pages.
+    // `permanent: true` matters: it is what lets search engines consolidate
+    // ranking signals onto the new URLs.
+    return [
+      { source: "/page/newsletter", destination: "/page/newsletters", permanent: true },
+      { source: "/page/editorial", destination: "/page/editorial-standards", permanent: true },
+      { source: "/page/privacy", destination: "/page/privacy-policy", permanent: true },
+      { source: "/page/terms", destination: "/page/terms-of-use", permanent: true },
+      { source: "/page/cookies", destination: "/page/cookie-policy", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

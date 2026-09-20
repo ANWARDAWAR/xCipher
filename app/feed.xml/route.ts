@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { siteConfig } from "@/lib/seo";
 
 export const revalidate = 3600;
 
@@ -20,7 +21,10 @@ export async function GET() {
       },
     });
 
-    const siteUrl = "https://www.xsypher.com";
+    // Was hardcoded to https://www.xsypher.com AND prefixed article links with
+    // the bare slug instead of /article/<slug>: every single item in the feed
+    // 404'd. Both now come from the one siteConfig the rest of the app uses.
+    const siteUrl = siteConfig.url;
     
     const escapeXml = (unsafe: string) => {
       return unsafe
@@ -33,7 +37,7 @@ export async function GET() {
 
     const rssItems = articles
       .map((article) => {
-        const url = `${siteUrl}/${article.slug}`;
+        const url = `${siteUrl}/article/${article.slug}`;
         const title = escapeXml(article.title);
         const description = escapeXml(article.deck || "");
         const pubDate = article.publishedAt 

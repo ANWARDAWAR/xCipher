@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { ARTICLE_CARD_SELECT, LISTING_ARTICLE_LIMIT } from "@/lib/queries";
+import { ARTICLE_CARD_SELECT, LISTING_PAGE_SIZE } from "@/lib/queries";
 import ProfileForm from "./ProfileForm";
 import AccountForm from "./AccountForm";
 import Link from "next/link";
@@ -73,7 +73,7 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
       db.article.findMany({
         where: authorWhere,
         orderBy: { createdAt: "desc" },
-        take: LISTING_ARTICLE_LIMIT,
+        take: LISTING_PAGE_SIZE,
         select: ARTICLE_CARD_SELECT,
       }),
       db.article.aggregate({ where: authorWhere, _sum: { views: true } }),

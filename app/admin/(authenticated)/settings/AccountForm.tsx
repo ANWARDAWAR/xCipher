@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { signOut } from "next-auth/react";
 import { showToast } from "@/lib/utils";
-import { updateNotificationPrefs } from "@/app/actions/profile";
+import { changePassword, updateNotificationPrefs } from "@/app/actions/profile";
 
 export default function AccountForm({ user }: { user: any }) {
-  const [isPending, setIsPending] = useState(false);
+  // Independent pending states: a single shared flag used to disable the
+  // password submit while preferences saved (and vice versa), which made the
+  // two forms look like one operation.
+  const [isPasswordPending, setIsPasswordPending] = useState(false);
+  const [isPrefsPending, setIsPrefsPending] = useState(false);
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -21,28 +26,39 @@ export default function AccountForm({ user }: { user: any }) {
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      showToast("Passwords do not match");
+      showToast("Passwords do not match.");
       return;
     }
-    if (newPassword.length < 8) {
-      showToast("Password must be at least 8 characters");
-      return;
-    }
-    
-    setIsPending(true);
-    // Add real password change API call here later
-    setTimeout(() => {
-      showToast("Password updated successfully (Mock)");
+
+    setIsPasswordPending(true);
+    try {
+      const res = await changePassword(password, newPassword);
+      if (!res.success) {
+        showToast(`Error: ${res.error || "Failed to update password"}`);
+        setIsPasswordPending(false);
+        return;
+      }
+
+      // The action bumped sessionVersion, which invalidates every session
+      // including this one by design: whoever else held a token for this
+      // account is now locked out. Sign out cleanly and land on the login
+      // page with an explanation, rather than dying on the next request.
+      showToast("Password updated. Sign in again with your new password.");
       setPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setIsPending(false);
-    }, 1000);
+      setTimeout(() => {
+        signOut({ callbackUrl: "/admin/login" });
+      }, 1200);
+    } catch {
+      showToast("Error: Failed to update password. Please try again.");
+      setIsPasswordPending(false);
+    }
   };
 
   const handlePrefsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsPending(true);
+    setIsPrefsPending(true);
     try {
       const res = await updateNotificationPrefs({
         emailAlerts: !!prefs.emailAlerts,
@@ -58,7 +74,7 @@ export default function AccountForm({ user }: { user: any }) {
       const msg = err instanceof Error ? err.message : "Failed to save preferences";
       showToast(`Error: ${msg}`);
     } finally {
-      setIsPending(false);
+      setIsPrefsPending(false);
     }
   };
 
@@ -79,14 +95,14 @@ export default function AccountForm({ user }: { user: any }) {
             </div>
             <div>
               <label className="ed-label">New Password</label>
-              <input type="password" className="ed-input" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} />
+              <input type="password" className="ed-input" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={10} />
             </div>
             <div>
               <label className="ed-label">Confirm New Password</label>
-              <input type="password" className="ed-input" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={8} />
+              <input type="password" className="ed-input" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={10} />
             </div>
             <div className="cs-settings-full" style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button type="submit" className="btn-cs primary" disabled={isPending}>Update Password</button>
+              <button type="submit" className="btn-cs primary" disabled={isPasswordPending}>{isPasswordPending ? "Updating…" : "Update Password"}</button>
             </div>
           </form>
         </div>
@@ -115,7 +131,7 @@ export default function AccountForm({ user }: { user: any }) {
               </label>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button type="submit" className="btn-cs" disabled={isPending}>Save Preferences</button>
+              <button type="submit" className="btn-cs" disabled={isPrefsPending}>{isPrefsPending ? "Saving…" : "Save Preferences"}</button>
             </div>
           </form>
         </div>

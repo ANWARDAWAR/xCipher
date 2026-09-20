@@ -28,7 +28,10 @@ export default function ArticleActionMenu({ id, title, status, canArchive, canDe
   const busy = isProcessing || isRefreshing;
 
   const handleAction = async (action: "archive" | "delete" | "draftDelete") => {
-    setShowConfirm(null);
+    // The dialog stays open through the pending state (its isPending disables
+    // both buttons) and closes only once the result is known: for a permanent
+    // delete the user must never watch the row vanish before the database
+    // confirmed it, and must never be able to fire the mutation twice.
     setIsProcessing(true);
     try {
       let result;
@@ -37,16 +40,21 @@ export default function ArticleActionMenu({ id, title, status, canArchive, canDe
       else if (action === "draftDelete") result = await deleteOwnDraft(id);
       
       if (result?.ok) {
-        showToast("Action completed successfully");
+        // Action-specific copy, not a generic "done": an author who archived
+        // should hear where the article went, not that something succeeded.
+        if (action === "archive") showToast("Article archived. It no longer appears publicly.");
+        else if (action === "delete") showToast("Article permanently deleted.");
+        else showToast("Draft deleted.");
         startRefresh(() => router.refresh());
       } else {
-        showToast("Failed: " + (result?.message || "Unknown error"));
+        showToast("Error: " + (result?.message || "The action did not complete — nothing was changed."));
       }
     } catch (err: any) {
-      showToast("Error processing action");
+      showToast("Error: The action did not complete — nothing was changed.");
       console.error(err);
     } finally {
       setIsProcessing(false);
+      setShowConfirm(null);
       setMenuOpen(false);
     }
   };
@@ -128,33 +136,39 @@ export default function ArticleActionMenu({ id, title, status, canArchive, canDe
         </>
       )}
 
-      <ConfirmDialog 
+      <ConfirmDialog
         isOpen={showConfirm === "archive"}
         title="Archive Article"
         description={`Are you sure you want to archive "${title}"? It will no longer be visible to the public.`}
         confirmText="Archive"
         isDestructive={true}
+        isPending={busy}
+        pendingText="Archiving…"
         onConfirm={() => handleAction("archive")}
         onCancel={() => setShowConfirm(null)}
       />
 
-      <ConfirmDialog 
+      <ConfirmDialog
         isOpen={showConfirm === "delete"}
         title="Delete Permanently"
         description={`Are you sure you want to permanently delete "${title}"? This action cannot be undone.`}
         confirmText="Delete"
         isDestructive={true}
         requireTypedConfirmation="DELETE"
+        isPending={busy}
+        pendingText="Deleting…"
         onConfirm={() => handleAction("delete")}
         onCancel={() => setShowConfirm(null)}
       />
 
-      <ConfirmDialog 
+      <ConfirmDialog
         isOpen={showConfirm === "draftDelete"}
         title="Delete Draft"
         description={`Are you sure you want to delete your draft "${title}"?`}
         confirmText="Delete Draft"
         isDestructive={true}
+        isPending={busy}
+        pendingText="Deleting…"
         onConfirm={() => handleAction("draftDelete")}
         onCancel={() => setShowConfirm(null)}
       />
