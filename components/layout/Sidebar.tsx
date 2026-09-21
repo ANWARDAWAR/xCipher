@@ -44,7 +44,7 @@ export default async function Sidebar() {
                       <span className="hlink">{a.title}</span>
                     </Link>
                   </h3>
-                  <span className="mr-cat">{a.catName} · {a.mins || 5} min read</span>
+                  <span className="mr-cat">{a.catName} · {a.readingTime || a.mins || 1} min read</span>
                 </div>
               </li>
             ))}

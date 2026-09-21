@@ -34,7 +34,14 @@ export const ARTICLE_CARD_SELECT = {
   publishedAt: true,
   homepagePlacement: true,
   categoryId: true,
-  category: { select: { id: true, name: true, slug: true } },
+  category: { 
+    select: { 
+      id: true, 
+      name: true, 
+      slug: true,
+      parent: { select: { id: true, name: true, slug: true } }
+    } 
+  },
   authorModel: { select: { avatar: true, name: true, slug: true } },
 } as const;
 

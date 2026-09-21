@@ -101,9 +101,13 @@ export default async function CategoryPage({ params }: Props) {
                   </Link>
                 </h3>
                 <p className="story-deck" style={{ fontSize: "15.5px" }}>{feat.deck}</p>
-                <div className="byline" style={{ marginTop: "12px" }}>
-                  <div className="ava sm">{(feat.author || "xSypher").charAt(0)}</div>
-                  <span><b>{feat.author || "xSypher Staff"}</b> <span className="dot">·</span> {<RelativeTime dateTime={new Date(feat.createdAt).toISOString()} />} <span className="dot">·</span> {feat.readingTime || 1} min read</span>
+                <div className="byline" style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  {feat.authorModel?.avatar ? (
+                    <Image src={feat.authorModel.avatar} width={24} height={24} alt={feat.authorModel?.name || feat.author || ""} className="rounded-full" />
+                  ) : (
+                    <div className="ava sm">{(feat.authorModel?.name || feat.author || "xSypher").charAt(0)}</div>
+                  )}
+                  <span><b>{feat.authorModel?.name || feat.author || "xSypher Staff"}</b> <span className="dot">·</span> {<RelativeTime dateTime={new Date(feat.createdAt).toISOString()} />} <span className="dot">·</span> {feat.readingTime || 1} min read</span>
                 </div>
               </div>
             </article>

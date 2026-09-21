@@ -42,7 +42,10 @@ export const getHomeArticles = unstable_cache(
   async () =>
     db.article.findMany({
       where: { status: "PUBLISHED" },
-      orderBy: { createdAt: "desc" },
+      orderBy: [
+        { featured: "desc" },
+        { createdAt: "desc" }
+      ],
       take: HOME_ARTICLE_LIMIT,
       select: ARTICLE_CARD_SELECT,
     }),
@@ -77,7 +80,15 @@ export function getCategoryArticles(slug: string) {
   return unstable_cache(
     async () =>
       db.article.findMany({
-        where: { status: "PUBLISHED", category: { slug } },
+        where: { 
+          status: "PUBLISHED", 
+          category: {
+            OR: [
+              { slug },
+              { parent: { slug } }
+            ]
+          }
+        },
         orderBy: { createdAt: "desc" },
         take: LISTING_ARTICLE_LIMIT,
         select: ARTICLE_CARD_SELECT,

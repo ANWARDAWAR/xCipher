@@ -490,10 +490,10 @@ export default function ArticleEditor({
       reset({
         title,
         slug: slugify(title),
-        cat: "ai",
-        author: "xSypher Staff",
-        role: "Editorial",
-        featured: false,
+        cat: getValues("cat") || "ai",
+        author: getValues("author") || "xSypher Staff",
+        role: getValues("role") || "Editorial",
+        featured: getValues("featured") || false,
         status: "DRAFT",
         deck: template.deck,
         img: "",
@@ -711,7 +711,7 @@ export default function ArticleEditor({
         if (isAutosave) return result.article;
 
         // If a transition was requested, execute it now that the draft is saved
-        if (targetStatus === "SUBMITTED") {
+        if (targetStatus === "SUBMITTED" && currentFormStatus !== "SUBMITTED") {
           const trans = await submitArticle(result.article.id);
           if (!trans.ok) {
             setValue("status", result.article.status as any);
@@ -721,7 +721,7 @@ export default function ArticleEditor({
             setLastSaved(d);
             lastSavedRef.current = d;
           }
-        } else if (targetStatus === "PUBLISHED") {
+        } else if (targetStatus === "PUBLISHED" && currentFormStatus !== "PUBLISHED") {
           const trans = await publishArticle(result.article.id);
           if (!trans.ok) {
             setValue("status", result.article.status as any);
@@ -1264,6 +1264,22 @@ export default function ArticleEditor({
                     <input className="ed-rail-input" type="datetime-local" id="edScheduledFor" {...register("scheduledFor")} />
                   </div>
                 )}
+                
+                {(currentUser.role === "OWNER" || currentUser.role === "ADMIN") && canPublish && (
+                  <div className="pt-2">
+                    <label className="ed-rail-label">Homepage Placement</label>
+                    <div className="space-y-2 mt-1">
+                      <label className="flex items-center gap-2 cursor-pointer group/label">
+                        <input type="checkbox" checked={watch("homepagePlacement") === "hero"} onChange={(e) => setValue("homepagePlacement", e.target.checked ? "hero" : "")} className="accent-[var(--accent)]" />
+                        <span className="text-sm font-medium text-[var(--ink-2)] group-hover/label:text-[var(--ink)]">Hero / Top Story</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer group/label">
+                        <input type="checkbox" checked={watch("homepagePlacement") === "picks"} onChange={(e) => setValue("homepagePlacement", e.target.checked ? "picks" : "")} className="accent-[var(--accent)]" />
+                        <span className="text-sm font-medium text-[var(--ink-2)] group-hover/label:text-[var(--ink)]">Editor's Pick</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
             </details>
 
@@ -1277,18 +1293,7 @@ export default function ArticleEditor({
               </summary>
               <div className="pt-4 space-y-4 animate-in fade-in duration-200">
                 <div className="space-y-3">
-                  {canPublish && (
-                    <div className="space-y-3">
-                      <label className="flex items-start gap-2 cursor-pointer group/label">
-                        <input type="checkbox" checked={watch("homepagePlacement") === "hero"} onChange={(e) => setValue("homepagePlacement", e.target.checked ? "hero" : "")} className="mt-0.5 accent-[var(--accent)]" />
-                        <span className="text-sm font-medium text-[var(--ink-2)] group-hover/label:text-[var(--ink)]">Top Story</span>
-                      </label>
-                      <label className="flex items-start gap-2 cursor-pointer group/label">
-                        <input type="checkbox" checked={watch("homepagePlacement") === "picks"} onChange={(e) => setValue("homepagePlacement", e.target.checked ? "picks" : "")} className="mt-0.5 accent-[var(--accent)]" />
-                        <span className="text-sm font-medium text-[var(--ink-2)] group-hover/label:text-[var(--ink)]">Editor's Pick</span>
-                      </label>
-                    </div>
-                  )}
+                  {/* Homepage Placement moved to Publishing Details */}
                 </div>
 
                 <div>
@@ -1301,6 +1306,19 @@ export default function ArticleEditor({
                         label="Drag & drop thumbnail or click to browse"
                         hint="Recommended size: 1200 x 750 pixels (16:10 aspect ratio). Max size: 5MB."
                       />
+                      <div className="mt-4 flex items-center gap-2">
+                        <span className="text-xs text-[var(--muted)] font-bold uppercase tracking-wider">OR</span>
+                        <input 
+                          type="url" 
+                          placeholder="Paste external image URL..." 
+                          className="ed-rail-input flex-1" 
+                          onBlur={(e) => { 
+                            if(e.target.value) {
+                              setValue("img", e.target.value, { shouldDirty: true });
+                            }
+                          }} 
+                        />
+                      </div>
                     </div>
                   ) : (
                     <div className="mt-3 group relative aspect-video w-full rounded-md overflow-hidden border border-[var(--line-2)] bg-[var(--surface-3)]">

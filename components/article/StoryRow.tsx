@@ -25,8 +25,13 @@ interface Props {
 }
 
 export default function StoryRow({ article: a, showDeck = true }: Props) {
-  const catName = a.category?.name || (typeof a.cat === "string" ? a.cat.toUpperCase() : "News");
-  const catSlug = a.category?.slug || (typeof a.cat === "string" ? a.cat.toLowerCase() : "news");
+  // Surface the main category (parent) for SEO and header alignment if it's a subcategory
+  const mainCat = (a.category as any)?.parent;
+  const subCat = mainCat ? a.category : null;
+  const catName = mainCat 
+    ? `${mainCat.name} / ${subCat?.name}`
+    : (a.category?.name || (typeof a.cat === "string" ? a.cat.toUpperCase() : "News"));
+  const catSlug = (mainCat || a.category)?.slug || (typeof a.cat === "string" ? a.cat.toLowerCase() : "news");
   
   // Relative time is computed in the browser, not here.
   //
@@ -65,7 +70,7 @@ export default function StoryRow({ article: a, showDeck = true }: Props) {
         </h3>
         {showDeck && <p className="row-deck">{a.deck}</p>}
         <div className="row-meta">
-          {a.author || "xSypher Staff"} · {ageNode} · {a.mins || 5} min read
+          {a.author || "xSypher Staff"} · {ageNode} · {a.readingTime || a.mins || 1} min read
         </div>
       </div>
     </article>

@@ -128,20 +128,16 @@ export async function upsertArticle(data: any) {
 
     const sanitizedBodyHtml = sanitizeArticleHtml(data.bodyHtml);
 
-    const {
-      status, // Strip status: handled by workflow actions now
-      ...restData
-    } = data;
-
     const payload = {
       title: data.title.trim(),
       slug: uniqueSlug,
+      status: data.status || "DRAFT",
       deck: data.deck || null,
       contentHtml: sanitizedBodyHtml || null,
       contentJson: data.bodyJson || null,
       author: data.author?.trim() || user.name || "xSypher Staff",
       role: data.role?.trim() || user.role || null,
-      featured: deriveIsFeatured(data.homepagePlacement || null),
+      featured: typeof data.featured === "boolean" ? data.featured : deriveIsFeatured(data.homepagePlacement || null),
       img: data.img || null,
       seoTitle: data.seoTitle || null,
       seoDesc: data.seoDesc || null,
@@ -229,13 +225,10 @@ export async function upsertArticle(data: any) {
 
     // Revalidate relevant pages
     try {
-      revalidatePath("/admin/articles", "page");
-      // If the article is already published, a save might fix a typo without a state transition.
-      // We revalidate the single article path only, avoiding a full site cache flush.
-      if (article.status === "PUBLISHED") {
-        revalidatePath(`/article/${article.slug}`, "page");
-        revalidatePath("/sitemap.xml");
-      }
+      revalidatePath("/", "layout");
+      revalidatePath("/admin", "layout");
+      revalidatePath(`/article/${article.slug}`, "page");
+      revalidatePath("/sitemap.xml");
     } catch (revalError) {
       console.warn(">>> [SERVER] Revalidation error:", revalError);
     }

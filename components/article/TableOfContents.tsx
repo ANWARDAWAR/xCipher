@@ -89,11 +89,11 @@ export default function TableOfContents({ containerSelector = ".prose" }: { cont
         In this article
       </h3>
       <nav className="flex flex-col">
-        {items.map((item) => {
+        {items.map((item, index) => {
           const isActive = activeId === item.id;
           return (
             <a
-              key={item.id}
+              key={`${item.id}-${index}`}
               href={`#${item.id}`}
               onClick={(e) => handleClick(e, item.id)}
               className={`block text-xs py-1 transition-colors truncate border-l-2 ${

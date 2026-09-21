@@ -17,10 +17,10 @@ const NAV_ROW = [
   { name: "Gadgets", href: "/category/gadgets" },
   { name: "Software", href: "/category/software" },
   { name: "Programming", href: "/category/programming" },
-  { name: "Startups", href: "/category/business" },
+  { name: "Startups", href: "/category/startups" },
   { name: "Gaming", href: "/category/gaming" },
   { name: "Reviews", href: "/category/reviews" },
-  { name: "How-To", href: "/category/howto" },
+  { name: "How-To", href: "/category/how-to" },
   { name: "Opinion", href: "/category/opinion" },
   { name: "Science", href: "/category/science" },
 ];

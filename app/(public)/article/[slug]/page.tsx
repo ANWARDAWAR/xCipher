@@ -96,7 +96,7 @@ export default async function ArticlePage({ params }: Props) {
       slug, 
       status: "PUBLISHED",
     }, 
-    include: { category: true, authorModel: true, tags: true } 
+    include: { category: { include: { parent: true } }, authorModel: true, tags: true } 
   });
   
   if (!article) {
@@ -113,8 +113,10 @@ export default async function ArticlePage({ params }: Props) {
     notFound();
   }
   
-  const catName = article.category?.name || "News";
-  const catSlug = article.category?.slug || "news";
+  const mainCat = (article.category as any)?.parent;
+  const subCat = mainCat ? article.category : null;
+  const catName = mainCat?.name || article.category?.name || "News";
+  const catSlug = mainCat?.slug || article.category?.slug || "news";
   
   const authorName = article.authorModel?.name || article.author || "xSypher Staff";
   const authorSlug = article.authorModel?.slug || null;
@@ -163,6 +165,7 @@ export default async function ArticlePage({ params }: Props) {
     alt: a.title
   }));
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://xsypher.com";
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -171,19 +174,25 @@ export default async function ArticlePage({ params }: Props) {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": siteConfig.url
+        "item": siteUrl
       },
-      {
+      ...(mainCat ? [{
         "@type": "ListItem",
         "position": 2,
-        "name": catName,
-        "item": `${siteConfig.url}/category/${catSlug}`
+        "name": mainCat.name,
+        "item": `${siteUrl}/category/${mainCat.slug}`
+      }] : []),
+      {
+        "@type": "ListItem",
+        "position": mainCat ? 3 : 2,
+        "name": subCat ? subCat.name : catName,
+        "item": `${siteUrl}/category/${subCat ? subCat.slug : catSlug}`
       },
       {
         "@type": "ListItem",
-        "position": 3,
+        "position": mainCat ? 4 : 3,
         "name": article.title,
-        "item": `${siteConfig.url}/article/${article.slug}`
+        "item": `${siteUrl}/article/${article.slug}`
       }
     ]
   };
@@ -209,11 +218,17 @@ export default async function ArticlePage({ params }: Props) {
                 <Link href="/">Home</Link>
                 <span className="sep">/</span>
                 <Link href={`/category/${catSlug}`}>{catName}</Link>
+                {subCat && (
+                  <>
+                    <span className="sep">/</span>
+                    <Link href={`/category/${subCat.slug}`}>{subCat.name}</Link>
+                  </>
+                )}
                 <span className="sep">/</span>
                 <span aria-current="page">{article.title.length > 44 ? article.title.slice(0, 44) + "…" : article.title}</span>
               </nav>
               <Link className="kicker art-kicker" href={`/category/${catSlug}`}>
-                {catName}
+                {catName} {subCat && `/ ${subCat.name}`}
               </Link>
               <h1 className="art-title" itemProp="headline">{article.title}</h1>
               <p className="art-deck" itemProp="description">{article.deck}</p>

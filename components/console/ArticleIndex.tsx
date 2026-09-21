@@ -263,7 +263,7 @@ export default function ArticleIndex({
         <tbody className="divide-y divide-line">
           {visibleArticles.map((a) => {
             const authorName = a.authorModel?.name || a.author || "Unknown";
-            const categoryName = a.category?.name || "";
+            const categoryName = (a.category as any)?.parent?.name || a.category?.name || "";
 
             return (
               <tr

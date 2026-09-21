@@ -62,16 +62,8 @@ export default async function Home() {
     mappedArticles.find((a) => a.featured) ||
     mappedArticles[0];
 
-  // Featured strip: explicitly placed stories, topped up with recent ones if
-  // fewer than four are placed, so the row never renders half-empty.
-  const placedBriefing = mappedArticles.filter((a) => a.breaking && a.slug !== lead.slug);
-  const briefing = [
-    ...placedBriefing,
-    ...mappedArticles.filter(
-      (a) => a.slug !== lead.slug && !placedBriefing.some((p) => p.slug === a.slug)
-    ),
-  ].slice(0, 4);
-
+  // Secondary column strictly chronologically, excluding the hero article
+  const briefing = mappedArticles.filter(a => a.slug !== lead.slug).slice(0, 4);
   const latest = mappedArticles.filter((a) => a.slug !== lead.slug).slice(0, 7);
   
   const byCat = (slug: string) => mappedArticles.filter(a => a.category?.slug === slug);

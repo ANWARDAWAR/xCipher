@@ -25,8 +25,13 @@ interface Props {
 }
 
 export default function StoryCard({ article: a, showDeck = true }: Props) {
-  const catName = a.category?.name || (typeof a.cat === "string" ? a.cat.toUpperCase() : "News");
-  const catSlug = a.category?.slug || (typeof a.cat === "string" ? a.cat.toLowerCase() : "news");
+  // Surface the main category (parent) for SEO and header alignment if it's a subcategory
+  const mainCat = (a.category as any)?.parent;
+  const subCat = mainCat ? a.category : null;
+  const catName = mainCat 
+    ? `${mainCat.name} / ${subCat?.name}`
+    : (a.category?.name || (typeof a.cat === "string" ? a.cat.toUpperCase() : "News"));
+  const catSlug = (mainCat || a.category)?.slug || (typeof a.cat === "string" ? a.cat.toLowerCase() : "news");
   
   // Relative time is computed in the browser, not here.
   //

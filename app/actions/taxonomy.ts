@@ -178,6 +178,10 @@ export async function deleteCategory(id: string) {
 
     if (!category) return { success: false, error: "Category not found" };
 
+    if (category.parentId && user?.role !== "OWNER" && user?.role !== "ADMIN") {
+      return { success: false, error: "Only Admins and Owners can delete subcategories." };
+    }
+
     if (category._count.articles > 0) {
       return {
         success: false,

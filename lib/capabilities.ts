@@ -296,6 +296,7 @@ export const ARTICLE_LIST_SELECT = {
       id: true,
       name: true,
       slug: true,
+      parent: { select: { name: true, slug: true } }
     },
   },
   tags: {
