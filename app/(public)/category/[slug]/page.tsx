@@ -9,6 +9,7 @@ import StoryRow from "@/components/article/StoryRow";
 import Sidebar from "@/components/layout/Sidebar";
 import { getImgSrc } from "@/lib/utils";
 import RelativeTime from "@/components/common/RelativeTime";
+import AdUnit from "@/components/common/AdUnit";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -76,10 +77,8 @@ export default async function CategoryPage({ params }: Props) {
       </section>
 
       {/* Category Top Ad */}
-      <div className="ad-wrap">
-        <div className="ad-label">Advertisement</div>
-        <div className="ad-slot ad-leaderboard" data-ad-location="category-top" data-size="728 × 90" role="complementary" aria-label="Advertisement placement"></div>
-      </div>
+      {/* Category Top Ad */}
+      <AdUnit location="category-top" size="728 × 90" slotClass="ad-leaderboard" />
 
       <div className="cat-body">
         <div>

@@ -3,12 +3,14 @@ import Link from "next/link";
 import { getImgSrc, fmtViews } from "@/lib/utils";
 import RelativeTime from "@/components/common/RelativeTime";
 import { getHomeArticles } from "@/lib/cached-queries";
+import { ARTICLE_CARD_SELECT } from "@/lib/queries";
 import { db } from "@/lib/db";
 import StoryCard from "@/components/article/StoryCard";
 import StoryRow from "@/components/article/StoryRow";
 import BreakingTicker from "@/components/home/BreakingTicker";
 import EditorialTicker from "@/components/home/EditorialTicker";
 import NewsletterSignup from "@/components/newsletter/NewsletterSignup";
+import AdUnit from "@/components/common/AdUnit";
 
 // Cached and revalidated on a timer, rather than force-dynamic.
 //
@@ -55,15 +57,41 @@ export default async function Home() {
     pick: a.homepagePlacement === "picks",
   }));
 
-  // Hero: an explicit hero placement wins, then the legacy `featured` flag,
-  // then the newest story.
-  const lead =
-    mappedArticles.find((a) => a.homepagePlacement === "hero") ||
-    mappedArticles.find((a) => a.featured) ||
-    mappedArticles[0];
+  const dbHeroArticle = await db.article.findFirst({
+    where: { status: "PUBLISHED", featured: true },
+    orderBy: { publishedAt: "desc" },
+    select: ARTICLE_CARD_SELECT,
+  });
+  
+  const heroArticle = dbHeroArticle || dbArticles[0];
 
-  // Secondary column strictly chronologically, excluding the hero article
-  const briefing = mappedArticles.filter(a => a.slug !== lead.slug).slice(0, 4);
+  const dbBriefingRaw = await db.article.findMany({
+    where: { 
+      status: "PUBLISHED", 
+      id: { not: heroArticle.id } 
+    },
+    orderBy: { publishedAt: "desc" },
+    take: 4,
+    select: ARTICLE_CARD_SELECT,
+  });
+
+  const lead = {
+    ...heroArticle,
+    age: 0,
+    mins: 5,
+    alt: heroArticle.title,
+    breaking: heroArticle.homepagePlacement === "featured",
+    pick: heroArticle.homepagePlacement === "picks",
+  };
+
+  const briefing = dbBriefingRaw.map(a => ({
+    ...a,
+    age: 0,
+    mins: 5,
+    alt: a.title,
+    breaking: a.homepagePlacement === "featured",
+    pick: a.homepagePlacement === "picks",
+  }));
   const latest = mappedArticles.filter((a) => a.slug !== lead.slug).slice(0, 7);
   
   const byCat = (slug: string) => mappedArticles.filter(a => a.category?.slug === slug);
@@ -101,10 +129,8 @@ export default async function Home() {
       <BreakingTicker articles={briefing} />
       
       {/* Top Ad */}
-      <div className="ad-wrap">
-        <div className="ad-label">Advertisement</div>
-        <div className="ad-slot ad-leaderboard" data-ad-location="top" data-size="728 × 90" role="complementary" aria-label="Advertisement placement"></div>
-      </div>
+      {/* Top Ad */}
+      <AdUnit location="top" size="728 × 90" slotClass="ad-leaderboard" />
 
       {/* Lead Story & Briefing */}
       <section className="lead-grid wrap" aria-label="Lead story">
@@ -191,10 +217,7 @@ export default async function Home() {
           </section>
 
           {/* Sidebar Ad */}
-          <div className="ad-wrap" style={{ padding: 0 }}>
-            <div className="ad-label">Advertisement</div>
-            <div className="ad-slot ad-mrec" data-ad-location="sidebar" data-size="300 × 250" role="complementary" aria-label="Advertisement placement"></div>
-          </div>
+          <AdUnit location="sidebar" size="300 × 250" slotClass="ad-mrec" style={{ padding: 0 }} />
 
           <div className="trust-card">
             <h3>How we work</h3>
@@ -205,10 +228,7 @@ export default async function Home() {
       </div>
 
       {/* Ad */}
-      <div className="ad-wrap">
-        <div className="ad-label">Advertisement</div>
-        <div className="ad-slot ad-billboard" data-ad-location="between-sections" data-size="970 × 250" role="complementary" aria-label="Advertisement placement"></div>
-      </div>
+      <AdUnit location="between-sections" size="970 × 250" slotClass="ad-billboard" />
 
       {/* Dynamic Cat Split 1 & 2 */}
       {topCategories[0] && <CatSplit cat={topCategories[0].slug} articles={byCat(topCategories[0].slug)} />}
@@ -216,10 +236,7 @@ export default async function Home() {
       {topCategories[1] && <CatSplit cat={topCategories[1].slug} articles={byCat(topCategories[1].slug)} reverse />}
 
       {/* Ad */}
-      <div className="ad-wrap">
-        <div className="ad-label">Advertisement</div>
-        <div className="ad-slot ad-leaderboard" data-ad-location="mid-feed" data-size="728 × 90" role="complementary" aria-label="Advertisement placement"></div>
-      </div>
+      <AdUnit location="mid-feed" size="728 × 90" slotClass="ad-leaderboard" />
 
       {/* Gadgets Grid */}
       <section aria-label="Gadgets & Devices">

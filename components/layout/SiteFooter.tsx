@@ -1,13 +1,11 @@
 import Link from "next/link";
+import AdUnit from "@/components/common/AdUnit";
 
 export default function SiteFooter() {
   return (
     <footer className="site-foot">
       <div className="wrap">
-        <div className="ad-wrap" style={{ paddingTop: "34px" }}>
-          <div className="ad-label">Advertisement</div>
-          <div className="ad-slot ad-leaderboard" data-ad-location="footer" data-size="728 × 90"></div>
-        </div>
+        <AdUnit location="footer" size="728 × 90" slotClass="ad-leaderboard" style={{ paddingTop: "34px" }} />
         <div className="foot-grid">
           <div className="foot-brand">
             <Link className="logo" href="/" aria-label="xSypher — home">

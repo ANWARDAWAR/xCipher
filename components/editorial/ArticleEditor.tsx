@@ -1265,12 +1265,12 @@ export default function ArticleEditor({
                   </div>
                 )}
                 
-                {(currentUser.role === "OWNER" || currentUser.role === "ADMIN") && canPublish && (
+                {(userRole === "OWNER" || userRole === "ADMIN") && canPublish && (
                   <div className="pt-2">
                     <label className="ed-rail-label">Homepage Placement</label>
                     <div className="space-y-2 mt-1">
                       <label className="flex items-center gap-2 cursor-pointer group/label">
-                        <input type="checkbox" checked={watch("homepagePlacement") === "hero"} onChange={(e) => setValue("homepagePlacement", e.target.checked ? "hero" : "")} className="accent-[var(--accent)]" />
+                        <input type="checkbox" checked={watch("featured") === true} onChange={(e) => setValue("featured", e.target.checked)} className="accent-[var(--accent)]" />
                         <span className="text-sm font-medium text-[var(--ink-2)] group-hover/label:text-[var(--ink)]">Hero / Top Story</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer group/label">
