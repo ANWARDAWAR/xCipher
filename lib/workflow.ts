@@ -42,6 +42,7 @@ export const TRANSITIONS: Record<ArticleStatus, TransitionDef[]> = {
   ],
 
   SUBMITTED: [
+    { to: "PUBLISHED",          action: "publishArticle",   capability: "article.publish",   label: "Publish directly" },
     { to: "APPROVED",           action: "approveArticle",   capability: "article.review",    label: "Approve" },
     { to: "REVISION_REQUESTED", action: "requestChanges",   capability: "article.review",    label: "Request changes" },
     { to: "REJECTED",           action: "rejectArticle",    capability: "article.review",    label: "Reject", destructive: true },
@@ -50,6 +51,7 @@ export const TRANSITIONS: Record<ArticleStatus, TransitionDef[]> = {
 
   // REVIEW is deprecated — treat identically to SUBMITTED for any legacy data
   REVIEW: [
+    { to: "PUBLISHED",          action: "publishArticle",   capability: "article.publish",   label: "Publish directly" },
     { to: "APPROVED",           action: "approveArticle",   capability: "article.review",    label: "Approve" },
     { to: "REVISION_REQUESTED", action: "requestChanges",   capability: "article.review",    label: "Request changes" },
     { to: "REJECTED",           action: "rejectArticle",    capability: "article.review",    label: "Reject", destructive: true },
@@ -57,6 +59,7 @@ export const TRANSITIONS: Record<ArticleStatus, TransitionDef[]> = {
   ],
 
   REVISION_REQUESTED: [
+    { to: "PUBLISHED",          action: "publishArticle",   capability: "article.publish",   label: "Publish directly" },
     { to: "SUBMITTED",  action: "submitArticle",   capability: "article.submit",    requiresOwnership: true, label: "Resubmit" },
     { to: "ARCHIVED",   action: "archiveArticle",  capability: "article.archive",   label: "Archive" },
   ],
@@ -73,7 +76,7 @@ export const TRANSITIONS: Record<ArticleStatus, TransitionDef[]> = {
   ],
 
   REJECTED: [
-    { to: "DRAFT",  action: "reopenArticle",  capability: "article.edit.any", label: "Reopen as draft" },
+    { to: "DRAFT",  action: "reopenArticle",  capability: "article.edit.own", requiresOwnership: true, label: "Reopen as draft" },
   ],
 
   PUBLISHED: [
@@ -112,8 +115,8 @@ export function getAllowedTransitions(
     // Check ownership requirement
     if (def.requiresOwnership) {
       if (!actor.authorId || actor.authorId !== article.authorId) {
-        // Editors+ with article.edit.any bypass ownership for submit
-        if (def.capability === "article.submit" && authorize(actor.role, "article.edit.any")) {
+        // Editors+ with article.edit.any bypass ownership universally
+        if (authorize(actor.role, "article.edit.any")) {
           return true;
         }
         return false;
@@ -147,7 +150,7 @@ export function validateTransition(
   
   if (def.requiresOwnership) {
     if (!actor.authorId || actor.authorId !== article.authorId) {
-      if (!(def.capability === "article.submit" && authorize(actor.role, "article.edit.any"))) {
+      if (!authorize(actor.role, "article.edit.any")) {
         return "This action requires article ownership.";
       }
     }

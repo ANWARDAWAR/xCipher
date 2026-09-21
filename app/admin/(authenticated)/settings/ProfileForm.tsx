@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Cropper from "react-easy-crop";
-import type { Area } from "react-easy-crop";
+import AvatarCropper from "@/components/editorial/AvatarCropper";
 import {
   Camera,
   X,
@@ -22,7 +21,6 @@ import {
 import { updateProfile } from "@/app/actions/profile";
 import { uploadAvatar } from "@/app/actions/upload-avatar";
 import { showToast } from "@/lib/utils";
-import { normaliseCropArea, exportSize } from "@/lib/crop";
 import { useEditor, EditorContent } from "@tiptap/react";
 import { EditorToolbar } from "@/components/editorial/EditorToolbar";
 import { EditorBubbleMenu } from "@/components/editorial/EditorBubbleMenu";
@@ -51,73 +49,6 @@ const PLATFORM_OPTIONS = [
   "Email",
 ];
 
-/**
- * Renders the cropped area of an image onto an HTML5 canvas and exports it as a JPEG Blob and File.
- */
-async function getCroppedImg(
-  imageSrc: string,
-  pixelCrop: Area,
-  rotation: number = 0,
-  fileName: string = "avatar.jpg"
-): Promise<{ blob: Blob; file: File; url: string }> {
-  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("The selected image could not be loaded."));
-    img.src = imageSrc;
-  });
-
-  const safe = normaliseCropArea(pixelCrop, {
-    width: image.naturalWidth,
-    height: image.naturalHeight,
-  });
-  if (!safe) throw new Error("Selected crop area is invalid.");
-
-  const size = exportSize(safe);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Could not initialize canvas context.");
-
-  if (rotation % 360 !== 0) {
-    const rad = (rotation * Math.PI) / 180;
-    ctx.translate(size / 2, size / 2);
-    ctx.rotate(rad);
-    ctx.translate(-size / 2, -size / 2);
-  }
-
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(
-    image,
-    safe.x,
-    safe.y,
-    safe.width,
-    safe.height,
-    0,
-    0,
-    size,
-    size
-  );
-
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error("Failed to create cropped image blob."));
-        return;
-      }
-      const baseName = fileName.replace(/\.[^.]+$/, "") || "avatar";
-      const file = new File([blob], `${baseName}-cropped.jpg`, {
-        type: "image/jpeg",
-      });
-      const url = URL.createObjectURL(blob);
-      resolve({ blob, file, url });
-    }, "image/jpeg", 0.92);
-  });
-}
 
 export default function ProfileForm({
   user,
@@ -133,6 +64,7 @@ export default function ProfileForm({
   actorRole?: string;
 }) {
   const [isPending, setIsPending] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const router = useRouter();
   const [isRefreshing, startRefresh] = useTransition();
   const busy = isPending || isRefreshing;
@@ -192,14 +124,8 @@ export default function ProfileForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Cropper Modal state
-  const [isCropperOpen, setIsCropperOpen] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const [cropFileName, setCropFileName] = useState("avatar.jpg");
-  const [crop, setCrop] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [rotation, setRotation] = useState(0);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
-  const [isCropping, setIsCropping] = useState(false);
 
   // Dirty state tracking
   const [isDirty, setIsDirty] = useState(false);
@@ -290,10 +216,6 @@ export default function ProfileForm({
     const objectUrl = URL.createObjectURL(file);
     setCropImageSrc(objectUrl);
     setCropFileName(file.name);
-    setCrop({ x: 0, y: 0 });
-    setZoom(1);
-    setRotation(0);
-    setIsCropperOpen(true);
   };
 
   const closeCropper = () => {
@@ -301,33 +223,39 @@ export default function ProfileForm({
       URL.revokeObjectURL(cropImageSrc);
       setCropImageSrc(null);
     }
-    setIsCropperOpen(false);
   };
 
-  const handleApplyCrop = async () => {
-    if (!cropImageSrc || !croppedAreaPixels) return;
-    setIsCropping(true);
+  const handleCropped = async (file: File) => {
+    closeCropper();
+    setIsUploading(true);
+    setAvatarError(false);
+
+    const url = URL.createObjectURL(file);
+    if (avatarPreview && avatarPreview.startsWith("blob:")) {
+      URL.revokeObjectURL(avatarPreview);
+    }
+    setAvatarPreview(url);
+    
     try {
-      const cropped = await getCroppedImg(
-        cropImageSrc,
-        croppedAreaPixels,
-        rotation,
-        cropFileName
-      );
-
-      if (avatarPreview && avatarPreview.startsWith("blob:")) {
-        URL.revokeObjectURL(avatarPreview);
+      const formData = new FormData();
+      formData.append("file", file);
+      const uploadRes = await uploadAvatar(formData);
+      if (!uploadRes.ok || !uploadRes.url) {
+        showToast(uploadRes.error || "Failed to upload avatar");
+        setAvatarError(true);
+      } else {
+        setAvatar(uploadRes.url);
+        setIsDirty(true);
       }
-
-      setAvatarPreview(cropped.url);
-      setCroppedAvatarFile(cropped.file);
-      setAvatarError(false);
-      closeCropper();
     } catch (err: any) {
-      console.error("Crop error:", err);
-      showToast(err.message || "Failed to crop image.");
+      showToast(err.message || "Failed to upload avatar.");
+      setAvatarError(true);
     } finally {
-      setIsCropping(false);
+      setIsUploading(false);
+      // Revoke the temporary preview url as we should now be using the live Cloudflare url, or failed
+      URL.revokeObjectURL(url);
+      setAvatarPreview(null);
+      setCroppedAvatarFile(null);
     }
   };
 
@@ -407,19 +335,6 @@ export default function ProfileForm({
 
     try {
       let finalAvatarUrl = avatar;
-
-      if (croppedAvatarFile) {
-        const formData = new FormData();
-        formData.append("file", croppedAvatarFile);
-        const uploadRes = await uploadAvatar(formData);
-        if (!uploadRes.ok || !uploadRes.url) {
-          showToast(uploadRes.error || "Failed to upload avatar");
-          setIsPending(false);
-          return;
-        }
-        finalAvatarUrl = uploadRes.url;
-        setAvatar(finalAvatarUrl);
-      }
 
       const validSocials = socials.filter((s) => s.url.trim() !== "");
       const res = await updateProfile({
@@ -613,6 +528,16 @@ export default function ProfileForm({
                   Change Avatar
                 </span>
               </div>
+              
+              {/* Uploading overlay */}
+              {isUploading && (
+                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white gap-2 p-1 text-center z-10">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                  <span className="text-[10px] font-bold tracking-wider uppercase">
+                    Uploading...
+                  </span>
+                </div>
+              )}
             </button>
 
             {/* Hidden file input */}
@@ -1024,107 +949,14 @@ export default function ProfileForm({
         </div>
       </div>
 
-      {/* ── Task 1: Cropper Modal UI ────────────────────────────────────── */}
-      {isCropperOpen && cropImageSrc && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="cropper-modal-title"
-        >
-          <div className="w-full max-w-md bg-[var(--surface)] border border-[var(--line)] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
-            {/* Professional Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--line)]">
-              <h3 id="cropper-modal-title" className="text-base font-semibold text-[var(--ink)]">
-                Adjust Avatar
-              </h3>
-              <button
-                type="button"
-                onClick={closeCropper}
-                disabled={isCropping}
-                className="p-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors"
-                aria-label="Close dialog"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Cropping Area (1:1 Aspect Ratio) */}
-            <div className="relative w-full aspect-square bg-black overflow-hidden">
-              <Cropper
-                image={cropImageSrc}
-                crop={crop}
-                zoom={zoom}
-                rotation={rotation}
-                aspect={1}
-                cropShape="round"
-                showGrid={false}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onRotationChange={setRotation}
-                onCropComplete={(_, croppedPixels) => setCroppedAreaPixels(croppedPixels)}
-              />
-            </div>
-
-            {/* Cropper controls: Zoom slider & Rotate */}
-            <div className="px-5 py-3 bg-[var(--surface-2)] border-b border-[var(--line)] flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2.5 flex-1 max-w-xs">
-                <ZoomOut className="w-4 h-4 text-[var(--muted)] shrink-0" />
-                <input
-                  type="range"
-                  min={1}
-                  max={3}
-                  step={0.05}
-                  value={zoom}
-                  onChange={(e) => setZoom(Number(e.target.value))}
-                  className="w-full accent-[var(--accent)] cursor-pointer h-1.5 bg-[var(--line)] rounded-lg"
-                  aria-label="Zoom level"
-                />
-                <ZoomIn className="w-4 h-4 text-[var(--muted)] shrink-0" />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setRotation((prev) => (prev + 90) % 360)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors text-xs font-medium"
-                title="Rotate 90 degrees"
-              >
-                <RotateCw className="w-3.5 h-3.5" />
-                <span>Rotate</span>
-              </button>
-            </div>
-
-            {/* Footer with Cancel and Apply Crop buttons */}
-            <div className="px-5 py-4 flex items-center justify-end gap-3 bg-[var(--surface)]">
-              <button
-                type="button"
-                onClick={closeCropper}
-                disabled={isCropping}
-                className="px-4 py-2 text-sm font-medium rounded-lg text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleApplyCrop}
-                disabled={isCropping || !croppedAreaPixels}
-                className="px-5 py-2 text-sm font-semibold rounded-lg bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] disabled:opacity-50 transition-colors shadow-sm flex items-center gap-2"
-              >
-                {isCropping ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Applying…</span>
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span>Apply Crop</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+      {cropImageSrc && (
+        <AvatarCropper
+          imageSrc={cropImageSrc}
+          fileName={cropFileName}
+          open={!!cropImageSrc}
+          onCancel={closeCropper}
+          onCropped={handleCropped}
+        />
       )}
     </form>
   );

@@ -60,7 +60,7 @@ export default function SitemapPage() {
               <li><Link href="/page/careers" className="text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Careers</Link></li>
               <li><Link href="/page/advertising" className="text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Advertising & Partnerships</Link></li>
               <li><Link href="/page/media-kit" className="text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Media Kit & Brand Assets</Link></li>
-              <li><Link href="/page/newsletter" className="text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Newsletters</Link></li>
+              <li><Link href="/page/newsletters" className="text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Newsletters</Link></li>
             </ul>
           </div>
 

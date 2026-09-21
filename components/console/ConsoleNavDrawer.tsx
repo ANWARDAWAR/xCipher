@@ -125,7 +125,7 @@ export default function ConsoleNavDrawer({ children }: { children: React.ReactNo
           moment of the click. Capturing the click also closes the drawer for
           a link to the current route, which a pathname watcher would miss.
         */}
-        <div onClick={handlePanelClick}>{children}</div>
+        <div onClick={handlePanelClick} className="h-full">{children}</div>
       </div>
     </>
   );

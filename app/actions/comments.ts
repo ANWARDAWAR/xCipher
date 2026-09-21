@@ -58,7 +58,7 @@ export async function postComment(
   // Rate limit: 5 comments per 10 minutes per IP
   const hdrs = await headers();
   const ip = getClientIp(hdrs);
-  const rl = checkRateLimit("comment", ip, { limit: 5, windowMs: 10 * 60 * 1000 });
+  const rl = await checkRateLimit("comment", ip, { limit: 5, windowMs: 10 * 60 * 1000 });
   if (!rl.allowed) {
     return { success: false, error: "Too many submissions. Please wait a few minutes and try again." };
   }
@@ -102,7 +102,6 @@ export async function postComment(
         articleId: article.id,
         articleSlug,
         displayName: nameResult.data,
-        email: emailResult.data,
         emailHash,
         body: bodyResult.data,
         status: "PENDING",

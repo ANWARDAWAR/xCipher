@@ -9,7 +9,6 @@ interface Comment {
   id: string;
   articleSlug: string;
   displayName: string;
-  email: string | null;
   body: string;
   status: string;
   ipHash: string | null;
@@ -56,7 +55,6 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
       <td className="py-4 px-4 align-top w-[20%]">
         <div className="flex flex-col">
           <span className="text-sm font-medium text-ink truncate">{comment.displayName}</span>
-          <span className="text-xs text-muted truncate mt-0.5">{comment.email || "No email"}</span>
           <span className="inline-block mt-1">
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-2 text-ink-2">
               IP: {comment.ipHash ? comment.ipHash.slice(0, 8) : "Unknown"}

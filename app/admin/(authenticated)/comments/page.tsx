@@ -54,7 +54,6 @@ export default async function CommentsPage(props: {
         id: true,
         articleSlug: true,
         displayName: true,
-        email: true,
         body: true,
         status: true,
         ipHash: true,

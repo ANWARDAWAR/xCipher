@@ -224,7 +224,7 @@ export default function ArticleIndex({
       {/* Table from md up. Below that the same data renders as stacked rows:
           a five-column table on a 375px screen forces horizontal scrolling,
           which hides the actions column exactly where it is hardest to find. */}
-      <table className="w-full border-collapse text-left text-sm hidden md:table" aria-label="Articles">
+      <table className="w-full border-collapse text-left text-sm admin-table" aria-label="Articles">
         <caption className="sr-only">Article list</caption>
         <thead>
           <tr className="border-b border-line bg-surface-2/60">
@@ -273,7 +273,7 @@ export default function ArticleIndex({
                 }`}
               >
                 {anyBulk && (
-                  <td className="py-3.5 pl-4 pr-0 align-middle w-10">
+                  <td className="py-3.5 pl-4 pr-0 align-middle w-10" data-label="Select">
                     <input
                       type="checkbox"
                       checked={selected.has(a.id)}
@@ -284,7 +284,7 @@ export default function ArticleIndex({
                   </td>
                 )}
                 {/* Thumbnail */}
-                <td className="p-3.5 align-middle w-24">
+                <td className="p-3.5 align-middle w-24" data-label="Thumbnail">
                   {a.img ? (
                     <div className="w-20 h-12 rounded-lg overflow-hidden border border-line bg-surface-2 shrink-0 relative">
                       <Image
@@ -303,7 +303,7 @@ export default function ArticleIndex({
                 </td>
 
                 {/* Primary — title + metadata */}
-                <td className="p-3.5 align-middle">
+                <td className="p-3.5 align-middle" data-label="Article">
                   <div className="min-w-0 max-w-xl">
                     {/* The headline opens the read-only detail hub, not the
                         editor. Clicking a title to inspect something should not
@@ -349,12 +349,12 @@ export default function ArticleIndex({
                 </td>
 
                 {/* Status — dedicated column on tablet and desktop */}
-                <td className="p-3.5 align-middle hidden md:table-cell w-36">
+                <td className="p-3.5 align-middle md:table-cell w-36" data-label="Status">
                   <StatusChip status={a.status} />
                 </td>
 
                 {/* Views metric */}
-                <td className="p-3.5 align-middle text-right hidden lg:table-cell w-28">
+                <td className="p-3.5 align-middle text-right lg:table-cell w-28" data-label="Views">
                   {a.status === "PUBLISHED" ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-2 border border-line text-xs font-semibold text-ink tabular-nums">
                       <Eye className="w-3.5 h-3.5 text-muted" />
@@ -366,7 +366,7 @@ export default function ArticleIndex({
                 </td>
 
                 {/* Actions */}
-                <td className="p-3.5 align-middle text-right w-28">
+                <td className="p-3.5 align-middle text-right w-28" data-label="Actions">
                   <div className="flex items-center justify-end gap-1.5">
                     {a.status === "PUBLISHED" && (
                       <Link
@@ -403,104 +403,7 @@ export default function ArticleIndex({
         </tbody>
       </table>
 
-      {/* ── Stacked rows, below md ──────────────────────────────────────────
-          Same data, same actions, no horizontal scroll. Thumbnail and title sit
-          on one line; status and metadata wrap beneath. */}
-      <ul className="md:hidden divide-y divide-line">
-        {visibleArticles.map((a) => {
-          const authorName = a.authorModel?.name || a.author || "Unknown";
-          const categoryName = a.category?.name || "";
 
-          return (
-            <li
-              key={a.id}
-              className={`p-3.5 ${selected.has(a.id) ? "bg-surface-3" : ""}`}
-            >
-              <div className="flex gap-3">
-                {anyBulk && (
-                  <input
-                    type="checkbox"
-                    checked={selected.has(a.id)}
-                    onChange={() => toggle(a.id)}
-                    className="w-4 h-4 mt-0.5 accent-[var(--accent)] cursor-pointer shrink-0"
-                    aria-label={`Select "${a.title || "Untitled article"}"`}
-                  />
-                )}
-                {a.img ? (
-                  <div className="w-16 h-11 rounded-lg overflow-hidden border border-line bg-surface-2 shrink-0 relative">
-                    <Image src={a.img} alt="" fill className="object-cover" sizes="64px" />
-                  </div>
-                ) : (
-                  <div className="w-16 h-11 rounded-lg border border-line bg-surface-2 flex items-center justify-center font-bold text-sm text-muted shrink-0">
-                    {(a.title || "?").charAt(0).toUpperCase()}
-                  </div>
-                )}
-
-                <div className="min-w-0 flex-1">
-                  <Link
-                    href={`/admin/articles/${a.id}`}
-                    className="text-sm font-semibold text-ink hover:text-accent transition-colors line-clamp-2 block leading-snug"
-                  >
-                    {a.title || "Untitled article"}
-                  </Link>
-
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-xs text-muted">
-                    <StatusChip status={a.status} />
-                    <span className="font-medium text-ink-2">{authorName}</span>
-                    {categoryName && (
-                      <>
-                        <span className="text-faint">·</span>
-                        <span className="text-[11px]">{categoryName}</span>
-                      </>
-                    )}
-                    <span className="text-faint">·</span>
-                    <span className="text-[11px]">{relativeTime(a.updatedAt)}</span>
-                    {a.status === "PUBLISHED" && (
-                      <>
-                        <span className="text-faint">·</span>
-                        <span className="inline-flex items-center gap-1 text-[11px] tabular-nums">
-                          <Eye className="w-3 h-3" aria-hidden="true" />
-                          {fmtViews(a.views || 0)}
-                        </span>
-                      </>
-                    )}
-                  </div>
-
-                  {a.status === "SCHEDULED" && a.scheduledFor && (
-                    <div className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-medium text-warn">
-                      <Clock className="w-3 h-3" aria-hidden="true" />
-                      <span>Goes live {absoluteDateTime(a.scheduledFor)}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-start gap-1 shrink-0">
-                  {a.status === "PUBLISHED" && (
-                    <Link
-                      className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-surface-3 border border-transparent hover:border-line transition-colors"
-                      href={`/article/${a.slug}`}
-                      target="_blank"
-                      aria-label={`View "${a.title}" on site`}
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </Link>
-                  )}
-                  <ArticleActionMenu
-                    id={a.id}
-                    title={a.title}
-                    status={a.status}
-                    canArchive={authorize(actor.role, "article.archive")}
-                    canDeletePermanently={authorize(actor.role, "article.delete")}
-                    canDeleteOwnDraft={
-                      authorize(actor.role, "article.delete.own.draft") && a.authorId === actor.authorId
-                    }
-                  />
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
     </div>
 
     <BulkActionBar

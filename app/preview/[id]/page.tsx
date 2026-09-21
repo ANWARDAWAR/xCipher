@@ -186,7 +186,7 @@ export default async function PreviewPage({ params }: Props) {
             <span className="hidden sm:inline">·</span>
             <span>Updated <b>{article.updatedAt.toLocaleDateString("en-US")}</b></span>
             <span className="hidden sm:inline">·</span>
-            <span><b>5 min</b> read</span>
+            <span><b>{(article as any).readingTime || 1} min</b> read</span>
             <span className="hidden sm:inline">·</span>
             <span><b>{fmtViews(article.views || 0)}</b> reads</span>
           </div>
@@ -194,7 +194,7 @@ export default async function PreviewPage({ params }: Props) {
         
         <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginTop: "14px" }}>
           <ListenButton />
-          <span className="muted" style={{ fontSize: "12px" }}>≈ 5 minutes · narrated by xSypher</span>
+          <span className="muted" style={{ fontSize: "12px" }}>≈ {(article as any).readingTime || 1} minutes · narrated by xSypher</span>
         </div>
         
         <figure className="art-hero">

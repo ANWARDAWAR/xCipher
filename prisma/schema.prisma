@@ -95,6 +95,11 @@ model Category {
   name        String
   fullTitle   String?
   description String?
+  
+  parentId    String?
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  
   articles    Article[]
 }
 
@@ -118,6 +123,7 @@ model Article {
   categoryId        String?
   status            ArticleStatus     @default(DRAFT)
   views             Int               @default(0)
+  readingTime       Int               @default(1)
   legacyTags        String[]          @map("tags")
   featured          Boolean           @default(false)
   img               String?
@@ -234,7 +240,6 @@ model Comment {
   articleSlug   String
   displayName   String
   emailHash     String
-  email         String
   body          String        @db.Text
   status        CommentStatus @default(PENDING)
   ipHash        String?
@@ -306,4 +311,11 @@ model PublicationSettings {
   footerText      String?  @db.Text
   updatedAt       DateTime @updatedAt
   updatedById     String?
+}
+
+model RateLimit {
+  id        String   @id @default(uuid())
+  actionKey String   @unique
+  count     Int
+  resetAt   DateTime
 }

@@ -7,7 +7,7 @@ import { getImgSrc, fmtViews, timeAgo } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { getRecentArticleSlugs } from "@/lib/cached-queries";
 import { ARTICLE_CARD_SELECT } from "@/lib/queries";
-import { constructMetadata, generateNewsArticleJsonLd } from "@/lib/seo";
+import { constructMetadata, generateNewsArticleJsonLd, siteConfig } from "@/lib/seo";
 import { SocialIcon } from "@/components/author/AuthorProfileView";
 import ArticleBody from "@/components/article/ArticleBody";
 import ArticleSidebar from "@/components/article/ArticleSidebar";
@@ -17,6 +17,7 @@ import CommentsSection from "@/components/article/CommentsSection";
 import ProgressBar from "@/components/article/ProgressBar";
 import ListenButton from "@/components/article/ListenButton";
 import ArticleMobileToolbar from "@/components/article/ArticleMobileToolbar";
+import ViewCounter from "@/components/article/ViewCounter";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -46,6 +47,10 @@ export async function generateMetadata({ params }: Props, parent: ResolvingMetad
     description: article.seoDesc || article.deck || "",
     image: article.img ? getImgSrc(article.img, 1200, 630) : undefined,
     canonical: `/article/${article.slug}`,
+    type: "article",
+    publishedTime: article.publishedAt ? article.publishedAt.toISOString() : article.createdAt.toISOString(),
+    modifiedTime: article.updatedAt.toISOString(),
+    authors: [article.author || "xSypher Staff"],
   });
 }
 
@@ -115,21 +120,7 @@ export default async function ArticlePage({ params }: Props) {
   const authorSlug = article.authorModel?.slug || null;
   const articleAuthorRole = article.authorModel?.role || article.role || "Contributing writer";
 
-  // Author bio mapping
-  const bios: Record<string, string> = { 
-    "Ahmed Khan": "Writing about artificial intelligence, cybersecurity, software and the technology industry.", 
-    "Elena Vasquez": "Covering breaches, privacy and the people who defend the network. Twelve years in security journalism.", 
-    "Priya Sharma": "Senior correspondent on AI platforms, operating systems and the software industry.", 
-    "Daniel Okafor": "Gadgets editor. Reviews and reports on the hardware that carries our digital lives.", 
-    "Marcus Webb": "Programming editor — languages, frameworks, cloud and open source.", 
-    "Hana Yoshida": "Business correspondent covering startups, funding and tech markets.", 
-    "Tom Becker": "Gaming editor. Covers games, hardware and the industry seriously.", 
-    "Aisha Bello": "Reviews editor. Runs the xSypher test lab; buys every unit we review.", 
-    "Nadia Osei": "How-to editor. Practical guides, tested before they're published.", 
-    "James Whitfield": "Opinion columnist on platforms, policy and the economics of software.", 
-    "Liam Turner": "Staff writer across science, future tech and the wider xSypher desk." 
-  };
-  const authorBio = (article.author && bios[article.author]) || "Contributing writer at xSypher.";
+  const authorBio = article.authorModel?.overview || "Contributing writer for xSypher.";
 
   let socials: { platform: string; url: string }[] = [];
   try {
@@ -139,11 +130,30 @@ export default async function ArticlePage({ params }: Props) {
   } catch { socials = []; }
 
   // Related articles
-  const relatedDb = await db.article.findMany({
-    where: { categoryId: article.categoryId, id: { not: article.id }, status: "PUBLISHED" },
+  let relatedDb = await db.article.findMany({
+    where: {
+      tags: { some: { id: { in: article.tags.map(t => t.id) } } },
+      id: { not: article.id },
+      status: "PUBLISHED"
+    },
+    orderBy: { publishedAt: "desc" },
     take: 3,
     select: ARTICLE_CARD_SELECT,
   });
+
+  if (relatedDb.length < 3) {
+    const fallback = await db.article.findMany({
+      where: {
+        categoryId: article.categoryId,
+        id: { notIn: [article.id, ...relatedDb.map(r => r.id)] },
+        status: "PUBLISHED"
+      },
+      orderBy: { publishedAt: "desc" },
+      take: 3 - relatedDb.length,
+      select: ARTICLE_CARD_SELECT,
+    });
+    relatedDb = [...relatedDb, ...fallback];
+  }
   
   const related = relatedDb.map(a => ({
     ...a,
@@ -153,108 +163,142 @@ export default async function ArticlePage({ params }: Props) {
     alt: a.title
   }));
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": siteConfig.url
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": catName,
+        "item": `${siteConfig.url}/category/${catSlug}`
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": article.title,
+        "item": `${siteConfig.url}/article/${article.slug}`
+      }
+    ]
+  };
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(generateNewsArticleJsonLd(article)) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <ProgressBar />
-      <article className="art" itemScope itemType="https://schema.org/NewsArticle">
-      <header className="wrap art-head">
-        <nav className="crumb" aria-label="Breadcrumb">
-          <Link href="/">Home</Link>
-          <span className="sep">/</span>
-          <Link href={`/category/${catSlug}`}>{catName}</Link>
-          <span className="sep">/</span>
-          <span aria-current="page">{article.title.length > 44 ? article.title.slice(0, 44) + "…" : article.title}</span>
-        </nav>
-        <Link className="kicker art-kicker" href={`/category/${catSlug}`}>
-          {catName}
-        </Link>
-        <h1 className="art-title" itemProp="headline">{article.title}</h1>
-        <p className="art-deck" itemProp="description">{article.deck}</p>
-        
-        <div className="py-4 my-6 border-t border-b border-[var(--line)]">
-          <div className="flex items-center gap-3 mb-4">
-            {authorSlug ? (
-              <Link href={`/author/${authorSlug}`} className="shrink-0">
-                {article.authorModel?.avatar ? (
-                  <img src={article.authorModel.avatar} alt={authorName} className="w-10 h-10 rounded-full shrink-0 object-cover" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold shrink-0">{authorName.charAt(0)}</div>
-                )}
+      <ViewCounter articleId={article.id} />
+      <article className="art pb-16" itemScope itemType="https://schema.org/NewsArticle">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-10">
+          
+          {/* HEADER ROW */}
+          <header className="mb-10 flex flex-col min-w-0 lg:col-start-2 lg:col-span-10 xl:col-start-2 xl:col-span-8">
+              <nav className="crumb mb-6" aria-label="Breadcrumb">
+                <Link href="/">Home</Link>
+                <span className="sep">/</span>
+                <Link href={`/category/${catSlug}`}>{catName}</Link>
+                <span className="sep">/</span>
+                <span aria-current="page">{article.title.length > 44 ? article.title.slice(0, 44) + "…" : article.title}</span>
+              </nav>
+              <Link className="kicker art-kicker" href={`/category/${catSlug}`}>
+                {catName}
               </Link>
-            ) : (
-              article.authorModel?.avatar ? (
-                <img src={article.authorModel.avatar} alt={authorName} className="w-10 h-10 rounded-full shrink-0 object-cover" />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold shrink-0">{authorName.charAt(0)}</div>
-              )
-            )}
-            <div className="flex flex-col justify-center flex-1 min-w-0">
-              {authorSlug ? (
-                <Link href={`/author/${authorSlug}`} className="text-sm font-bold text-[var(--ink)] hover:text-[var(--accent)] truncate" itemProp="author">{authorName}</Link>
-              ) : (
-                <span className="text-sm font-bold text-[var(--ink)] truncate" itemProp="author">{authorName}</span>
-              )}
-              <span className="text-xs text-[var(--muted)] whitespace-normal break-words">{articleAuthorRole}</span>
+              <h1 className="art-title" itemProp="headline">{article.title}</h1>
+              <p className="art-deck" itemProp="description">{article.deck}</p>
+              
+              <div className="py-4 my-6 border-t border-b border-[var(--line)]">
+                <div className="flex items-center gap-3 mb-4">
+                  {authorSlug ? (
+                    <Link href={`/author/${authorSlug}`} className="shrink-0">
+                      {article.authorModel?.avatar ? (
+                        <Image src={article.authorModel.avatar} alt={authorName} width={40} height={40} className="w-10 h-10 rounded-full shrink-0 object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold shrink-0">{authorName.charAt(0)}</div>
+                      )}
+                    </Link>
+                  ) : (
+                    article.authorModel?.avatar ? (
+                      <Image src={article.authorModel.avatar} alt={authorName} width={40} height={40} className="w-10 h-10 rounded-full shrink-0 object-cover" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold shrink-0">{authorName.charAt(0)}</div>
+                    )
+                  )}
+                  <div className="flex flex-col justify-center flex-1 min-w-0">
+                    {authorSlug ? (
+                      <Link href={`/author/${authorSlug}`} className="text-sm font-bold text-[var(--ink)] hover:text-[var(--accent)] truncate" itemProp="author">{authorName}</Link>
+                    ) : (
+                      <span className="text-sm font-bold text-[var(--ink)] truncate" itemProp="author">{authorName}</span>
+                    )}
+                    <span className="text-xs text-[var(--muted)] whitespace-normal break-words">{articleAuthorRole}</span>
+                  </div>
+                </div>
+                <div className="font-mono text-[11px] text-[var(--muted)] tracking-tight flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span>Published <b><time itemProp="datePublished" className="text-[var(--ink)]">{(article.publishedAt || article.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</time></b></span>
+                  <span className="hidden sm:inline">·</span>
+                  <span>Updated <b>{article.updatedAt.toLocaleDateString("en-US")}</b></span>
+                  <span className="hidden sm:inline">·</span>
+                  <span><b>{(article as any).readingTime || 1} min</b> read</span>
+                  <span className="hidden sm:inline">·</span>
+                  <span><b>{fmtViews(article.views)}</b> reads</span>
+                </div>
+              </div>
+              
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginTop: "14px", marginBottom: "32px" }}>
+                <ListenButton />
+                <a
+                  href="#comments"
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold !text-white bg-red-600 hover:bg-red-700 active:scale-95 transition-all shadow-sm shrink-0"
+                  aria-label="Jump to comments section"
+                >
+                  <MessageSquare className="w-3.5 h-3.5 !text-white"/>
+                  <span>Comments</span>
+                </a>
+                <span className="muted" style={{ fontSize: "12px" }}>• {(article as any).readingTime || 1} min listen</span>
+              </div>
+              
+              <figure className="art-hero mb-8">
+                <div className="ph r-169 relative w-full overflow-hidden rounded-xl">
+                  <Image 
+                    src={getImgSrc(article.img || "", 1400, 788)} 
+                    alt={article.title} 
+                    fill 
+                    priority 
+                    className="object-cover"
+                  />
+                </div>
+                <figcaption className="text-xs text-[var(--muted)] mt-3">
+                  {article.title}
+                  <span className="credit block text-[10px] uppercase tracking-wider mt-1">Photo: xSypher illustration / Pexels</span>
+                </figcaption>
+              </figure>
+            </header>
+
+          {/* LEFT SIDEBAR (Socials, 1 col) */}
+          <div className="hidden lg:block lg:col-start-1 lg:col-span-1">
+            <div className="sticky top-32">
+              <ArticleSidebar title={article.title} />
             </div>
           </div>
-          <div className="font-mono text-[11px] text-[var(--muted)] tracking-tight flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span>Published <b><time itemProp="datePublished" className="text-[var(--ink)]">{article.createdAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</time></b></span>
-            <span className="hidden sm:inline">·</span>
-            <span>Updated <b>{article.updatedAt.toLocaleDateString("en-US")}</b></span>
-            <span className="hidden sm:inline">·</span>
-            <span><b>5 min</b> read</span>
-            <span className="hidden sm:inline">·</span>
-            <span><b>{fmtViews(article.views)}</b> reads</span>
-          </div>
-        </div>
-        
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginTop: "14px" }}>
-          <ListenButton />
-          <a
-            href="#comments"
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold !text-white bg-red-600 hover:bg-red-700 active:scale-95 transition-all shadow-sm shrink-0"
-            aria-label="Jump to comments section"
-          >
-            <MessageSquare className="w-3.5 h-3.5 !text-white"/>
-            <span>Comments</span>
-          </a>
-          <span className="muted" style={{ fontSize: "12px" }}>• 5 min listen</span>
-        </div>
-        
-        <figure className="art-hero">
-          <div className="ph r-169 relative w-full overflow-hidden">
-            <Image 
-              src={getImgSrc(article.img || "", 1400, 788)} 
-              alt={article.title} 
-              fill 
-              priority 
-              className="object-cover"
-            />
-          </div>
-          <figcaption>
-            {article.title}
-            <span className="credit">Photo: xSypher illustration / Pexels</span>
-          </figcaption>
-        </figure>
-      </header>
 
-      <div className="wrap art-cols">
-        <ArticleSidebar title={article.title} />
-        <div className="prose min-w-0" id="prose" itemProp="articleBody">
-          <ArticleBody html={article.contentHtml} />
-        </div>
-        <aside className="hidden xl:block w-72 shrink-0">
-          <div className="sticky top-28 space-y-4">
-            <TableOfContents containerSelector=".prose" />
-          </div>
-        </aside>
-      </div>
+          {/* MAIN ARTICLE BODY & FOOTER */}
+          <div className="lg:col-start-2 lg:col-span-10 xl:col-start-2 xl:col-span-8 flex flex-col min-w-0">
+            <div className="prose min-w-0 max-w-none w-full" id="prose" itemProp="articleBody">
+              <ArticleBody html={article.contentHtml} />
+            </div>
 
-      <div className="wrap art-foot">
+            <div className="art-foot mt-12 pt-8 border-t border-[var(--line)]">
         <div className="tag-row">
           {(article.tags || []).map(t => (
             <Link key={t.id} className="chip" href={`/tag/${t.slug}`}>
@@ -335,6 +379,16 @@ export default async function ArticlePage({ params }: Props) {
             ))}
           </div>
         </section>
+          </div>
+        </div>
+
+        {/* RIGHT SIDEBAR (TOC, 3 cols) */}
+        <aside className="hidden xl:block xl:col-start-10 xl:col-span-3 shrink-0">
+          <div className="sticky top-32 space-y-4">
+            <TableOfContents containerSelector=".prose" />
+          </div>
+        </aside>
+
       </div>
       <ArticleMobileToolbar />
     </article>

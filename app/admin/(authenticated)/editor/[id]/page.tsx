@@ -13,18 +13,19 @@ interface EditDraftPageProps {
 export default async function EditDraftPage({ params }: EditDraftPageProps) {
   const { id } = await params;
   const user = await getCurrentUser();
-  
+
   const dbUser = user?.id
     ? await db.user.findUnique({
-        where: { id: user.id },
-        include: { authorProfile: true },
-      })
+      where: { id: user.id },
+      include: { authorProfile: true },
+    })
     : null;
 
   const draft = await db.article.findUnique({
     where: { id },
-    include: { 
-      category: true,
+    include: {
+      // Include parent category to support the CategorySelector component
+      category: { include: { parent: true } },
       revisions: {
         orderBy: { createdAt: "desc" },
         include: { user: { select: { name: true, email: true } } }

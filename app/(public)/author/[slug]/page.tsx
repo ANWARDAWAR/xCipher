@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { ARTICLE_CARD_SELECT, LISTING_ARTICLE_LIMIT } from "@/lib/queries";
+import { siteConfig } from "@/lib/seo";
 import AuthorProfileView from "@/components/author/AuthorProfileView";
 
 interface Props {
@@ -11,13 +12,13 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const author = await db.author.findUnique({ where: { slug }, include: { user: true } });
-  if (!author) return { title: "Author — xSypher" };
+  if (!author) return { title: `Author — ${siteConfig.name}` };
   return {
-    title: `${author.name} — xSypher`,
-    description: author.headline || author.bio?.slice(0, 160) || `${author.name} on xSypher.`,
+    title: `${author.name} — ${siteConfig.name}`,
+    description: author.overview || author.bio?.slice(0, 160) || `${author.name} on ${siteConfig.name}.`,
     openGraph: {
-      title: `${author.name} — xSypher`,
-      description: author.bio?.slice(0, 160) || "",
+      title: `${author.name} — ${siteConfig.name}`,
+      description: author.overview || author.bio?.slice(0, 160) || "",
       images: author.avatar ? [author.avatar] : [],
     },
   };

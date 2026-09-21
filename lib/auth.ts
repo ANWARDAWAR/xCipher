@@ -22,10 +22,11 @@ export const getActor = cache(async () => {
       authorId: true,
       name: true,
       email: true,
+      sessionVersion: true,
     }
   });
 
-  if (!user || !user.isActive) return null;
+  if (!user || !user.isActive || user.sessionVersion !== (session.user as any).sessionVersion) return null;
   return user as { id: string, role: Role, authorId: string | null, name: string | null, email: string | null };
 });
 
@@ -51,11 +52,13 @@ declare module "next-auth" {
   interface User {
     id: string;
     role: string;
+    sessionVersion?: number;
   }
   interface Session {
     user: User & {
       id: string;
       role: string;
+      sessionVersion?: number;
     };
   }
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getPublicationSettings } from "@/lib/settings";
+import { siteConfig } from "@/lib/seo";
 import { Space_Grotesk, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
 import localFont from 'next/font/local';
 
@@ -82,6 +83,22 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={`scroll-pt-28 lg:scroll-pt-32 ${spaceGrotesk.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} ${kremlin.variable}`}>
       <body suppressHydrationWarning>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              "name": siteConfig.name,
+              "url": siteConfig.url,
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": `${siteConfig.url}/search?q={search_term_string}`,
+                "query-input": "required name=search_term_string"
+              }
+            })
+          }}
+        />
         {/* Carry a theme chosen under a previous brand over to the current
             storage key. next-themes reads a single key, so without this a
             rename silently resets every reader to "system".
@@ -99,6 +116,7 @@ export default function RootLayout({
         />
         <ThemeProvider attribute="data-theme" defaultTheme="system" storageKey="xsypher-theme" disableTransitionOnChange enableSystem>
           {children}
+          <div id="toast-root" className="pointer-events-none fixed inset-0 z-[9999]" aria-live="assertive"></div>
         </ThemeProvider>
       </body>
     </html>

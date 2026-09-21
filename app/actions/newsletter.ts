@@ -14,7 +14,7 @@ export async function subscribeNewsletter(
   // Rate limit: 3 signups per 10 minutes per IP
   const hdrs = await headers();
   const ip = getClientIp(hdrs);
-  const rl = checkRateLimit("newsletter", ip, { limit: 3, windowMs: 10 * 60 * 1000 });
+  const rl = await checkRateLimit("newsletter", ip, { limit: 3, windowMs: 10 * 60 * 1000 });
   if (!rl.allowed) {
     return { success: false, error: "Too many requests. Please try again later." };
   }

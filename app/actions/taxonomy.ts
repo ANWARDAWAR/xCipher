@@ -10,7 +10,7 @@ import type { Role, Prisma } from "@prisma/client";
 // drift from the page guard or the sidebar link that gate the same feature.
 function canManageTaxonomy(role?: string) {
   if (!role) return false;
-  return authorize(role as Role, "taxonomy.create");
+  return authorize(role as Role, "taxonomy.create") || authorize(role as Role, "article.create");
 }
 
 function slugify(text: string) {
@@ -45,7 +45,7 @@ export async function getTags() {
   });
 }
 
-export async function createCategory(data: { name: string; description?: string }) {
+export async function createCategory(data: { name: string; description?: string; parentId?: string }) {
   const user = await getCurrentUser();
   if (!canManageTaxonomy(user?.role)) return { success: false, error: "Unauthorized" };
   
@@ -61,12 +61,74 @@ export async function createCategory(data: { name: string; description?: string 
         name: data.name.trim(),
         slug,
         description: data.description?.trim() || null,
+        parentId: data.parentId || null,
       },
     });
     revalidatePath("/admin/taxonomy");
     return { success: true, category };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to create category";
+    return { success: false, error: message };
+  }
+}
+
+export async function getSubcategories(parentSlug: string) {
+  try {
+    const parent = await db.category.findUnique({
+      where: { slug: parentSlug },
+    });
+    if (!parent) return [];
+    
+    return db.category.findMany({
+      where: { parentId: parent.id },
+      orderBy: { name: "asc" },
+    });
+  } catch (e) {
+    console.error(e);
+    return [];
+  }
+}
+
+export async function createSubcategory(name: string, parentSlug: string) {
+  const user = await getCurrentUser();
+  if (!canManageTaxonomy(user?.role)) return { success: false, error: "Unauthorized" };
+  
+  const trimmedName = name.trim();
+  if (!trimmedName) return { success: false, error: "Name is required" };
+  const slug = slugify(trimmedName);
+
+  try {
+    // Upsert the parent category just in case it doesn't exist yet (for hardcoded frontend categories)
+    const parentName = parentSlug.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    const parent = await db.category.upsert({
+      where: { slug: parentSlug },
+      update: {},
+      create: { slug: parentSlug, name: parentName }
+    });
+
+    // Check if subcategory already exists
+    const existing = await db.category.findUnique({ where: { slug } });
+    if (existing) {
+      if (existing.parentId !== parent.id) {
+        // If it exists but under a different parent, we just update it or return an error?
+        // Let's just return it for now so the UI can proceed, or return an error to prevent moving categories by accident.
+        return { success: false, error: `Category "${trimmedName}" already exists under a different parent.` };
+      }
+      return { success: true, category: existing };
+    }
+
+    const category = await db.category.create({
+      data: {
+        name: trimmedName,
+        slug,
+        parentId: parent.id,
+      },
+    });
+    
+    revalidatePath("/admin/taxonomy");
+    return { success: true, category };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to create subcategory";
     return { success: false, error: message };
   }
 }

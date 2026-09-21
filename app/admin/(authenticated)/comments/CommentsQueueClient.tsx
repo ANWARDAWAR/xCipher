@@ -10,7 +10,6 @@ interface Comment {
   id: string;
   articleSlug: string;
   displayName: string;
-  email: string | null;
   body: string;
   status: string;
   ipHash: string | null;

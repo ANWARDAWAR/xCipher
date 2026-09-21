@@ -5,6 +5,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { getCategoryArticles } from "@/lib/cached-queries";
 import { CATS } from "@/lib/mockData";
+import { siteConfig } from "@/lib/seo";
 import StoryRow from "@/components/article/StoryRow";
 import Sidebar from "@/components/layout/Sidebar";
 import { getImgSrc } from "@/lib/utils";
@@ -19,16 +20,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const cat = await db.category.findUnique({
     where: { slug },
   });
-  
+
   const fallbackCat = CATS[slug];
   const catName = cat?.name || fallbackCat?.name;
   const catDesc = cat?.description || fallbackCat?.desc;
 
-  if (!catName) return { title: "Category — xSypher" };
-  
+  if (!catName) return { title: `Category — ${siteConfig.name}` };
+
   return {
-    title: `${catName} — xSypher`,
-    description: catDesc || `${catName} news and updates on xSypher.`,
+    title: `${catName} — ${siteConfig.name}`,
+    description: catDesc || `${catName} news and updates on ${siteConfig.name}.`,
   };
 }
 
@@ -48,7 +49,7 @@ export default async function CategoryPage({ params }: Props) {
   const category = await db.category.findUnique({
     where: { slug },
   });
-  
+
   const fallbackCat = CATS[slug];
 
   if (!category && !fallbackCat) {
@@ -77,22 +78,22 @@ export default async function CategoryPage({ params }: Props) {
           <span>Updated {feat ? <RelativeTime dateTime={new Date(feat.createdAt).toISOString()} /> : "recently"}</span>
         </div>
       </section>
-      
+
       {/* Category Top Ad */}
       <div className="ad-wrap">
         <div className="ad-label">Advertisement</div>
         <div className="ad-slot ad-leaderboard" data-ad-location="category-top" data-size="728 × 90" role="complementary" aria-label="Advertisement placement"></div>
       </div>
-      
+
       <div className="cat-body">
         <div>
           {feat ? (
             <article className="cat-feat story" style={{ marginBottom: "34px" }} data-reveal>
               <Link href={`/article/${feat.slug}`} className="ph r-219" tabIndex={-1} aria-hidden="true">
-                <Image 
-                  src={getImgSrc(feat.img || "", 1100, 471)} 
-                  alt={feat.title} 
-                  fill 
+                <Image
+                  src={getImgSrc(feat.img || "", 1100, 471)}
+                  alt={feat.title}
+                  fill
                   className="object-cover"
                 />
               </Link>
@@ -106,12 +107,12 @@ export default async function CategoryPage({ params }: Props) {
                 <p className="story-deck" style={{ fontSize: "15.5px" }}>{feat.deck}</p>
                 <div className="byline" style={{ marginTop: "12px" }}>
                   <div className="ava sm">{(feat.author || "xSypher").charAt(0)}</div>
-                  <span><b>{feat.author || "xSypher Staff"}</b> <span className="dot">·</span> {<RelativeTime dateTime={new Date(feat.createdAt).toISOString()} />} <span className="dot">·</span> 5 min read</span>
+                  <span><b>{feat.author || "xSypher Staff"}</b> <span className="dot">·</span> {<RelativeTime dateTime={new Date(feat.createdAt).toISOString()} />} <span className="dot">·</span> {feat.readingTime || 1} min read</span>
                 </div>
               </div>
             </article>
           ) : null}
-          
+
           {rest.length > 0 ? (
             <>
               <div className="day-label" style={{ marginBottom: "6px" }}>More in {catName}</div>

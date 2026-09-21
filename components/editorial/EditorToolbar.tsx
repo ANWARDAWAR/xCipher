@@ -4,7 +4,8 @@ import {
   Undo, Redo, Heading1, Heading2, Heading3, Type, Bold, Italic, Underline,
   Strikethrough, Code, List, ListOrdered, Quote, ImagePlus, Link2,
   FileCode, Minus, Maximize2, RemoveFormatting, MonitorPlay, Table as TableIcon,
-  AlignLeft, AlignCenter, AlignRight
+  AlignLeft, AlignCenter, AlignRight, Subscript as SubscriptIcon, Superscript as SuperscriptIcon,
+  Lightbulb
 } from 'lucide-react';
 import { InsertMediaDialog, type MediaKind } from './InsertMediaDialog';
 
@@ -42,7 +43,7 @@ function ToolbarButton({ isActive = false, onClick, disabled = false, icon: Icon
       // name is carried explicitly rather than inferred from title.
       aria-label={title}
       aria-pressed={isActive}
-      className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
+      className={`w-11 h-11 md:w-8 md:h-8 shrink-0 flex items-center justify-center rounded-lg transition-colors ${
         isActive
           ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold shadow-sm'
           : 'text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)]'
@@ -114,7 +115,7 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
 
   return (
     <div 
-      className="sticky top-4 sm:top-6 z-30 bg-[var(--surface)]/95 backdrop-blur-md border border-[var(--line)] rounded-xl p-1.5 mb-8 flex flex-wrap items-center gap-1 shadow-sm"
+      className="fixed bottom-0 md:sticky md:top-0 md:bottom-auto left-0 right-0 z-40 bg-[var(--surface)]/95 backdrop-blur-md border-t md:border-t-0 md:border-b border-[var(--line)] py-2 md:mb-8 flex md:flex-wrap items-center gap-1 mx-auto w-full overflow-x-auto overflow-y-hidden md:max-w-3xl px-2 md:px-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] md:shadow-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
       role="toolbar" 
       aria-label="Formatting"
     >
@@ -187,6 +188,18 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
         title="Strikethrough"
       />
       <ToolbarButton
+        icon={SubscriptIcon}
+        onClick={() => editor.chain().focus().toggleSubscript().run()}
+        isActive={editor.isActive('subscript')}
+        title="Subscript"
+      />
+      <ToolbarButton
+        icon={SuperscriptIcon}
+        onClick={() => editor.chain().focus().toggleSuperscript().run()}
+        isActive={editor.isActive('superscript')}
+        title="Superscript"
+      />
+      <ToolbarButton
         icon={Code}
         onClick={() => editor.chain().focus().toggleCode().run()}
         isActive={editor.isActive('code')}
@@ -213,6 +226,32 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
         isActive={editor.isActive('blockquote')}
         title="Blockquote"
+      />
+      <ToolbarButton
+        icon={Lightbulb}
+        onClick={() => {
+          editor.chain().focus().insertContent({
+            type: 'callout',
+            attrs: { type: 'takeaway' },
+            content: [
+              {
+                type: 'heading',
+                attrs: { level: 3 },
+                content: [{ type: 'text', text: 'Key Takeaways' }]
+              },
+              {
+                type: 'bulletList',
+                content: [
+                  {
+                    type: 'listItem',
+                    content: [{ type: 'paragraph' }]
+                  }
+                ]
+              }
+            ]
+          }).run()
+        }}
+        title="Key Takeaways"
       />
 
       <span className="hidden sm:contents">

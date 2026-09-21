@@ -46,9 +46,9 @@ const MATRIX: Record<string, Expectation> = {
   "comment.moderate":        { OWNER: true,  ADMIN: true,  EDITOR: false, AUTHOR: false, MODERATOR: true },
 
   // Profiles and accounts.
-  "author.manage.all":       { OWNER: true,  ADMIN: true,  EDITOR: false, AUTHOR: false },
+  "author.manage.all":       { OWNER: true,  ADMIN: false, EDITOR: false, AUTHOR: false },
   "author.manage.own":       { OWNER: true,  ADMIN: true,  EDITOR: true,  AUTHOR: true },
-  "user.manage":             { OWNER: true,  ADMIN: true,  EDITOR: false, AUTHOR: false },
+  "user.manage":             { OWNER: true,  ADMIN: false,  EDITOR: false, AUTHOR: false },
 };
 
 describe("newsroom role matrix", () => {
@@ -85,7 +85,7 @@ describe("the distinctions that define each role", () => {
     // diverge it should be a considered change, not an accident.
     for (const cap of [
       "article.review", "article.publish", "article.edit.any",
-      "article.delete", "comment.moderate", "author.manage.all",
+      "article.delete", "comment.moderate",
     ] as const) {
       expect(authorize("OWNER", cap)).toBe(authorize("ADMIN", cap));
     }

@@ -65,7 +65,7 @@ export default function StoryCard({ article: a, showDeck = true }: Props) {
         </h3>
         {showDeck && <p className="story-deck">{a.deck}</p>}
         <div className="byline" style={{ marginTop: "8px" }}>
-          <span><span className="text-[var(--accent)] hover:underline">{a.author || "xSypher Staff"}</span> · {ageNode} · {a.mins || 5} min read</span>
+          <span><span className="text-[var(--accent)] hover:underline">{a.author || "xSypher Staff"}</span> · {ageNode} · {a.readingTime || a.mins || 1} min read</span>
         </div>
       </div>
     </article>

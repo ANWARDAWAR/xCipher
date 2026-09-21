@@ -111,7 +111,7 @@ export default function CommentsSection({ articleSlug }: CommentsSectionProps) {
       <form className="cmt-form" id="cmtForm" onSubmit={handleSubmit} noValidate>
         <div className="cf-row">
           <div>
-            <label className="f-label" htmlFor="cmtName">Name <span aria-hidden="true">*</span></label>
+            <label className="sr-only" htmlFor="cmtName">Name <span aria-hidden="true">*</span></label>
             <input
               className="f-input"
               id="cmtName"
@@ -125,7 +125,7 @@ export default function CommentsSection({ articleSlug }: CommentsSectionProps) {
             />
           </div>
           <div>
-            <label className="f-label" htmlFor="cmtEmail">
+            <label className="sr-only" htmlFor="cmtEmail">
               Email <span style={{ textTransform: "none", letterSpacing: 0 }}>(not published)</span>
               <span aria-hidden="true"> *</span>
             </label>
@@ -143,7 +143,7 @@ export default function CommentsSection({ articleSlug }: CommentsSectionProps) {
           </div>
         </div>
         <div>
-          <label className="f-label" htmlFor="cmtText">Comment <span aria-hidden="true">*</span></label>
+          <label className="sr-only" htmlFor="cmtText">Comment <span aria-hidden="true">*</span></label>
           <textarea
             className="f-input"
             id="cmtText"

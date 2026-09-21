@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,12 +15,18 @@ import Link from "@tiptap/extension-link";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
-import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
+import { TableCell } from "@tiptap/extension-table-cell";
+import { Image as TiptapImage } from "@tiptap/extension-image";
+import Subscript from "@tiptap/extension-subscript";
+import Superscript from "@tiptap/extension-superscript";
+import CategorySelector from "./CategorySelector";
 import TextAlign from "@tiptap/extension-text-align";
 import tippy from 'tippy.js';
 
 import { upsertArticle } from "@/app/actions/article";
+import { submitArticle, publishArticle } from "@/app/actions/workflow";
+import { uploadArticleImage } from "@/app/actions/upload-article-image";
 import { useDraftCache, clearDraftCache } from "@/lib/use-draft-cache";
 import { Loader2, ArrowLeft, Settings, Eye } from "lucide-react";
 import { Role, ArticleStatus } from "@prisma/client";
@@ -36,17 +42,11 @@ import { CodeBlockLowlight } from "./extensions/CodeBlockLowlight";
 import { YouTubeEmbed } from "./extensions/YouTubeEmbed";
 import { SlashCommandList, getSuggestionItems } from "./SlashCommandList";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
+import ImageDropzone from "./ImageDropzone";
+import ThumbnailCropper from "./ThumbnailCropper";
+import ConfirmDialog from "../ui/ConfirmDialog";
 
-// Static category options for the editor dropdown
-const EDITOR_CATEGORIES: Record<string, string> = {
-  ai: "Artificial Intelligence",
-  cybersecurity: "Cybersecurity",
-  gadgets: "Gadgets & Devices",
-  software: "Software",
-  programming: "Programming",
-  business: "Business & Finance",
-  gaming: "Gaming",
-};
+
 
 // Templates
 const ARTICLE_TEMPLATES: Record<string, { title: string, deck: string, html: string }> = {
@@ -150,7 +150,10 @@ export default function ArticleEditor({
   // showing the previous status.
   const [isRefreshing, startRefresh] = useTransition();
   const busy = isPending || isRefreshing;
+  const [activeAction, setActiveAction] = useState<string | null>(null);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(Boolean(initialData?.slug));
+  const [savedData, setSavedData] = useState<any>(initialData);
+  const [thumbCrop, setThumbCrop] = useState<{ src: string; name: string; resolve: (res: any) => void } | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(initialData?.updatedAt ? new Date(initialData.updatedAt) : null);
   // "offline" is distinct from "error": the write failed for a reason we expect
   // to be temporary (timeout, dropped connection, 5xx), the text is safe in
@@ -163,6 +166,7 @@ export default function ArticleEditor({
   const [reviewNotes, setReviewNotes] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
@@ -199,7 +203,52 @@ export default function ArticleEditor({
     dismissRecovery,
     discard: discardRecovery,
     cache: cacheDraft,
-  } = useDraftCache({ articleId: initialData?.id ? String(initialData.id) : null });
+  } = useDraftCache({ articleId });
+
+  const handleThumbUpload = (file: File) => {
+    return new Promise<{ ok: boolean; url?: string; error?: string }>((resolve) => {
+      setThumbCrop({
+        src: URL.createObjectURL(file),
+        name: file.name,
+        resolve,
+      });
+    });
+  };
+
+  const handleCropCancel = () => {
+    if (thumbCrop) {
+      URL.revokeObjectURL(thumbCrop.src);
+      thumbCrop.resolve({ ok: false, error: "Cropping cancelled." });
+      setThumbCrop(null);
+    }
+  };
+
+  const handleCropConfirm = async (croppedFile: File) => {
+    if (!thumbCrop) return;
+    
+    const formData = new FormData();
+    formData.append("file", croppedFile);
+    
+    try {
+      const res = await uploadArticleImage(formData);
+      thumbCrop.resolve(res);
+    } catch (err) {
+      thumbCrop.resolve({ ok: false, error: "Upload failed." });
+    } finally {
+      URL.revokeObjectURL(thumbCrop.src);
+      setThumbCrop(null);
+    }
+  };
+
+  useEffect(() => {
+    if (initialData?.updatedAt) {
+      const serverDate = new Date(initialData.updatedAt);
+      if (!lastSavedRef.current || serverDate.getTime() > lastSavedRef.current.getTime()) {
+        lastSavedRef.current = serverDate;
+        setLastSaved(serverDate);
+      }
+    }
+  }, [initialData?.updatedAt]);
 
   const adoptArticleId = (id: string) => {
     if (!id || articleIdRef.current === id) return;
@@ -221,8 +270,8 @@ export default function ArticleEditor({
     status: (initialData?.status?.toUpperCase() || "DRAFT") as any,
     deck: initialData?.deck || initialData?.excerpt || "",
     img: initialData?.img ? String(initialData.img) : "",
-    tags: Array.isArray(initialData?.tags) 
-      ? initialData.tags.join(", ") 
+    tags: Array.isArray(initialData?.tags)
+      ? initialData.tags.join(", ")
       : initialData?.tags || "",
     seoTitle: initialData?.seoTitle || "",
     seoDesc: initialData?.seoDesc || "",
@@ -253,6 +302,8 @@ export default function ArticleEditor({
       CodeBlockLowlight,
       Underline,
       Highlight.configure({ multicolor: false }),
+      Subscript,
+      Superscript,
       Figure,
       Callout,
       Link.configure({
@@ -432,6 +483,7 @@ export default function ArticleEditor({
   }, [watch, isPending, autosaveStatus, cacheDraft, editor]);
 
   const fillTestData = (templateKey?: string) => {
+    if (process.env.NODE_ENV !== "development") return;
     if (templateKey && ARTICLE_TEMPLATES[templateKey]) {
       const template = ARTICLE_TEMPLATES[templateKey];
       const title = template.title + " " + Math.floor(Math.random() * 1000);
@@ -532,12 +584,12 @@ export default function ArticleEditor({
    * existing story is left intact and simply reloaded from the server copy.
    */
   const handleDiscardAndRestart = () => {
-    const isExisting = Boolean(articleIdRef.current);
-    const message = isExisting
-      ? "Discard local changes and reload the saved version of this story?"
-      : "Discard this draft and start over? Anything written here will be lost.";
+    setShowDiscardConfirm(true);
+  };
 
-    if (!window.confirm(message)) return;
+  const confirmDiscardAndRestart = () => {
+    setShowDiscardConfirm(false);
+    const isExisting = Boolean(articleIdRef.current);
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -567,7 +619,7 @@ export default function ArticleEditor({
   const handleSave = async (targetStatus: string, isAutosave = false, notesOverride?: string) => {
     const currentTitle = watch("title") || getValues("title");
     if (!currentTitle || !currentTitle.trim()) {
-      if (!isAutosave) showToast("Please enter an article title.");
+      if (!isAutosave) throw new Error("Please enter an article title before saving.");
       return null;
     }
 
@@ -580,34 +632,29 @@ export default function ArticleEditor({
     if (!isAutosave) {
       if (["SUBMITTED", "PUBLISHED"].includes(targetStatus)) {
         if (!currentTitle || !currentTitle.trim()) {
-          showToast("Pre-flight Check Failed: Title is required.");
-          return null;
+          throw new Error("Pre-flight Check Failed: Title is required.");
         }
         const deck = watch("deck") || getValues("deck");
         if (!deck || deck.trim().length < 10) {
-          showToast("Pre-flight Check Failed: A descriptive deck is required.");
-          return null;
+          throw new Error("Pre-flight Check Failed: A descriptive deck is required.");
         }
         if (editor.storage.characterCount.words() < 50) {
-          showToast("Pre-flight Check Failed: Article must be at least 50 words.");
-          return null;
+          throw new Error("Pre-flight Check Failed: Article must be at least 50 words.");
         }
       }
-      setIsPending(true);
-
-      // A manual save supersedes any pending autosave: cancel the debounce so
-      // the same content is not written twice in quick succession.
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = null;
       }
+      setIsPending(true);
+      setValue("status", targetStatus as any);
     }
     // Both paths drive the indicator, otherwise an explicit save would leave it
     // reading "Edited" after the write had already succeeded.
     setAutosaveStatus("saving");
     try {
       const rawTags = watch("tags") || getValues("tags") || "";
-      const tagsArray = typeof rawTags === "string" 
+      const tagsArray = typeof rawTags === "string"
         ? rawTags.split(",").map(t => t.trim()).filter(Boolean)
         : Array.isArray(rawTags) ? rawTags : [];
 
@@ -663,14 +710,32 @@ export default function ArticleEditor({
         setAutosaveStatus("saved");
         if (isAutosave) return result.article;
 
-        showToast(
-          targetStatus === "PUBLISHED" ? "Story published successfully!" : "Saved successfully!",
-          "success"
-        );
-        setValue("status", result.article.status as any);
-        // Skipped for a brand-new story: the id-capturing router.replace above
-        // already remounts this route, so refreshing as well would fetch twice.
-        if (!wasNew) startRefresh(() => router.refresh());
+        // If a transition was requested, execute it now that the draft is saved
+        if (targetStatus === "SUBMITTED") {
+          const trans = await submitArticle(result.article.id);
+          if (!trans.ok) {
+            setValue("status", result.article.status as any);
+            throw new Error(trans.message || "Failed to submit article");
+          } else if (trans.updatedAt) {
+            const d = new Date(trans.updatedAt);
+            setLastSaved(d);
+            lastSavedRef.current = d;
+          }
+        } else if (targetStatus === "PUBLISHED") {
+          const trans = await publishArticle(result.article.id);
+          if (!trans.ok) {
+            setValue("status", result.article.status as any);
+            throw new Error(trans.message || "Failed to publish article");
+          } else if (trans.updatedAt) {
+            const d = new Date(trans.updatedAt);
+            setLastSaved(d);
+            lastSavedRef.current = d;
+          }
+        }
+
+        // If not autosave, we already optimistically showed the toast.
+        // We just need to handle the router refresh if it was an existing story.
+        startRefresh(() => router.refresh());
         return result.article;
       } else {
         if (isAutosave) {
@@ -691,9 +756,8 @@ export default function ArticleEditor({
           }
         } else {
           setAutosaveStatus("error");
-          showToast("Save failed: " + (result.error || "Unknown error"), "error");
+          throw new Error("Save failed: " + (result.error || "Unknown error"));
         }
-        return null;
       }
     } catch (error: any) {
       if (isAutosave) {
@@ -706,11 +770,8 @@ export default function ArticleEditor({
       } else {
         // A manual save is an explicit request, so silence would be wrong --
         // but the copy still says the work is safe, because it is.
-        showToast(
-          "Couldn't reach the server. Your changes are saved in this browser and will sync when you're back online.",
-          "error"
-        );
         console.error("Save error:", error);
+        throw error;
       }
       return null;
     } finally {
@@ -730,9 +791,13 @@ export default function ArticleEditor({
     // We use the current status so we don't accidentally unpublish a live article.
     const currentStatus = watch("status") || getValues("status") || "DRAFT";
     showToast("Saving before preview...");
-    const saved = await handleSave(currentStatus);
-    if (saved && saved.id) {
-      window.open(`/preview/${saved.id}`, "_blank");
+    try {
+      const saved = await handleSave(currentStatus);
+      if (saved && saved.id) {
+        window.open(`/preview/${saved.id}`, "_blank");
+      }
+    } catch (err: any) {
+      showToast(err.message || "Preview failed", "error");
     }
   };
 
@@ -767,7 +832,7 @@ export default function ArticleEditor({
   const canPublish = ["OWNER", "ADMIN", "EDITOR"].includes(userRole || "");
   const currentFormStatus = watch("status") || "DRAFT";
 
-  
+
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -786,20 +851,20 @@ export default function ArticleEditor({
     const currentArr = typeof current === "string" ? current.split(",").map(t => t.trim()).filter(Boolean) : (Array.isArray(current) ? current : []);
     setValue("tags", currentArr.filter(t => t !== tagToRemove).join(", "), { shouldDirty: true });
   };
-  
+
   const currentTagsString = watch("tags") || "";
   const currentTags = typeof currentTagsString === "string" ? currentTagsString.split(",").map(t => t.trim()).filter(Boolean) : (Array.isArray(currentTagsString) ? currentTagsString : []);
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col h-[100dvh] overflow-hidden bg-[var(--bg)]">
-      
+    <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col min-h-0 bg-[var(--bg)]">
+
       {/* ── Sticky Top Editorial Command Header ── */}
       {/* sticky top-0 as well as flex-shrink-0: the form is a flex column with
           its own scroll containers, but the header still needs to pin when a
           narrow viewport lets the whole form scroll. */}
       <header className="h-14 flex-shrink-0 sticky top-0 z-40 bg-[var(--surface)]/90 backdrop-blur border-b border-[var(--line)] px-4 sm:px-6 flex items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <button 
+          <button
             type="button"
             onClick={() => router.push('/admin/articles')}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--muted)] hover:text-[var(--ink)] transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-[var(--surface-2)]"
@@ -808,67 +873,83 @@ export default function ArticleEditor({
             <ArrowLeft className="w-4 h-4" />
             <span className="hidden sm:inline">Back</span>
           </button>
-          
+
           <div className="w-px h-4 bg-[var(--line)] hidden sm:block mx-1"></div>
-          
-          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-            currentFormStatus === 'PUBLISHED' ? 'bg-[var(--ok)]/10 text-[var(--ok)] border border-[var(--ok)]/20' :
-            currentFormStatus === 'SUBMITTED' ? 'bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20' :
-            'bg-[var(--surface-3)] text-[var(--muted)] border border-[var(--line-2)]'
-          }`}>
+
+          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${currentFormStatus === 'PUBLISHED' ? 'bg-[var(--ok)]/10 text-[var(--ok)] border border-[var(--ok)]/20' :
+              currentFormStatus === 'SUBMITTED' ? 'bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20' :
+                'bg-[var(--surface-3)] text-[var(--muted)] border border-[var(--line-2)]'
+            }`}>
             {currentFormStatus === 'SUBMITTED' ? 'In Review' : currentFormStatus}
           </span>
-          
-          <span className="text-xs text-[var(--muted)] hidden md:inline ml-2 font-medium">
-            {editor.storage.characterCount.words()} words
-          </span>
+
+          {(() => {
+            const words = editor.storage.characterCount.words();
+            const isBelowMin = words < 50;
+            return (
+              <span className={`text-xs ml-2 font-medium flex items-center gap-1 ${isBelowMin ? 'text-[var(--warn)]' : 'text-[var(--muted)] hidden md:flex'}`}>
+                Word count: {words}
+                {isBelowMin && <span className="hidden sm:inline">(Min 50)</span>}
+              </span>
+            );
+          })()}
 
           <span
             role="status"
             aria-live="polite"
-            className={`text-xs hidden sm:inline-flex items-center gap-1.5 ml-2 transition-colors ${
-              syncStatus.tone === "offline"
+            className={`text-xs hidden sm:inline-flex items-center gap-1.5 ml-2 transition-colors ${syncStatus.tone === "offline"
                 ? "text-[var(--warn)]"
                 : syncStatus.tone === "saved"
                   ? "text-[var(--ok)]"
                   : "text-[var(--muted)]"
-            }`}
+              }`}
           >
             {syncStatus.tone === "saving" && (
               <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
             )}
             {syncStatus.tone === "offline" && (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M1 1l22 22"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M1 1l22 22" /><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" /><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" /><path d="M10.71 5.05A16 16 0 0 1 22.58 9" /><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" /><path d="M8.53 16.11a6 6 0 0 1 6.95 0" /><line x1="12" y1="20" x2="12.01" y2="20" /></svg>
             )}
             {syncStatus.label}
           </span>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => setIsInspectorOpen(true)}
             className="p-2 text-[var(--muted)] hover:text-[var(--ink)] rounded-lg hover:bg-[var(--surface-2)] transition-colors lg:hidden"
             title="Settings"
           >
             <Settings className="w-4 h-4" />
           </button>
-          
-          <button 
-            type="button" 
-            disabled={busy} 
+
+          <button
+            type="button"
+            disabled={busy}
             onClick={handlePreview}
             className="p-2 text-[var(--muted)] hover:text-[var(--ink)] rounded-lg hover:bg-[var(--surface-2)] transition-colors"
             title="Preview"
           >
             <Eye className="w-4 h-4" />
           </button>
-          
+
           {(currentFormStatus === "DRAFT" || currentFormStatus === "REVISION_REQUESTED") && (
-            <button 
-              type="button" 
-              disabled={busy} 
-              onClick={() => handleSave(currentFormStatus)}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => startTransition(async () => {
+                setActiveAction("save");
+                showToast("Saving Draft...", "info", "premium");
+                try {
+                  await handleSave(currentFormStatus);
+                  showToast("Draft saved successfully.", "success", "premium");
+                } catch (err: any) {
+                  showToast(err.message, "error", "premium");
+                } finally {
+                  setActiveAction(null);
+                }
+              })}
               className="px-3.5 py-1.5 text-sm font-medium rounded-md text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-50 flex items-center gap-2 border border-transparent hover:border-[var(--line)]"
             >
               {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
@@ -877,33 +958,73 @@ export default function ArticleEditor({
           )}
 
           {currentFormStatus === "PUBLISHED" && canPublish ? (
-            <button 
-              type="button" 
-              disabled={busy} 
-              onClick={() => handleSave("PUBLISHED")}
-              className="px-4 py-1.5 text-sm font-semibold rounded-md bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => startTransition(async () => {
+                setActiveAction("update");
+                showToast("Updating Live...", "info", "premium");
+                try {
+                  await handleSave("PUBLISHED");
+                  setActiveAction("success");
+                  showToast("Live story updated successfully.", "success", "premium");
+                  setTimeout(() => setActiveAction(null), 2000);
+                } catch (err: any) {
+                  showToast(err.message, "error", "premium");
+                  setActiveAction(null);
+                }
+              })}
+              className="btn-premium py-1.5 px-4 text-sm font-semibold rounded-md flex items-center justify-center gap-2 min-w-[140px] transition-all duration-300 disabled:opacity-70"
             >
-              {busy
-                ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>}
-              <span>{busy ? "Updating\u2026" : "Update Live"}</span>
+              {activeAction === "success" ? (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              ) : busy ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                  <span>Updating...</span>
+                </>
+              ) : (
+                <>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>
+                  <span>Update Live</span>
+                </>
+              )}
             </button>
           ) : (
             (currentFormStatus === "DRAFT" || currentFormStatus === "REVISION_REQUESTED") && (
-              <button 
-                type="button" 
-                disabled={busy} 
-                onClick={() => handleSave(canPublish ? "PUBLISHED" : "SUBMITTED")}
-                className="px-4 py-1.5 text-sm font-semibold rounded-md bg-[var(--accent)] text-white hover:bg-[var(--accent-deep)] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => startTransition(async () => {
+                  setActiveAction(canPublish ? "publish" : "submit");
+                  showToast(canPublish ? "Publishing..." : "Submitting...", "info", "premium");
+                  try {
+                    await handleSave(canPublish ? "PUBLISHED" : "SUBMITTED");
+                    setActiveAction("success");
+                    showToast(canPublish ? "Published successfully!" : "Submitted for review!", "success", "premium");
+                    setTimeout(() => setActiveAction(null), 2000);
+                  } catch (err: any) {
+                    showToast(err.message, "error", "premium");
+                    setActiveAction(null);
+                  }
+                })}
+                className="btn-premium py-1.5 px-4 text-sm font-semibold rounded-md flex items-center justify-center gap-2 min-w-[140px] transition-all duration-300 disabled:opacity-70"
               >
-                {busy
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                  : canPublish
-                    ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-                    : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>}
-                <span>{busy
-                  ? (canPublish ? "Publishing\u2026" : "Submitting\u2026")
-                  : (canPublish ? "Publish Story" : "Submit for Review")}</span>
+                {activeAction === "success" ? (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                ) : busy ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span>{canPublish ? "Publishing..." : "Submitting..."}</span>
+                  </>
+                ) : (
+                  <>
+                    {canPublish
+                      ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+                      : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>}
+                    <span>{canPublish ? "Publish Story" : "Submit for Review"}</span>
+                  </>
+                )}
               </button>
             )
           )}
@@ -916,7 +1037,7 @@ export default function ArticleEditor({
           className="mx-4 sm:mx-6 mt-4 bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 p-3 rounded-lg text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3"
         >
           <div className="flex items-start sm:items-center gap-2.5">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5 sm:mt-0" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5 sm:mt-0" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
             <span>
               You have unsaved offline changes from{" "}
               <strong className="font-semibold">
@@ -969,49 +1090,87 @@ export default function ArticleEditor({
       )}
 
       {/* ── 2-Column Workspace ── */}
-      <div className="flex flex-row flex-1 overflow-hidden w-full relative">
-        
+      <div className="flex flex-row flex-1 w-full relative">
+
         {/* ── Main Writing Canvas (Left/Center) ── */}
-        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden px-4 sm:px-10 py-8 bg-[var(--surface-2)]">
-          <div className="max-w-4xl mx-auto bg-[var(--paper)] shadow-sm border border-[var(--line)] rounded-xl p-8 sm:p-12 mb-32 space-y-6">
+        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden px-4 sm:px-10 py-8">
+          <div className="max-w-3xl mx-auto mb-32 space-y-4">
             
+            {/* Templates Utility */}
+            {process.env.NODE_ENV === "development" && (
+              <div className="flex justify-end mb-4">
+                <select
+                  onChange={(e) => fillTestData(e.target.value)}
+                  value=""
+                  className="text-xs bg-transparent border border-[var(--line)] rounded-md px-2 py-1.5 text-[var(--muted)] hover:text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                >
+                  <option value="" disabled>Quick Start Template...</option>
+                  {Object.keys(ARTICLE_TEMPLATES).map(k => (
+                    <option key={k} value={k}>{ARTICLE_TEMPLATES[k].title}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Title Input */}
             <div>
-              <label htmlFor="article-title" className="block text-[11px] font-bold uppercase tracking-wider text-[var(--muted)] mb-1.5">Article Title <span className="text-[var(--bad)]">*</span></label>
               <textarea
                 id="article-title"
-                className={`w-full text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[var(--ink)] tracking-tight leading-tight placeholder:text-[var(--muted)]/30 bg-transparent resize-none border-b focus:outline-none pb-3 transition-colors ${errors.title && isSubmitted ? 'border-[var(--bad)] focus:border-[var(--bad)]' : 'border-[var(--line)]/40 focus:border-[var(--ink)]/30'}`}
-                rows={2}
-                placeholder="Write a headline that earns the click honestly..."
+                className={`w-full text-4xl lg:text-5xl font-extrabold text-[var(--ink)] tracking-tight leading-tight placeholder:text-[var(--muted)]/50 bg-[var(--surface-2)] border border-[var(--line)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent focus:outline-none resize-none overflow-hidden transition-all ${errors.title && isSubmitted ? 'ring-1 ring-[var(--bad)]' : ''}`}
+                rows={1}
+                placeholder="Article Title"
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = 'auto';
+                  target.style.height = `${target.scrollHeight}px`;
+                }}
                 {...register("title", { onChange: handleTitleChange })}
+                ref={(e) => {
+                  register("title").ref(e);
+                  if (e) {
+                    e.style.height = 'auto';
+                    e.style.height = `${e.scrollHeight}px`;
+                  }
+                }}
               />
-              {errors.title && isSubmitted && <p className="text-xs text-[var(--bad)] mt-1">{errors.title.message}</p>}
+              {errors.title && isSubmitted && <p className="text-xs text-[var(--bad)] mt-1 ml-2">{errors.title.message}</p>}
             </div>
 
             {/* Deck / Excerpt Input */}
             <div>
-              <label htmlFor="article-deck" className="block text-[11px] font-bold uppercase tracking-wider text-[var(--muted)] mb-1.5">Deck / Excerpt</label>
               <textarea
                 id="article-deck"
-                className="w-full text-base sm:text-lg text-[var(--muted)] placeholder:text-[var(--muted)]/40 bg-transparent resize-none border-b border-[var(--line)]/40 focus:border-[var(--ink)]/30 focus:outline-none pb-2 transition-colors leading-relaxed"
-                rows={2}
-                placeholder="Write a compelling one or two sentence deck that summarizes the core revelation..."
+                className="w-full text-xl text-[var(--ink-2)] placeholder:text-[var(--muted)]/50 bg-[var(--surface-2)] border border-[var(--line)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent focus:outline-none resize-none overflow-hidden leading-relaxed transition-all"
+                rows={1}
+                placeholder="Add a subtitle or short excerpt..."
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = 'auto';
+                  target.style.height = `${target.scrollHeight}px`;
+                }}
                 {...register("deck")}
+                ref={(e) => {
+                  register("deck").ref(e);
+                  if (e) {
+                    e.style.height = 'auto';
+                    e.style.height = `${e.scrollHeight}px`;
+                  }
+                }}
               />
             </div>
 
             {/* Tiptap Editor Canvas */}
             <div className={isFullscreen ? "ed-editor-shell is-fullscreen fixed inset-0 z-[9999] bg-[var(--bg)] flex flex-col p-4 overflow-y-auto" : "ed-editor-shell border-none shadow-none bg-transparent"}>
               <div className={isFullscreen ? "ed-editor-inner w-full mx-auto max-w-3xl" : "w-full"}>
-                <EditorToolbar 
-                  editor={editor} 
-                  isFullscreen={isFullscreen} 
-                  toggleFullscreen={() => setIsFullscreen(!isFullscreen)} 
+                <EditorToolbar
+                  editor={editor}
+                  isFullscreen={isFullscreen}
+                  toggleFullscreen={() => setIsFullscreen(!isFullscreen)}
                 />
-                
-                <div 
-                  className="ed-body mt-2 prose min-h-[500px]" 
-                  id="edBody" 
+
+                <div
+                  className="ed-body mt-2 prose min-h-[500px]"
+                  id="edBody"
                   aria-label="Article body editor"
                   style={isFullscreen ? { minHeight: "calc(100vh - 150px)" } : { border: 'none', padding: 0 }}
                 >
@@ -1021,38 +1180,24 @@ export default function ArticleEditor({
               </div>
             </div>
 
-            {/* Templates Utility */}
-            <div className="pt-6 border-t border-[var(--line)]">
-              <label className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider mb-2 block">Quick Start Templates</label>
-              <select 
-                onChange={(e) => fillTestData(e.target.value)} 
-                value=""
-                className="text-sm bg-[var(--surface-2)] border border-[var(--line)] rounded-md px-3 py-1.5 text-[var(--ink-2)] focus:outline-none focus:border-[var(--accent)]"
-              >
-                <option value="" disabled>Apply Template...</option>
-                {Object.keys(ARTICLE_TEMPLATES).map(k => (
-                  <option key={k} value={k}>{ARTICLE_TEMPLATES[k].title}</option>
-                ))}
-              </select>
-            </div>
           </div>
         </main>
 
         {/* Backdrop for mobile slide-over */}
         {isInspectorOpen && (
-          <div 
+          <div
             className="fixed inset-0 z-40 bg-[var(--ink)]/40 backdrop-blur-sm lg:hidden"
             onClick={() => setIsInspectorOpen(false)}
             aria-hidden="true"
           />
         )}
-        
+
         {/* ── Document Inspector Rail (Right Sidebar) ── */}
-        <aside className={`fixed inset-y-0 right-0 z-50 w-full max-w-[360px] lg:w-80 xl:w-96 shrink-0 border-l border-[var(--line)] bg-[var(--surface)] overflow-y-auto p-6 sm:p-8 space-y-6 transform transition-transform duration-300 ease-in-out lg:static lg:transform-none lg:translate-x-0 lg:block ${isInspectorOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-          <div className="ed-rail-head flex items-center justify-between lg:hidden">
+        <aside className={`fixed inset-y-0 right-0 z-50 w-full max-w-[360px] lg:w-80 xl:w-96 shrink-0 border-l border-[var(--line)] bg-[var(--surface)] p-6 sm:p-8 transform transition-transform duration-300 ease-in-out lg:static lg:transform-none lg:translate-x-0 lg:block lg:sticky lg:top-14 overflow-y-auto h-full ${isInspectorOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+          <div className="ed-rail-head flex items-center justify-between lg:hidden mb-6">
             <h2 className="text-lg font-bold text-[var(--ink)]">Settings</h2>
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => setIsInspectorOpen(false)}
               className="p-2 -mr-2 text-[var(--muted)] hover:text-[var(--ink)] rounded-full hover:bg-[var(--surface-2)] transition-colors"
             >
@@ -1060,138 +1205,168 @@ export default function ArticleEditor({
             </button>
           </div>
 
-{/* Panel A: Publishing & Categorization */}
-          <section className="space-y-4">
-            <h3 className="ed-rail-h">Categorization</h3>
-            
-            <div>
-              <label className="ed-rail-label" htmlFor="edCat">Category</label>
-              <select className="ed-rail-input" id="edCat" {...register("cat")}>
-                {availableCategories.map((c) => (
-                  <option key={c.id} value={c.slug}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="ed-rail-label">Tags</label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {currentTags.map(tag => (
-                  <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface-3)] text-[var(--ink)] border border-[var(--line-2)]">
-                    {tag}
-                    <button type="button" onClick={() => handleRemoveTag(tag)} className="text-[var(--muted)] hover:text-[var(--bad)] transition-colors focus:outline-none">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <input 
-                type="text" 
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={handleAddTag}
-                placeholder="Type tag & press Enter"
-                className="ed-rail-input"
-              />
-              <input type="hidden" {...register("tags")} />
-            </div>
-
-            <div className="space-y-3 pt-2">
-              <div>
-                <label className="ed-rail-label">Author</label>
-                <input className="w-full text-sm bg-[var(--surface-3)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--muted)] cursor-not-allowed" value={watch("author")} readOnly title="Set from profile settings" />
-              </div>
-              <div>
-                <label className="ed-rail-label">Author Role</label>
-                <input className="w-full text-sm bg-[var(--surface-3)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--muted)] cursor-not-allowed" value={watch("role")} readOnly title="Set from profile settings" />
-              </div>
-            </div>
-
-            {canPublish && (
-              <div className="pt-2">
-                <label className="ed-rail-label" htmlFor="edScheduledFor">Schedule Publication</label>
-                <input className="ed-rail-input" type="datetime-local" id="edScheduledFor" {...register("scheduledFor")} />
-              </div>
-            )}
-
-            <div className="space-y-3 pt-2 border-t border-[var(--line-2)]">
-              <label className="flex items-start gap-2 cursor-pointer group">
-                <input type="checkbox" id="edFeatured" {...register("featured")} className="mt-0.5 accent-[var(--accent)]" />
-                <span className="text-sm font-medium text-[var(--ink-2)] group-hover:text-[var(--ink)]">Feature on homepage / top stories</span>
-              </label>
-              
-              {canPublish && (
+          <div className="space-y-4">
+            {/* Panel A: Publishing Details */}
+            <details open className="group border-b border-[var(--line-2)] pb-4">
+              <summary className="flex cursor-pointer items-center justify-between font-bold text-sm tracking-wide uppercase text-[var(--muted)] hover:text-[var(--ink)] transition-colors list-none [&::-webkit-details-marker]:hidden">
+                Publishing Details
+                <svg className="w-4 h-4 text-[var(--muted)] group-open:rotate-90 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </summary>
+              <div className="pt-4 space-y-4 animate-in fade-in duration-200">
                 <div>
-                  <label className="ed-rail-label" htmlFor="edHomepagePlacement">Homepage Placement</label>
-                  <select className="ed-rail-input" id="edHomepagePlacement" {...register("homepagePlacement")}>
-                    <option value="">None (Default)</option>
-                    <option value="hero">Hero Section</option>
-                    <option value="featured">Featured Stories</option>
-                    <option value="picks">Editor's Picks</option>
-                  </select>
+                  <label className="ed-rail-label" htmlFor="edCat">Category</label>
+                  <CategorySelector 
+                    initialCategory={initialData?.category}
+                    onChange={(slug) => setValue("cat", slug, { shouldDirty: true })}
+                  />
+                  <input type="hidden" {...register("cat")} />
                 </div>
-              )}
-            </div>
-          </section>
 
-          {/* Panel B: Featured Media */}
-          <section className="space-y-4">
-            <h3 className="ed-rail-h">Featured Media</h3>
-            <div>
-              <label className="ed-rail-label" htmlFor="edImg">Image URL</label>
-              <input className="ed-rail-input" id="edImg" placeholder="https://images.pexels.com/..." {...register("img")} />
-              {watch("img") && (
-                <div className="mt-3 aspect-video w-full rounded-md overflow-hidden border border-[var(--line-2)] bg-[var(--surface-3)]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={watch("img")!} alt="Featured image preview" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = "none")} />
+                <div>
+                  <label className="ed-rail-label">Tags</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {currentTags.map(tag => (
+                      <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface-3)] text-[var(--ink)] border border-[var(--line-2)]">
+                        {tag}
+                        <button type="button" onClick={() => handleRemoveTag(tag)} className="text-[var(--muted)] hover:text-[var(--bad)] transition-colors focus:outline-none">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={handleAddTag}
+                    placeholder="Type tag & press Enter"
+                    className="ed-rail-input"
+                  />
+                  <input type="hidden" {...register("tags")} />
                 </div>
-              )}
-            </div>
-          </section>
 
-          {/* Panel C: SEO */}
-          <section className="space-y-4">
-            <h3 className="ed-rail-h">Search & Social SEO</h3>
-            <div>
-              <label className="ed-rail-label" htmlFor="edSeoTitle">SEO Title</label>
-              <input className="ed-rail-input" id="edSeoTitle" placeholder="Defaults to article title" {...register("seoTitle")} />
-            </div>
-            <div>
-              <label className="ed-rail-label" htmlFor="edSeoDesc">SEO Description</label>
-              <textarea className="ed-rail-input resize-none" rows={3} id="edSeoDesc" placeholder="Defaults to excerpt" {...register("seoDesc")} />
-            </div>
-            <div className="pt-2">
-              <label className="ed-rail-label">Google SERP Preview</label>
-              <SeoPreview 
-                title={watch("seoTitle") || watch("title") || ""} 
-                description={watch("seoDesc") || watch("deck") || ""}
-                slug={watch("slug") || ""}
-                image={watch("img") || ""}
-              />
-            </div>
-          </section>
+                <div className="space-y-3 pt-2">
+                  <div>
+                    <label className="ed-rail-label">Author</label>
+                    <input className="w-full text-sm bg-[var(--surface-3)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--muted)] cursor-not-allowed" value={watch("author")} readOnly title="Set from profile settings" />
+                  </div>
+                  <div>
+                    <label className="ed-rail-label">Author Role</label>
+                    <input className="w-full text-sm bg-[var(--surface-3)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--muted)] cursor-not-allowed" value={watch("role")} readOnly title="Set from profile settings" />
+                  </div>
+                </div>
 
-          {/* Panel D: Permanent Slug */}
-          <section className="space-y-4">
-            <h3 className="ed-rail-h">Permanent URL</h3>
-            <div>
-              <label className="ed-rail-label" htmlFor="edSlug">Slug</label>
-              <input 
-                className="ed-rail-input font-mono" 
-                id="edSlug" 
-                {...register("slug", { onChange: () => setSlugManuallyEdited(true) })} 
-              />
-            </div>
-          </section>
+                {canPublish && (
+                  <div className="pt-2">
+                    <label className="ed-rail-label" htmlFor="edScheduledFor">Schedule Publication</label>
+                    <input className="ed-rail-input" type="datetime-local" id="edScheduledFor" {...register("scheduledFor")} />
+                  </div>
+                )}
+              </div>
+            </details>
+
+            {/* Panel B: Featured Media */}
+            <details className="group border-b border-[var(--line-2)] pb-4">
+              <summary className="flex cursor-pointer items-center justify-between font-bold text-sm tracking-wide uppercase text-[var(--muted)] hover:text-[var(--ink)] transition-colors list-none [&::-webkit-details-marker]:hidden">
+                Featured Media
+                <svg className="w-4 h-4 text-[var(--muted)] group-open:rotate-90 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </summary>
+              <div className="pt-4 space-y-4 animate-in fade-in duration-200">
+                <div className="space-y-3">
+                  {canPublish && (
+                    <div className="space-y-3">
+                      <label className="flex items-start gap-2 cursor-pointer group/label">
+                        <input type="checkbox" checked={watch("homepagePlacement") === "hero"} onChange={(e) => setValue("homepagePlacement", e.target.checked ? "hero" : "")} className="mt-0.5 accent-[var(--accent)]" />
+                        <span className="text-sm font-medium text-[var(--ink-2)] group-hover/label:text-[var(--ink)]">Top Story</span>
+                      </label>
+                      <label className="flex items-start gap-2 cursor-pointer group/label">
+                        <input type="checkbox" checked={watch("homepagePlacement") === "picks"} onChange={(e) => setValue("homepagePlacement", e.target.checked ? "picks" : "")} className="mt-0.5 accent-[var(--accent)]" />
+                        <span className="text-sm font-medium text-[var(--ink-2)] group-hover/label:text-[var(--ink)]">Editor's Pick</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="ed-rail-label">Thumbnail Image</label>
+                  {!watch("img") ? (
+                    <div className="mt-2">
+                      <ImageDropzone
+                        onUpload={handleThumbUpload}
+                        onUploaded={(url) => setValue("img", url, { shouldDirty: true })}
+                        label="Drag & drop thumbnail or click to browse"
+                        hint="Recommended size: 1200 x 750 pixels (16:10 aspect ratio). Max size: 5MB."
+                      />
+                    </div>
+                  ) : (
+                    <div className="mt-3 group relative aspect-video w-full rounded-md overflow-hidden border border-[var(--line-2)] bg-[var(--surface-3)]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={watch("img")!} alt="Featured image preview" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = "none")} />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                        <button
+                          type="button"
+                          onClick={() => setValue("img", "", { shouldDirty: true })}
+                          className="btn-cs ghost !text-white border-white/20 hover:bg-white/10"
+                        >
+                          Remove Image
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </details>
+
+            {/* Panel C: Search & Social SEO */}
+            <details className="group border-b border-[var(--line-2)] pb-4">
+              <summary className="flex cursor-pointer items-center justify-between font-bold text-sm tracking-wide uppercase text-[var(--muted)] hover:text-[var(--ink)] transition-colors list-none [&::-webkit-details-marker]:hidden">
+                Search & Social SEO
+                <svg className="w-4 h-4 text-[var(--muted)] group-open:rotate-90 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </summary>
+              <div className="pt-4 space-y-4 animate-in fade-in duration-200">
+                <div>
+                  <label className="ed-rail-label" htmlFor="edSlug">URL Slug</label>
+                  <input
+                    className="ed-rail-input font-mono"
+                    id="edSlug"
+                    {...register("slug", { onChange: () => setSlugManuallyEdited(true) })}
+                  />
+                </div>
+                <div>
+                  <label className="ed-rail-label" htmlFor="edSeoTitle">SEO Title</label>
+                  <input className="ed-rail-input" id="edSeoTitle" placeholder="Defaults to article title" {...register("seoTitle")} />
+                </div>
+                <div>
+                  <label className="ed-rail-label" htmlFor="edSeoDesc">SEO Description</label>
+                  <textarea className="ed-rail-input resize-none" rows={3} id="edSeoDesc" placeholder="Defaults to excerpt" {...register("seoDesc")} />
+                </div>
+                <div className="pt-2">
+                  <label className="ed-rail-label">Google SERP Preview</label>
+                  <SeoPreview
+                    title={watch("seoTitle") || watch("title") || ""}
+                    description={watch("seoDesc") || watch("deck") || ""}
+                    slug={watch("slug") || ""}
+                    image={watch("img") || ""}
+                  />
+                </div>
+              </div>
+            </details>
+          </div>
 
           {/* Review Workspace */}
           {initialData?.id && (
             <section className="pt-6 border-t border-[var(--line-2)]">
-              <ReviewWorkspace 
-                userRole={userRole || "AUTHOR"} 
+              <ReviewWorkspace
+                userRole={userRole || "AUTHOR"}
                 userId={authorId || ""}
                 reviewerId={null}
-                articleId={initialData.id} 
+                articleId={initialData.id}
                 currentStatus={currentFormStatus}
                 revisions={initialRevisions}
                 onDecision={async (status, notes) => {
@@ -1204,9 +1379,9 @@ export default function ArticleEditor({
           {/* Mobile bottom actions for unpublish (desktop has it in header, but just in case) */}
           {currentFormStatus === "PUBLISHED" && canPublish && (
             <div className="pt-4 lg:hidden">
-              <button 
-                type="button" 
-                disabled={busy} 
+              <button
+                type="button"
+                disabled={busy}
                 onClick={() => handleSave("DRAFT", false, "Unpublished by editor")}
                 className="w-full bg-[var(--surface-3)] hover:bg-[var(--line-2)] text-[var(--bad)] font-medium px-4 py-2 rounded-lg transition-colors text-sm"
               >
@@ -1216,7 +1391,7 @@ export default function ArticleEditor({
           )}
 
           {/* TOC Preview for Editors */}
-          <section className="pt-6 border-t border-[var(--line-2)]">
+          <section className="pt-6 border-t border-[var(--line-2)] mt-4">
             <h3 className="ed-rail-h mb-2">TOC Preview</h3>
             <div className="bg-[var(--surface-3)] p-4 rounded-md border border-[var(--line-2)]">
               <TableOfContents containerSelector=".ProseMirror" />
@@ -1224,6 +1399,25 @@ export default function ArticleEditor({
           </section>
         </aside>
       </div>
+
+      <ThumbnailCropper
+        open={!!thumbCrop}
+        imageSrc={thumbCrop?.src || ""}
+        fileName={thumbCrop?.name || ""}
+        onCancel={handleCropCancel}
+        onCropped={handleCropConfirm}
+      />
+      <ConfirmDialog
+        isOpen={showDiscardConfirm}
+        title="Discard changes?"
+        description={Boolean(articleIdRef.current) 
+          ? "Discard local changes and reload the saved version of this story?" 
+          : "Discard this draft and start over? Anything written here will be lost."}
+        confirmText="Discard"
+        isDestructive={true}
+        onConfirm={confirmDiscardAndRestart}
+        onCancel={() => setShowDiscardConfirm(false)}
+      />
     </form>
   );
 }

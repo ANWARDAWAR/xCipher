@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { 
   Brain, 
   Terminal, 
@@ -164,6 +165,10 @@ export default function AboutPage() {
 
               <p>
                 We launched xSypher to be the antidote to that superficiality. Our mission is direct and uncompromising: <strong>deliver noise-free, mathematically grounded, and empirically tested technology journalism</strong>. We believe you deserve reporting written by people who open the terminal, inspect the bytecode, compile the binaries, and audit the packets before putting pen to paper.
+              </p>
+
+              <p>
+                The name <strong>xSypher</strong> is deliberate. Rooted in the word <em>cipher</em>—the fundamental cryptographic algorithm used to encrypt and decrypt data—it reflects our core mandate. The &apos;x&apos; represents the unknown frontier of next-generation technology, while &apos;Sypher&apos; embodies the complex, often opaque systems we investigate. We exist to decrypt the industry&apos;s noise, translating cryptic machine-level mechanics, neural architectures, and zero-day vulnerabilities into clear, verified intelligence.
               </p>
 
               {/* Three Core Tenets Sub-block */}
@@ -398,49 +403,59 @@ export default function AboutPage() {
             </p>
           </div>
 
-          {/* PROMINENT CARD: Ahmad Khan (Founder & Lead Editor) */}
+          {/* PROMINENT CARD: Anwar Iqbal Dawar (Founder & Lead Editor) */}
           <div className="mb-12 p-6 sm:p-8 lg:p-10 rounded-2xl bg-[var(--surface)] border-2 border-[var(--line)] hover:border-[var(--accent)] transition-all duration-300 shadow-md relative overflow-hidden group">
             {/* Top Accent Strip */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-[var(--accent)]" />
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               {/* Avatar / Portrait Column */}
-              <div className="lg:col-span-4 flex flex-col items-center sm:items-start text-center sm:text-left">
-                <div className="relative">
+              <div className="lg:col-span-4 flex flex-col items-center lg:items-start text-center lg:text-left lg:-ml-3">
+                <div className="relative w-fit mx-auto lg:mx-0 lg:mr-auto lg:w-full lg:max-w-[300px] mt-2 lg:-mt-6">
                   {/* Avatar Frame with Cyber Glow */}
-                  <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl bg-[var(--surface-2)] border-2 border-[var(--line)] group-hover:border-[var(--accent)] overflow-hidden flex items-center justify-center shadow-inner transition-colors">
-                    <span className="font-[family:var(--f-display)] text-4xl sm:text-5xl font-extrabold text-[var(--accent)] tracking-tight">
-                      AK
-                    </span>
+                  <div className="relative mx-auto lg:mx-0 w-52 h-52 sm:w-64 sm:h-64 lg:w-full lg:max-w-[300px] lg:h-auto lg:aspect-[4/5] rounded-2xl bg-[var(--surface-2)] lg:bg-transparent border-2 border-[var(--accent)] lg:border-none overflow-hidden flex items-center justify-center shadow-md lg:shadow-none transition-colors">
+                    <Image
+                      src="/anwar.webp"
+                      alt="Anwar Iqbal Dawar"
+                      width={360}
+                      height={450}
+                      className="w-full h-full object-cover object-top lg:object-center origin-bottom lg:origin-center scale-[0.92] lg:scale-100 -translate-x-2.5 lg:translate-x-0 translate-y-1 lg:translate-y-0 rounded-2xl"
+                      priority
+                    />
+                    {/* Desktop Bottom Fade Overlay */}
+                    <div 
+                      className="hidden lg:block absolute bottom-0 left-0 w-full h-14 bg-gradient-to-t from-[var(--surface)] to-transparent pointer-events-none" 
+                      aria-hidden="true" 
+                    />
                   </div>
                   {/* Verified Badge */}
                   <div 
-                    className="absolute -bottom-2 -right-2 p-1.5 rounded-full bg-[var(--accent)] text-white shadow-md"
+                    className="absolute -bottom-2 -right-2 p-1.5 rounded-full bg-[var(--accent)] text-white shadow-md lg:hidden"
                     title="Verified Founder & Editor"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                   </div>
                 </div>
 
-                <div className="mt-5">
+                <div className="mt-5 lg:mt-2.5 relative z-10">
                   <span className="inline-block px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)]/20 mb-2">
                     Founder &amp; Lead Editor
                   </span>
                   <h3 className="font-[family:var(--f-display)] text-2xl sm:text-3xl font-bold text-[var(--ink)]">
-                    Ahmad Khan
+                    Anwar Iqbal Dawar
                   </h3>
                   <p className="text-xs sm:text-sm text-[var(--muted)] font-[family:var(--f-ui)] mt-0.5">
-                    Systems Hacker &bull; Full-Stack Engineer &bull; Investigative Editor
+                    Computer Engineering Scholar &bull; Future Cyber Cloud Engineer
                   </p>
                 </div>
 
                 {/* Social & Contact Buttons */}
-                <div className="flex items-center gap-3 mt-5">
+                <div className="flex items-center gap-3 mt-4 lg:mt-4 relative z-10">
                   <a 
                     href="https://github.com" 
                     target="_blank" 
                     rel="noopener noreferrer" 
-                    aria-label="Ahmad Khan on GitHub"
+                    aria-label="Anwar Iqbal Dawar on GitHub"
                     className="p-2 rounded-lg bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--ink)] border border-[var(--line)] transition-colors"
                   >
                     <SocialIcon platform="github" />
@@ -449,7 +464,7 @@ export default function AboutPage() {
                     href="https://twitter.com" 
                     target="_blank" 
                     rel="noopener noreferrer" 
-                    aria-label="Ahmad Khan on X"
+                    aria-label="Anwar Iqbal Dawar on X"
                     className="p-2 rounded-lg bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--ink)] border border-[var(--line)] transition-colors"
                   >
                     <SocialIcon platform="x" />
@@ -458,14 +473,14 @@ export default function AboutPage() {
                     href="https://linkedin.com" 
                     target="_blank" 
                     rel="noopener noreferrer" 
-                    aria-label="Ahmad Khan on LinkedIn"
+                    aria-label="Anwar Iqbal Dawar on LinkedIn"
                     className="p-2 rounded-lg bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--ink)] border border-[var(--line)] transition-colors"
                   >
                     <SocialIcon platform="linkedin" />
                   </a>
                   <a 
-                    href="mailto:ahmad@xsypher.news" 
-                    aria-label="Email Ahmad Khan"
+                    href="mailto:anwar@xsypher.news" 
+                    aria-label="Email Anwar Iqbal Dawar"
                     className="p-2 rounded-lg bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--ink)] border border-[var(--line)] transition-colors"
                   >
                     <Mail className="w-4 h-4" />
@@ -480,36 +495,36 @@ export default function AboutPage() {
                     Biography &amp; Technical Stance
                   </h4>
                   <p className="text-sm sm:text-base text-[var(--muted)] font-[family:var(--f-body)] leading-relaxed mb-4">
-                    Ahmad Khan founded xSypher with a single, clear objective: to construct the publication he wished existed when learning systems hacking, vulnerability auditing, and modern full-stack web engineering. Driven by a deep passion for <strong>Python automation</strong>, <strong>Kali Linux offensive workflows</strong>, and <strong>Next.js architecture</strong>, Ahmad leads xSypher&apos;s editorial board with an uncompromising commitment to hands-on testing.
+                    Anwar Iqbal Dawar built his foundational expertise while pursuing a <strong>BS in Computer Engineering</strong> at <strong>CECOS University Peshawar</strong>. Driven by an intense curiosity for how complex networks and software systems operate at a hardware level, Anwar focuses on identifying structural vulnerabilities before they can be exploited. His engineering background provides a rigorous, math-and-logic-driven approach to solving modern security challenges.
                   </p>
                   <p className="text-sm sm:text-base text-[var(--muted)] font-[family:var(--f-body)] leading-relaxed">
-                    Under Ahmad&apos;s direction, every major investigation is tested against real-world testbenches—whether that means reproducing zero-day exploits in isolated containers, benchmarking LLM inference latency on custom silicon, or dissecting how prompt injections bypass commercial guardrails. His work bridges the gap between deep terminal commands and accessible technical journalism.
+                    Looking ahead, Anwar is actively shaping his trajectory toward an <strong>MS in Cybersecurity</strong>, with the ultimate goal of becoming a <strong>Cyber Cloud Engineer</strong>. He believes the future of technology lies in securing decentralized, cloud-native infrastructures. At xSypher, Anwar ensures that every piece of technical journalism is grounded in authentic engineering principles, bridging the gap between academic research and frontline cloud defense.
                   </p>
                 </div>
 
-                {/* Ahmad's Technical Stack Badges */}
+                {/* Anwar's Technical Stack Badges */}
                 <div className="mt-6 pt-5 border-t border-[var(--line)]">
                   <span className="text-xs font-semibold text-[var(--ink)] uppercase tracking-wider block mb-2.5">
                     Core Specializations &amp; Tools:
                   </span>
                   <div className="flex flex-wrap gap-2">
                     <span className="px-3 py-1 rounded-full text-xs font-medium bg-[var(--surface-2)] text-[var(--ink)] border border-[var(--line)]">
-                      Python 3.x
+                      C++ &amp; Python
                     </span>
                     <span className="px-3 py-1 rounded-full text-xs font-medium bg-[var(--surface-2)] text-[var(--ink)] border border-[var(--line)]">
-                      Kali Linux &amp; Metasploit
+                      Full-Stack Web Development
                     </span>
                     <span className="px-3 py-1 rounded-full text-xs font-medium bg-[var(--surface-2)] text-[var(--ink)] border border-[var(--line)]">
-                      Next.js &amp; React Server Components
+                      Next.js &amp; React Architecture
                     </span>
                     <span className="px-3 py-1 rounded-full text-xs font-medium bg-[var(--surface-2)] text-[var(--ink)] border border-[var(--line)]">
-                      Network Forensics (Wireshark)
+                      Linux OS Administration
                     </span>
                     <span className="px-3 py-1 rounded-full text-xs font-medium bg-[var(--surface-2)] text-[var(--ink)] border border-[var(--line)]">
-                      Prompt Security &amp; LLM Sandboxing
+                      Cloud Infrastructure Security
                     </span>
                     <span className="px-3 py-1 rounded-full text-xs font-medium bg-[var(--surface-2)] text-[var(--ink)] border border-[var(--line)]">
-                      Reverse Engineering (Ghidra)
+                      Penetration Testing
                     </span>
                   </div>
                 </div>

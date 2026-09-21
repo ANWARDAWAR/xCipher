@@ -3,9 +3,11 @@ import Link from "next/link";
 import { getImgSrc, fmtViews } from "@/lib/utils";
 import RelativeTime from "@/components/common/RelativeTime";
 import { getHomeArticles } from "@/lib/cached-queries";
+import { db } from "@/lib/db";
 import StoryCard from "@/components/article/StoryCard";
 import StoryRow from "@/components/article/StoryRow";
 import BreakingTicker from "@/components/home/BreakingTicker";
+import EditorialTicker from "@/components/home/EditorialTicker";
 import NewsletterSignup from "@/components/newsletter/NewsletterSignup";
 
 // Cached and revalidated on a timer, rather than force-dynamic.
@@ -73,13 +75,14 @@ export default async function Home() {
   const latest = mappedArticles.filter((a) => a.slug !== lead.slug).slice(0, 7);
   
   const byCat = (slug: string) => mappedArticles.filter(a => a.category?.slug === slug);
-  const ai = byCat("ai");
-  const cy = byCat("cybersecurity");
   const gd = byCat("gadgets");
-  const sw = byCat("software");
-  const pr = byCat("programming");
-  const bu = byCat("business");
   const gm = byCat("gaming");
+  
+  const topCategories = await db.category.findMany({
+    where: { articles: { some: { status: 'PUBLISHED' } } },
+    orderBy: { articles: { _count: 'desc' } },
+    take: 4,
+  });
   
   const mostRead = [...mappedArticles].sort((a, b) => b.views - a.views).slice(0, 5).map((a, i) => ({ ...a, most: i + 1 }));
   const trending = mostRead.map((a, i) => ({ ...a, trend: i + 1 }));
@@ -204,7 +207,7 @@ export default async function Home() {
           <div className="trust-card">
             <h3>How we work</h3>
             <p>xSypher stories are reported, fact-checked and edited before publication. We correct errors openly and label opinion clearly. We buy our own review units and accept no payment for coverage.</p>
-            <Link href="/page/editorial">Read our editorial standards →</Link>
+            <Link href="/page/editorial-standards">Read our editorial standards →</Link>
           </div>
         </aside>
       </div>
@@ -215,11 +218,10 @@ export default async function Home() {
         <div className="ad-slot ad-billboard" data-ad-location="between-sections" data-size="970 × 250" role="complementary" aria-label="Advertisement placement"></div>
       </div>
 
-      {/* Cat Split AI */}
-      <CatSplit cat="ai" articles={ai} />
+      {/* Dynamic Cat Split 1 & 2 */}
+      {topCategories[0] && <CatSplit cat={topCategories[0].slug} articles={byCat(topCategories[0].slug)} />}
       
-      {/* Cat Split Cybersecurity (Reversed) */}
-      <CatSplit cat="cybersecurity" articles={cy} reverse />
+      {topCategories[1] && <CatSplit cat={topCategories[1].slug} articles={byCat(topCategories[1].slug)} reverse />}
 
       {/* Ad */}
       <div className="ad-wrap">
@@ -247,8 +249,8 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Software */}
-      <CatSplit cat="software" articles={sw} reverse />
+      {/* Dynamic Cat Split 3 */}
+      {topCategories[2] && <CatSplit cat={topCategories[2].slug} articles={byCat(topCategories[2].slug)} reverse />}
 
       {/* Gaming Band */}
       <section className="band" aria-label="Gaming">
@@ -270,9 +272,8 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Business & Programming */}
-      <CatSplit cat="business" articles={bu} />
-      <CatSplit cat="programming" articles={pr} reverse />
+      {/* Dynamic Cat Split 4 */}
+      {topCategories[3] && <CatSplit cat={topCategories[3].slug} articles={byCat(topCategories[3].slug)} />}
 
       {/* Trending */}
       <div className="trend-wrap">
@@ -325,11 +326,11 @@ export default async function Home() {
                 <Link href={`/category/${pickFeat.category?.slug || "news"}`} className="kicker" style={{ marginTop: "16px" }}>
                   {pickFeat.category?.name || "News"}
                 </Link>
-                <h1>
+                <h3 className="text-2xl font-bold tracking-tight text-[var(--ink)] leading-tight mb-2">
                   <Link href={`/article/${pickFeat.slug}`}>
                     <span className="hlink">{pickFeat.title}</span>
                   </Link>
-                </h1>
+                </h3>
                 <p className="story-deck">{pickFeat.deck}</p>
                 <div className="byline">
                   {pickFeat.authorModel?.avatar ? (
@@ -383,17 +384,7 @@ function CatSplit({ cat, articles, reverse = false }: { cat: string, articles: a
         </div>
         
         {cat === "business" && (
-          <div className="mkts" id="mkts">
-            {[["GDX 50", "1,284.6", 0.9], ["NDX", "21,402", 0.4], ["S&P 500", "6,118", -0.2], ["BTC", "$97,420", -1.3], ["NVDA", "$164.2", 1.8], ["ETH", "$4,210", 0.6]].map(m => (
-              <span key={m[0] as string} className="mkt">
-                <b>{m[0]}</b>
-                <span>{m[1]}</span>
-                <span className={(m[2] as number) >= 0 ? "up" : "down"}>
-                  {(m[2] as number) >= 0 ? "▲" : "▼"} {Math.abs(m[2] as number).toFixed(1)}%
-                </span>
-              </span>
-            ))}
-          </div>
+          <EditorialTicker articles={articles.slice(0, 8)} />
         )}
 
         <div className={`cat-split${reverse ? " rev" : ""}`}>

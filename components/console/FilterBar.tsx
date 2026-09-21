@@ -127,7 +127,9 @@ export default function FilterBar({
     setSearchValue("");
   };
 
-  const scopeTotal = Object.values(statusCounts).reduce((acc, curr) => acc + curr, 0);
+  const scopeTotal = Object.entries(statusCounts)
+    .filter(([status]) => status !== "ARCHIVED" && status !== "REJECTED")
+    .reduce((acc, [, count]) => acc + count, 0);
 
   // Status tabs definition
   const statusTabs: { id: string | null; label: string; count: number }[] = [

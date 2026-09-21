@@ -52,20 +52,6 @@ export const authOptions: AuthOptions = {
         token.id = user.id;
         token.role = user.role;
         token.sessionVersion = user.sessionVersion;
-      } else if (token.id) {
-        try {
-          const dbUser = await db.user.findUnique({
-            where: { id: token.id },
-            select: { sessionVersion: true, isActive: true, role: true }
-          });
-          if (!dbUser || !dbUser.isActive || dbUser.sessionVersion !== token.sessionVersion) {
-            return {};
-          }
-          token.role = dbUser.role; // keep role synced
-        } catch (e) {
-          console.error("JWT verification error", e);
-          return {};
-        }
       }
       return token;
     },
@@ -73,6 +59,7 @@ export const authOptions: AuthOptions = {
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        session.user.sessionVersion = token.sessionVersion as number;
       }
       return session;
     },

@@ -34,24 +34,12 @@ export function hasRequiredRole(userRole: Role, minimumRole: Role): boolean {
 
 export function canManageUser(actorRole: Role, targetRole: Role): ActionPolicy {
   if (actorRole === "OWNER") return { success: true };
-  if (actorRole === "ADMIN") {
-    if (targetRole === "OWNER") {
-      return { success: false, error: "Administrators cannot manage Owner accounts." };
-    }
-    return { success: true };
-  }
-  return { success: false, error: "Insufficient permissions to manage users." };
+  return { success: false, error: "Only the Owner can manage other users." };
 }
 
 export function canAssignRole(actorRole: Role, newRole: Role): ActionPolicy {
   if (actorRole === "OWNER") return { success: true };
-  if (actorRole === "ADMIN") {
-    if (newRole === "OWNER") {
-      return { success: false, error: "Administrators cannot assign the Owner role." };
-    }
-    return { success: true };
-  }
-  return { success: false, error: "Insufficient permissions to assign roles." };
+  return { success: false, error: "Only the Owner can assign roles." };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

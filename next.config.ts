@@ -86,8 +86,16 @@ const nextConfig: NextConfig = {
             value: "nosniff",
           },
           {
+            key: "X-XSS-Protection",
+            value: "1; mode=block",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          {
             key: "Strict-Transport-Security",
-            value: "max-age=31536000; includeSubDomains",
+            value: "max-age=31536000; includeSubDomains; preload",
           },
         ],
       },
@@ -107,6 +115,7 @@ const nextConfig: NextConfig = {
       // so the host is read from the environment rather than hardcoded. Without
       // an entry here next/image refuses the URL with "hostname is not
       // configured" -- an upload that succeeded and then will not render.
+      { protocol: "https", hostname: "*.r2.dev" },
       ...r2RemotePattern(),
     ],
   },

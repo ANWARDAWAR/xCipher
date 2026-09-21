@@ -7,6 +7,8 @@ import { ArticleStatus, Role } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { canEditArticle, canPublishArticle, canDeleteArticle } from "@/lib/permissions";
 import { sanitizeArticleHtml, isValidSafeUrl, ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
+import { calculateReadTime } from "@/lib/utils";
+import { authorize } from "@/lib/capabilities";
 
 async function logAudit(action: string, entityType: string, entityId?: string, details?: any) {
   try {
@@ -70,7 +72,7 @@ export async function upsertArticle(data: any) {
     if (data.id) {
       existingArticle = await db.article.findUnique({
         where: { id: data.id },
-        select: { id: true, authorId: true, updatedAt: true, status: true, publishedAt: true }
+        select: { id: true, authorId: true, updatedAt: true, status: true, publishedAt: true, slug: true }
       });
       if (!existingArticle) {
         return { success: false, error: "Article not found" };
@@ -86,7 +88,9 @@ export async function upsertArticle(data: any) {
     // Only block on explicit manual saves where the user could overwrite a co-author's changes
     if (existingArticle && data.lastUpdatedAt && !data.isAutosave) {
       const clientDate = new Date(data.lastUpdatedAt);
-      if (existingArticle.updatedAt > clientDate) {
+      // Allow up to 1 second difference to account for timestamp precision mismatches 
+      // between JavaScript Date (milliseconds) and PostgreSQL (microseconds)
+      if (existingArticle.updatedAt.getTime() - clientDate.getTime() > 1000) {
         return { 
           success: false,
           serverUpdatedAt: existingArticle.updatedAt.toISOString(),
@@ -134,16 +138,15 @@ export async function upsertArticle(data: any) {
       contentJson: data.bodyJson || null,
       author: data.author?.trim() || user.name || "xSypher Staff",
       role: data.role?.trim() || user.role || null,
-      featured: Boolean(data.featured),
+      featured: true,
       img: data.img || null,
       seoTitle: data.seoTitle || null,
       seoDesc: data.seoDesc || null,
 
       homepagePlacement: data.homepagePlacement || null,
       categoryId: category.id,
-      // Strictly enforce authorId from session/DB, don't trust client payload for Authors
-      authorId: dbUser.role === "AUTHOR" ? userWithAuth.authorId : (data.authorId || userWithAuth.authorId || null), 
       scheduledFor,
+      readingTime: calculateReadTime(sanitizedBodyHtml || data.bodyHtml),
     };
 
     let article;
@@ -151,10 +154,16 @@ export async function upsertArticle(data: any) {
     let existingArticleStatus = "NEW";
 
     const tagsData = Array.isArray(data.tags) ? data.tags.filter(Boolean).map((slug: string) => ({ slug })) : [];
-
     if (data.id) {
-      const existingArticle = await db.article.findUnique({ where: { id: data.id }, select: { slug: true, status: true } });
-      existingArticleStatus = existingArticle?.status || "NEW";
+      const existingArticleForStatus = await db.article.findUnique({ where: { id: data.id }, select: { slug: true, status: true } });
+      existingArticleStatus = existingArticleForStatus?.status || "NEW";
+      
+      let finalStatusUpdate: ArticleStatus | undefined = undefined;
+      // State Demotion logic
+      if (dbUser.role === "AUTHOR" && ["PUBLISHED", "APPROVED", "SCHEDULED"].includes(existingArticleStatus)) {
+        finalStatusUpdate = "SUBMITTED";
+      }
+
       // Compute slug history for redirect safety
       const currentPreviousSlugs: string[] = (existingArticle as any)?.previousSlugs || [];
       const updatedPreviousSlugs = existingArticle && existingArticle.slug !== uniqueSlug
@@ -165,17 +174,32 @@ export async function upsertArticle(data: any) {
         where: { id: data.id },
         data: {
           ...payload,
+          ...(finalStatusUpdate ? { status: finalStatusUpdate } : {}),
           previousSlugs: updatedPreviousSlugs,
-          tags: { set: tagsData }
+          tags: { 
+            set: [], // Clear existing tags to prevent unique constraint failures when changing tags
+            connectOrCreate: tagsData.map((t: any) => ({
+              where: { slug: t.slug },
+              create: { slug: t.slug, name: t.slug }
+            }))
+          }
         },
         include: { category: true },
       });
-      actionType = `UPDATE_ARTICLE_${article.status}`;
+      actionType = finalStatusUpdate ? `DEMOTED_TO_${finalStatusUpdate}` : `UPDATE_ARTICLE_${article.status}`;
     } else {
+      const resolvedAuthorId = dbUser.role === "AUTHOR" ? userWithAuth.authorId : (data.authorId || userWithAuth.authorId || null);
+      
       article = await db.article.create({
         data: {
           ...payload,
-          tags: tagsData.length > 0 ? { connect: tagsData } : undefined
+          authorId: resolvedAuthorId,
+          tags: tagsData.length > 0 ? {
+            connectOrCreate: tagsData.map((t: any) => ({
+              where: { slug: t.slug },
+              create: { slug: t.slug, name: t.slug }
+            }))
+          } : undefined
         },
         include: { category: true },
       });
@@ -207,6 +231,7 @@ export async function upsertArticle(data: any) {
       // We revalidate the single article path only, avoiding a full site cache flush.
       if (article.status === "PUBLISHED") {
         revalidatePath(`/article/${article.slug}`, "page");
+        revalidatePath("/sitemap.xml");
       }
     } catch (revalError) {
       console.warn(">>> [SERVER] Revalidation error:", revalError);
@@ -226,13 +251,28 @@ export async function deleteArticle(id: string) {
       return { success: false, error: "Unauthenticated" };
     }
 
-    const deletePolicy = canDeleteArticle(user.role as Role);
-    if (!deletePolicy.success) {
-      return { success: false, error: deletePolicy.error };
-    }
-
     if (!id || typeof id !== "string") {
       return { success: false, error: "Invalid article ID" };
+    }
+
+    const targetArticle = await db.article.findUnique({
+      where: { id },
+      select: { id: true, status: true, authorId: true },
+    });
+
+    if (!targetArticle) {
+      return { success: false, error: "Article not found" };
+    }
+
+    const userRole = user.role as Role;
+    const canGlobalDelete = authorize(userRole, "article.delete");
+    const canOwnDraftDelete = authorize(userRole, "article.delete.own.draft") 
+                              && targetArticle.status === "DRAFT" 
+                              && targetArticle.authorId !== null
+                              && targetArticle.authorId === user.authorId;
+
+    if (!canGlobalDelete && !canOwnDraftDelete) {
+      return { success: false, error: "Unauthorized: You do not have permission to delete this article." };
     }
 
     const article = await db.article.delete({
@@ -254,6 +294,7 @@ export async function deleteArticle(id: string) {
           updateTag(tag);
         }
         revalidatePath(`/article/${article.slug}`, "page");
+        revalidatePath("/sitemap.xml");
       }
     } catch (revalError) {
       console.warn(">>> [SERVER] Revalidation error:", revalError);
@@ -383,5 +424,19 @@ export async function restoreRevision(revisionId: string) {
       error instanceof Error ? error.message : "Failed to restore revision";
     console.error(">>> [SERVER] Restore revision failed:", message);
     return { success: false, error: message };
+  }
+}
+
+export async function incrementArticleView(id: string) {
+  try {
+    await db.article.update({
+      where: { id },
+      data: { views: { increment: 1 } },
+    });
+    // Deliberately avoiding revalidatePath here to prevent cache churn on every view.
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to increment view:", error);
+    return { success: false };
   }
 }

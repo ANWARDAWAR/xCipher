@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition } from "react";
 import { archiveArticle, deleteArticlePermanently, deleteOwnDraft } from "@/app/actions/workflow";
 import { showToast } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -17,7 +17,7 @@ interface Props {
 
 export default function ArticleActionMenu({ id, title, status, canArchive, canDeletePermanently, canDeleteOwnDraft }: Props) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showConfirm, setShowConfirm] = useState<"archive" | "delete" | "draftDelete" | null>(null);
+  const [showConfirm, setShowConfirm] = useState<"archive" | "delete" | "draftDelete" | "publishedDeleteWarning" | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
 
@@ -27,32 +27,47 @@ export default function ArticleActionMenu({ id, title, status, canArchive, canDe
   const [isRefreshing, startRefresh] = useTransition();
   const busy = isProcessing || isRefreshing;
 
-  const handleAction = async (action: "archive" | "delete" | "draftDelete") => {
+  const handleAction = (action: "archive" | "delete" | "draftDelete") => {
     setShowConfirm(null);
+    setMenuOpen(false);
     setIsProcessing(true);
-    try {
-      let result;
-      if (action === "archive") result = await archiveArticle(id);
-      else if (action === "delete") result = await deleteArticlePermanently(id);
-      else if (action === "draftDelete") result = await deleteOwnDraft(id);
-      
-      if (result?.ok) {
-        showToast("Action completed successfully");
-        startRefresh(() => router.refresh());
-      } else {
-        showToast("Failed: " + (result?.message || "Unknown error"));
+
+    const actionLabel = action === "archive"
+      ? "Archiving article"
+      : action === "delete"
+        ? "Deleting article"
+        : "Deleting draft";
+    showToast(`${actionLabel}…`, "info", "premium");
+
+    startTransition(async () => {
+      try {
+        let result;
+        if (action === "archive") result = await archiveArticle(id);
+        else if (action === "delete") result = await deleteArticlePermanently(id);
+        else if (action === "draftDelete") result = await deleteOwnDraft(id);
+        
+        if (result?.ok) {
+          const successLabel = action === "archive"
+            ? "Article archived successfully."
+            : action === "delete"
+              ? "Article permanently deleted."
+              : "Draft deleted successfully.";
+          showToast(successLabel, "success", "premium");
+          startRefresh(() => router.refresh());
+        } else {
+          showToast(result?.message || "The action could not be completed.", "error", "premium");
+        }
+      } catch (err: any) {
+        showToast(err?.message || "The action could not be completed.", "error", "premium");
+        console.error(err);
+      } finally {
+        setIsProcessing(false);
       }
-    } catch (err: any) {
-      showToast("Error processing action");
-      console.error(err);
-    } finally {
-      setIsProcessing(false);
-      setMenuOpen(false);
-    }
+    });
   };
 
   const showArchive = canArchive && status !== "ARCHIVED";
-  const showDeletePerm = canDeletePermanently && status === "ARCHIVED";
+  const showDeletePerm = canDeletePermanently;
   const showDeleteDraft = canDeleteOwnDraft && status === "DRAFT";
 
   if (!showArchive && !showDeletePerm && !showDeleteDraft) return null;
@@ -117,7 +132,7 @@ export default function ArticleActionMenu({ id, title, status, canArchive, canDe
             )}
             {showDeletePerm && (
               <button 
-                onClick={() => setShowConfirm("delete")}
+                onClick={() => setShowConfirm(status === "PUBLISHED" ? "publishedDeleteWarning" : "delete")}
                 style={{ textAlign: "left", padding: "8px 12px", background: "none", border: "none", fontSize: "13px", cursor: "pointer", color: "var(--error)", borderRadius: "4px" }}
                 className="hover-bg-surface-2"
               >
@@ -146,6 +161,16 @@ export default function ArticleActionMenu({ id, title, status, canArchive, canDe
         isDestructive={true}
         requireTypedConfirmation="DELETE"
         onConfirm={() => handleAction("delete")}
+        onCancel={() => setShowConfirm(null)}
+      />
+
+      <ConfirmDialog 
+        isOpen={showConfirm === "publishedDeleteWarning"}
+        title="Cannot Delete Live Story"
+        description="This post is currently LIVE. Please unpublish it to DRAFT before deleting."
+        confirmText="Understood"
+        isDestructive={false}
+        onConfirm={() => setShowConfirm(null)}
         onCancel={() => setShowConfirm(null)}
       />
 

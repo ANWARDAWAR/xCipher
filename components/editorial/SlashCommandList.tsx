@@ -202,7 +202,26 @@ export const getSuggestionItems = ({ query }: { query: string }): SlashCommandIt
       description: 'Summarize key points',
       icon: '💡',
       command: ({ editor, range }) => {
-        (editor.chain().focus().deleteRange(range) as any).setCallout({ type: 'takeaway' }).run()
+        editor.chain().focus().deleteRange(range).insertContent({
+          type: 'callout',
+          attrs: { type: 'takeaway' },
+          content: [
+            {
+              type: 'heading',
+              attrs: { level: 3 },
+              content: [{ type: 'text', text: 'Key Takeaways' }]
+            },
+            {
+              type: 'bulletList',
+              content: [
+                {
+                  type: 'listItem',
+                  content: [{ type: 'paragraph' }]
+                }
+              ]
+            }
+          ]
+        }).run()
       },
     },
     {

@@ -28,36 +28,28 @@ export function fmtViews(n: number) {
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
-export function showToast(msg: string, type?: 'default' | 'success' | 'error' | 'warning' | 'info') {
+export function showToast(msg: string, type?: 'default' | 'success' | 'error' | 'warning' | 'info', variant: 'standard' | 'premium' = 'standard') {
   if (typeof window === "undefined") return;
 
-  // Audit finding: showToast has always accepted a `type`, and not one of the
-  // 91 call sites passed it. So 32 messages that begin "Error:" were rendering
-  // with a green success tick -- the icon actively contradicted the words.
-  //
-  // Rather than edit 91 call sites (and rely on nobody forgetting the argument
-  // again), the type is inferred from the message when it is not given. An
-  // explicit argument still wins.
   const resolved = type ?? inferToastType(msg);
-
-  let t = document.getElementById("toast");
-  if (t) {
-    t.remove(); // Remove existing toast to re-trigger animation
-  }
-
-  t = document.createElement("div");
-  t.id = "toast";
   
-  // Set accessibility attributes
+  const existing = document.getElementById("toast");
+  if (existing && existing.parentNode) {
+    existing.parentNode.removeChild(existing);
+  }
+  if (toastTimer) clearTimeout(toastTimer);
+
+  const t = document.createElement("div");
+  t.id = "toast";
+  t.classList.add("show");
+  if (variant === "premium") t.classList.add("toast-premium");
+  t.dataset.type = resolved;
+
   const assertive = resolved === 'error';
   t.setAttribute("role", assertive ? "alert" : "status");
   t.setAttribute("aria-live", assertive ? "assertive" : "polite");
 
-  // Sleek, centered pill design with top-middle positioning and animate-in
-  t.className = "fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 bg-[var(--surface)] text-[var(--ink)] shadow-2xl rounded-full px-6 py-3 border border-[var(--line)] animate-in slide-in-from-top-5 fade-in duration-300";
-
-  // Color-coded icon wrapper
-  const iconColors: Record<string, string> = {
+  const iconColors = {
     error: "text-red-500",
     success: "text-green-500",
     warning: "text-yellow-500",
@@ -66,30 +58,30 @@ export function showToast(msg: string, type?: 'default' | 'success' | 'error' | 
   };
   const iconColor = iconColors[resolved] || iconColors.default;
 
-  t.innerHTML = `<span class="${iconColor}">${TOAST_ICONS[resolved]}</span><span class="text-sm font-medium"></span>`;
+  let bgClass = "bg-[#1e1e1e] border-white/20";
+  if (resolved === 'error') bgClass = "bg-red-950 border-red-500/50";
+  if (resolved === 'success') bgClass = "bg-green-950 border-green-500/50";
 
-  // Safely inject text content
-  const span = t.querySelector("span.text-sm");
-  if (span) span.textContent = msg;
+  t.className = `fixed top-[20px] left-1/2 -translate-x-1/2 z-[99999] flex items-center gap-3 ${bgClass} text-white shadow-2xl rounded-2xl px-6 py-4 border`;
+
+  const icon = document.createElement("div");
+  icon.className = `${iconColor} [&>svg]:w-6 [&>svg]:h-6 shrink-0`;
+  icon.innerHTML = TOAST_ICONS[resolved];
+
+  // The icon is trusted static markup; the message is not. Using textContent
+  // prevents article titles and server errors from becoming executable HTML.
+  const message = document.createElement("span");
+  message.className = "text-base font-medium tracking-tight";
+  message.textContent = msg;
+  t.append(icon, message);
 
   document.body.appendChild(t);
 
-  if (toastTimer) clearTimeout(toastTimer);
-  
-  // Auto-dismiss after 3.5 seconds
   toastTimer = setTimeout(() => {
-    const currentToast = document.getElementById("toast");
-    if (currentToast) {
-      // Add animate-out before removing
-      currentToast.classList.remove("animate-in", "slide-in-from-top-5", "fade-in");
-      currentToast.classList.add("animate-out", "slide-out-to-top-5", "fade-out");
-      setTimeout(() => {
-        if (currentToast.parentNode) {
-          currentToast.parentNode.removeChild(currentToast);
-        }
-      }, 300); // Wait for exit animation
+    if (t.parentNode) {
+      t.parentNode.removeChild(t);
     }
-  }, 3500);
+  }, 4000);
 }
 
 function inferToastType(msg: string): 'default' | 'success' | 'error' | 'warning' | 'info' {
@@ -123,4 +115,13 @@ export function slugify(text: string): string {
     .replace(/\-\-+/g, '-')     // Replace multiple - with single -
     .replace(/^-+/, '')         // Trim - from start of text
     .replace(/-+$/, '');        // Trim - from end of text
+}
+
+export function calculateReadTime(html?: string | null): number {
+  if (!html) return 1;
+  const text = html.replace(/<[^>]*>?/gm, "").trim();
+  if (!text) return 1;
+  const words = text.split(/\s+/).length;
+  const wpm = 200;
+  return Math.max(1, Math.ceil(words / wpm));
 }

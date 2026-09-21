@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { Role } from "@prisma/client";
 import StatusChip from "@/components/console/StatusChip";
 import AuthorStatusBoard, { type BoardArticle } from "@/components/console/AuthorStatusBoard";
+import TopStoriesList from "@/components/console/TopStoriesList";
 import { 
   Plus, 
   FileText, 
@@ -63,6 +64,9 @@ export default async function AdminDashboard() {
   // without article.view.all -- everyone else gets the newsroom-wide view.
   let boardArticles: BoardArticle[] = [];
   const boardCounts: Record<string, number> = {};
+  let commentsFlagged = 0;
+  let authorApplications = 0;
+  let recentLogs: any[] = [];
 
   // Resolved outside the try below: redirect() signals by throwing NEXT_REDIRECT,
   // so calling it inside a try/catch swallows the redirect and renders the page
@@ -207,6 +211,14 @@ export default async function AdminDashboard() {
         authorModel: { select: { name: true } },
         category: { select: { name: true } },
       },
+    });
+
+    commentsFlagged = await db.comment.count({ where: { status: "PENDING" } });
+    authorApplications = await db.invitation.count({ where: { status: "PENDING", role: "AUTHOR" } });
+    recentLogs = await db.auditLog.findMany({
+      include: { user: true },
+      orderBy: { createdAt: "desc" },
+      take: 5,
     });
   } catch (error) {
     console.error("Dashboard DB fetch error:", error);
@@ -495,84 +507,7 @@ export default async function AdminDashboard() {
             </Link>
           </div>
 
-          <div className="divide-y divide-line">
-            {topStories.length > 0 ? (
-              topStories.map((story) => {
-                const authorName = story.authorModel?.name || story.author || "xSypher Staff";
-                return (
-                  <div
-                    key={story.id}
-                    className="p-4 sm:px-5 sm:py-3.5 hover:bg-surface-2 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        href={`/admin/editor/${story.id}`}
-                        className="text-sm font-semibold text-ink hover:text-accent transition-colors line-clamp-1 block"
-                      >
-                        {story.title}
-                      </Link>
-                      <div className="flex flex-wrap items-center gap-2.5 mt-1.5 text-xs text-muted">
-                        {story.category?.name && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-3 text-ink-2 text-[11px] font-medium">
-                            <Folder className="w-2.5 h-2.5 text-muted" />
-                            {story.category.name}
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1 text-[11px]">
-                          <Clock className="w-2.5 h-2.5" />
-                          {formatDate(story.publishedAt || story.createdAt)}
-                        </span>
-                        <span className="text-[11px] text-faint hidden sm:inline">·</span>
-                        <span className="text-[11px] text-muted hidden sm:inline">{authorName}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
-                      <div className="flex items-center gap-1 text-xs font-semibold text-ink bg-surface-2 px-2.5 py-1 rounded border border-line">
-                        <Eye className="w-3.5 h-3.5 text-muted" />
-                        <span>{fmtViews(story.views || 0)}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-1">
-                        <Link
-                          href={`/admin/editor/${story.id}`}
-                          className="px-2.5 py-1 text-xs font-medium rounded text-ink bg-surface hover:bg-surface-3 border border-line transition-colors"
-                        >
-                          Edit
-                        </Link>
-                        {story.slug && (
-                          <Link
-                            href={`/article/${story.slug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1 text-muted hover:text-ink rounded hover:bg-surface-3 transition-colors"
-                            title="Preview live article"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="flex flex-col items-center justify-center py-10 px-4 text-center border-2 border-dashed border-line bg-surface-2 rounded-xl m-4">
-                <div className="mb-2">
-                  <FileText className="w-5 h-5 text-faint" />
-                </div>
-                <h3 className="text-sm font-semibold text-ink mb-1">No stories found</h3>
-                <p className="text-xs text-muted mb-4 max-w-[200px]">There are no published stories in the database yet.</p>
-                <Link
-                  href="/admin/editor"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-ink bg-surface border border-line hover:border-line-2 shadow-sm hover:shadow rounded-lg transition-all"
-                >
-                  <Plus className="w-3 h-3 text-accent" />
-                  <span>Create Story</span>
-                </Link>
-              </div>
-            )}
-          </div>
+          <TopStoriesList initialStories={topStories} />
         </div>
 
         {/* Right Column: Drafts & In Progress (5 cols) */}
@@ -671,33 +606,33 @@ export default async function AdminDashboard() {
             </h2>
           </div>
           <div className="p-5 flex flex-col gap-3">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer">
+            <Link href="/admin/review" className="flex items-center justify-between p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer">
               <div className="flex items-center gap-3">
                 <div className="p-1.5 bg-red-500/20 rounded">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
                 <span className="text-sm font-medium">Articles awaiting review</span>
               </div>
-              <span className="text-sm font-bold">3</span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer">
+              <span className="text-sm font-bold">{awaitingReview}</span>
+            </Link>
+            <Link href="/admin/comments" className="flex items-center justify-between p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer">
               <div className="flex items-center gap-3">
                 <div className="p-1.5 bg-amber-500/20 rounded">
                   <FileText className="w-4 h-4" />
                 </div>
                 <span className="text-sm font-medium">Comments flagged</span>
               </div>
-              <span className="text-sm font-bold">12</span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-surface-2 border border-line">
+              <span className="text-sm font-bold">{commentsFlagged}</span>
+            </Link>
+            <Link href="/admin/users" className="flex items-center justify-between p-3 rounded-lg bg-surface-2 border border-line hover:bg-surface-3 transition-colors cursor-pointer">
               <div className="flex items-center gap-3">
                 <div className="p-1.5 bg-surface-3 text-muted rounded">
                   <Folder className="w-4 h-4" />
                 </div>
                 <span className="text-sm font-medium text-ink">Author applications</span>
               </div>
-              <span className="text-sm font-bold text-muted">0</span>
-            </div>
+              <span className="text-sm font-bold text-muted">{authorApplications}</span>
+            </Link>
           </div>
         </div>
 
@@ -715,31 +650,19 @@ export default async function AdminDashboard() {
           </div>
           <div className="p-5">
             <div className="relative border-l border-line ml-3 space-y-6">
-              
-              <div className="relative pl-6">
-                <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 bg-surface border-2 border-emerald-500 rounded-full" />
-                <p className="text-sm text-ink"><span className="font-semibold">Alex Editor</span> published <span className="font-medium italic">"The Future of AI"</span></p>
-                <p className="text-xs text-muted mt-1">2 hours ago</p>
-              </div>
-
-              <div className="relative pl-6">
-                <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 bg-surface border-2 border-line-2 rounded-full" />
-                <p className="text-sm text-ink"><span className="font-semibold">Sam Writer</span> updated draft <span className="font-medium italic">"Cybersecurity 2027"</span></p>
-                <p className="text-xs text-muted mt-1">4 hours ago</p>
-              </div>
-
-              <div className="relative pl-6">
-                <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 bg-surface border-2 border-amber-500 rounded-full" />
-                <p className="text-sm text-ink"><span className="font-semibold">Admin</span> flagged a comment by <span className="font-medium italic">user123</span></p>
-                <p className="text-xs text-muted mt-1">5 hours ago</p>
-              </div>
-
-              <div className="relative pl-6">
-                <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 bg-surface border-2 border-purple-500 rounded-full" />
-                <p className="text-sm text-ink"><span className="font-semibold">Jordan</span> submitted a story for review</p>
-                <p className="text-xs text-muted mt-1">Yesterday</p>
-              </div>
-
+              {recentLogs.length > 0 ? (
+                recentLogs.map((log) => (
+                  <div key={log.id} className="relative pl-6">
+                    <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 bg-surface border-2 border-line-2 rounded-full" />
+                    <p className="text-sm text-ink">
+                      <span className="font-semibold">{log.user?.name || "System"}</span> {log.action.toLowerCase()} <span className="font-medium italic">{log.entityType}</span>
+                    </p>
+                    <p className="text-xs text-muted mt-1">{formatRelativeTime(log.createdAt)}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-muted">No recent activity found.</div>
+              )}
             </div>
           </div>
         </div>

@@ -160,11 +160,11 @@ describe("authorize", () => {
       expect(canReview.sort()).toEqual(["ADMIN", "OWNER", "REVIEWER"]);
     });
 
-    it("reserves publication settings for OWNER and ADMIN", () => {
+    it("reserves publication settings for OWNER only", () => {
       const canConfigure = ALL_ROLES.filter((r) =>
         authorize(r, "settings.publication")
       );
-      expect(canConfigure.sort()).toEqual(["ADMIN", "OWNER"]);
+      expect(canConfigure.sort()).toEqual(["OWNER"]);
     });
   });
 });
@@ -177,7 +177,7 @@ describe("buildArticleScope", () => {
   });
 
   it("returns an unfiltered scope for roles that see everything", () => {
-    for (const role of ["OWNER", "ADMIN", "EDITOR"] as Role[]) {
+    for (const role of ["OWNER", "ADMIN"] as Role[]) {
       expect(buildArticleScope(actor(role)), role).toEqual({});
     }
   });
@@ -191,9 +191,12 @@ describe("buildArticleScope", () => {
     expect(scope).not.toEqual({});
   });
 
-  it("limits an AUTHOR to their own work plus anything published", () => {
+  it("limits AUTHOR and EDITOR strictly to their own work", () => {
     expect(buildArticleScope(actor("AUTHOR", "author-7"))).toEqual({
-      OR: [{ authorId: "author-7" }, { status: "PUBLISHED" }],
+      authorId: "author-7",
+    });
+    expect(buildArticleScope(actor("EDITOR", "editor-9"))).toEqual({
+      authorId: "editor-9",
     });
   });
 
@@ -201,9 +204,9 @@ describe("buildArticleScope", () => {
     // A null authorId must not become a wildcard. The sentinel keeps the
     // clause unsatisfiable instead of matching rows whose authorId is null.
     const scope = buildArticleScope(actor("AUTHOR", null)) as {
-      OR: Array<Record<string, unknown>>;
+      authorId: string;
     };
-    expect(scope.OR[0]).toEqual({ authorId: "__none__" });
+    expect(scope.authorId).toEqual("__none__");
   });
 
   it("shows a REVIEWER the queue, published work and their own drafts", () => {

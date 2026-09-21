@@ -14,6 +14,8 @@ import {
   Highlighter,
   Check,
   X,
+  Subscript as SubscriptIcon,
+  Superscript as SuperscriptIcon,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -86,7 +88,14 @@ export function EditorBubbleMenu({ editor }: Props) {
   const [linkMode, setLinkMode] = useState(false);
   const [draft, setDraft] = useState("");
   const [invalid, setInvalid] = useState(false);
+  const [isTouch, setIsTouch] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsTouch("ontouchstart" in window || navigator.maxTouchPoints > 0);
+    }
+  }, []);
 
   // Focus the field when the link editor opens, so it is immediately typeable.
   useEffect(() => {
@@ -130,7 +139,7 @@ export function EditorBubbleMenu({ editor }: Props) {
     closeLinkEditor();
   }, [editor, draft, closeLinkEditor]);
 
-  if (!editor) return null;
+  if (!editor || isTouch) return null;
 
   return (
     <BubbleMenu
@@ -211,6 +220,18 @@ export function EditorBubbleMenu({ editor }: Props) {
             label="Strikethrough"
             active={editor.isActive("strike")}
             onClick={() => editor.chain().focus().toggleStrike().run()}
+          />
+          <MarkButton
+            icon={SubscriptIcon}
+            label="Subscript"
+            active={editor.isActive("subscript")}
+            onClick={() => editor.chain().focus().toggleSubscript().run()}
+          />
+          <MarkButton
+            icon={SuperscriptIcon}
+            label="Superscript"
+            active={editor.isActive("superscript")}
+            onClick={() => editor.chain().focus().toggleSuperscript().run()}
           />
 
           <span className="eb-sep" aria-hidden="true" />

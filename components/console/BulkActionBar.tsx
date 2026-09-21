@@ -180,7 +180,7 @@ export default function BulkActionBar({
         const { succeeded, failed, outcomes } = res.data!;
 
         if (failed === 0) {
-          showToast(`${succeeded} article${succeeded === 1 ? "" : "s"} updated.`);
+          showToast(`${succeeded} article${succeeded === 1 ? "" : "s"} updated.`, "success", "premium");
         } else if (succeeded === 0) {
           // Every one was rejected -- show why for the first, since they usually
           // share a cause, rather than a bare "nothing happened".
@@ -194,7 +194,9 @@ export default function BulkActionBar({
             .join(", ");
           const more = failed > 3 ? ` and ${failed - 3} more` : "";
           showToast(
-            `${succeeded} updated, ${failed} skipped: ${skipped}${more}.`
+            `${succeeded} updated, ${failed} skipped: ${skipped}${more}.`,
+            "success",
+            "premium"
           );
         }
 

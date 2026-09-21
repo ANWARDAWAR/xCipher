@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { usePathname } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 
 export default function MobileDrawer() {
   const [isOpen, setIsOpen] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
@@ -35,6 +37,8 @@ export default function MobileDrawer() {
   // Close drawer on navigation
   useEffect(() => {
     setIsOpen(false);
+    // Optional: Collapse "More" section on navigation so it is fresh next time
+    setShowMore(false);
   }, [pathname]);
 
   const isDark = mounted && resolvedTheme === "dark";
@@ -91,10 +95,11 @@ export default function MobileDrawer() {
           </button>
         </div>
         <nav id="drawerNav" aria-label="Sections">
-          <div className="dr-group">Browse</div>
+          <div className="dr-group">BROWSE</div>
           <Link href="/" className={pathname === "/" ? "on" : ""}>Home</Link>
           <Link href="/latest" className={pathname === "/latest" ? "on" : ""}>Latest</Link>
-          <div className="dr-group">Sections</div>
+          
+          <div className="dr-group">SECTIONS</div>
           <Link href="/category/ai" className={pathname.startsWith("/category/ai") ? "on" : ""}>AI & Machine Learning</Link>
           <Link href="/category/cybersecurity" className={pathname.startsWith("/category/cybersecurity") ? "on" : ""}>Cybersecurity</Link>
           <Link href="/category/gadgets" className={pathname.startsWith("/category/gadgets") ? "on" : ""}>Gadgets</Link>
@@ -104,13 +109,37 @@ export default function MobileDrawer() {
           <Link href="/category/gaming" className={pathname.startsWith("/category/gaming") ? "on" : ""}>Gaming</Link>
           <Link href="/category/reviews" className={pathname.startsWith("/category/reviews") ? "on" : ""}>Reviews</Link>
           <Link href="/category/howto" className={pathname.startsWith("/category/howto") ? "on" : ""}>How-To</Link>
-          <div className="dr-group">More</div>
           <Link href="/category/opinion" className={pathname.startsWith("/category/opinion") ? "on" : ""}>Opinion</Link>
+          <Link href="/category/science" className={pathname.startsWith("/category/science") ? "on" : ""}>Science</Link>
+          
+          <div className="dr-group">COMPANY / INFO</div>
           <Link href="/page/about">About</Link>
           <Link href="/page/contact">Contact</Link>
+
+          <button 
+            onClick={() => setShowMore(!showMore)}
+            className="flex items-center justify-between w-full text-left py-2 px-4 mt-2 text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors rounded-sm"
+            aria-expanded={showMore}
+          >
+            <span className="font-semibold text-sm">More Resources</span>
+            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showMore ? "rotate-180" : ""}`} />
+          </button>
+          
+          <div 
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${showMore ? "max-h-[300px] opacity-100" : "max-h-0 opacity-0"}`}
+          >
+            <ul className="flex flex-col pl-4 border-l-2 border-[var(--line)] ml-4 mt-1 mb-2 space-y-1">
+              <li><Link href="/page/media-kit" className="block py-1.5 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Media Kit</Link></li>
+              <li><Link href="/page/careers" className="block py-1.5 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Careers</Link></li>
+              <li><Link href="/page/newsletters" className="block py-1.5 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Newsletters</Link></li>
+              <li><Link href="/page/editorial-standards" className="block py-1.5 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Editorial Standards</Link></li>
+              <li><Link href="/page/privacy-policy" className="block py-1.5 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Privacy Policy</Link></li>
+              <li><Link href="/page/terms-of-use" className="block py-1.5 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Terms of Use</Link></li>
+            </ul>
+          </div>
         </nav>
         <div className="drawer-foot">
-          <Link className="btn btn-solid" href="/page/newsletter">Subscribe to the daily brief</Link>
+          <Link className="btn btn-solid" href="/page/newsletters#subscribe">Subscribe to the daily brief</Link>
           <button 
             className="btn" 
             onClick={() => setTheme(isDark ? "light" : "dark")}

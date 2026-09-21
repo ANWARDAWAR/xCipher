@@ -27,6 +27,7 @@ export const ARTICLE_CARD_SELECT = {
   author: true,
   role: true,
   views: true,
+  readingTime: true,
   featured: true,
   status: true,
   createdAt: true,

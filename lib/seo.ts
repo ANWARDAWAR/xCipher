@@ -14,12 +14,20 @@ export function constructMetadata({
   image,
   noIndex = false,
   canonical,
+  type = "website",
+  publishedTime,
+  modifiedTime,
+  authors,
 }: {
   title?: string;
   description?: string;
   image?: string;
   noIndex?: boolean;
   canonical?: string;
+  type?: "website" | "article";
+  publishedTime?: string;
+  modifiedTime?: string;
+  authors?: string[];
 } = {}) {
   const url = canonical ? `${siteConfig.url}${canonical}` : siteConfig.url;
 
@@ -36,7 +44,12 @@ export function constructMetadata({
       siteName: siteConfig.name,
       images: image ? [{ url: image }] : undefined,
       locale: siteConfig.locale,
-      type: "website",
+      type,
+      ...(type === "article" && {
+        publishedTime,
+        modifiedTime,
+        authors,
+      }),
     },
     twitter: {
       card: "summary_large_image",

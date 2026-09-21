@@ -100,20 +100,17 @@ const ADMIN_CAPS: ReadonlySet<Capability> = new Set<Capability>([
   "article.publish", "article.schedule", "article.unpublish", "article.archive",
   "article.delete", "article.delete.own.draft", "article.feature",
   "taxonomy.create", "taxonomy.rename", "taxonomy.delete", "taxonomy.merge",
-  "author.manage.all", "author.manage.own",
+  "author.manage.own",
   "comment.moderate",
-  "user.view", "user.manage", "user.invite",
   "subscriber.view",
   "audit.view", "audit.export",
-  "settings.publication", "settings.personal",
+  "settings.personal",
 ]);
 
 const EDITOR_CAPS: ReadonlySet<Capability> = new Set<Capability>([
   "console.access",
-  // Sees every article in the console (needed to navigate the newsroom) but
-  // can only change their own. view.all without edit.any is the difference
-  // between visibility and authority.
-  "article.view.all", "article.view.own", "article.view.published",
+  // Sees only their own articles and published articles (scoping enforced in buildArticleScope)
+  "article.view.own", "article.view.published",
   "article.create", "article.edit.own",
   // No "article.edit.any". An editor is a self-sufficient writer: they publish
   // their own work without waiting for an approval queue, but another person's
@@ -252,13 +249,10 @@ export function buildArticleScope(actor: Actor): Record<string, unknown> {
     };
   }
 
-  // AUTHOR: own in every status + all published
-  if (role === "AUTHOR") {
+  // AUTHOR and EDITOR: strictly their own articles
+  if (role === "AUTHOR" || role === "EDITOR") {
     return {
-      OR: [
-        { authorId: actor.authorId || "__none__" },
-        { status: "PUBLISHED" },
-      ],
+      authorId: actor.authorId || "__none__",
     };
   }
 

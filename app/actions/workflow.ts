@@ -21,7 +21,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { CACHE_TAGS, articleTag, articleMutationTags } from "@/lib/cache-tags";
 
 export type ActionResponse<T = any> =
-  | { ok: true; data?: T }
+  | { ok: true; data?: T; updatedAt?: string }
   | { ok: false; code: "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "VALIDATION" | "RATE_LIMITED" | "SERVER"; message: string };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -199,6 +199,9 @@ function revalidateArticleRoutes(article: {
   // queries the article directly rather than through a tagged helper, because
   // it needs the body columns the card select deliberately omits.
   revalidatePath(`/article/${article.slug}`, "page");
+  
+  // Revalidate the sitemap so search engines immediately see the new/updated URL.
+  revalidatePath("/sitemap.xml");
 }
 
 async function executeTransition(
@@ -217,7 +220,14 @@ async function executeTransition(
     return { ok: false, code: "FORBIDDEN", message: validationError };
   }
 
-  return await actionFn(article, actor);
+  const res = await actionFn(article, actor);
+  if (res.ok) {
+    const fresh = await db.article.findUnique({ where: { id }, select: { updatedAt: true } });
+    if (fresh) {
+      res.updatedAt = fresh.updatedAt.toISOString();
+    }
+  }
+  return res;
 }
 
 export async function submitArticle(id: string): Promise<ActionResponse> {
@@ -254,7 +264,9 @@ export async function submitArticle(id: string): Promise<ActionResponse> {
     await notifySubmitted(article, actor.id);
 
     revalidatePath(`/admin/articles`);
+    revalidatePath(`/admin/review`);
     revalidatePath(`/admin/editor/${id}`);
+    revalidatePath(`/admin`, `layout`);
     return { ok: true };
   });
 }
@@ -313,6 +325,19 @@ export async function approveArticle(id: string, notes?: string): Promise<Action
           data: { userId: actor.id, action: "SELF_REVIEW", entityType: "Article", entityId: id, details: { decision: "APPROVED", reason: "no other reviewers available" } }
         });
       }
+
+      if (article.authorId) {
+        const authorUser = await tx.user.findFirst({ where: { authorId: article.authorId } });
+        if (authorUser && authorUser.id !== actor.id) {
+          await tx.notification.create({
+            data: {
+              userId: authorUser.id,
+              message: `"${article.title || 'Untitled'}" was approved.`,
+              link: `/admin/editor/${id}`
+            }
+          });
+        }
+      }
     });
 
     await notifyApproved(article, actor.id);
@@ -361,6 +386,19 @@ export async function requestChanges(id: string, reason: string): Promise<Action
         await tx.auditLog.create({
           data: { userId: actor.id, action: "SELF_REVIEW", entityType: "Article", entityId: id, details: { decision: "CHANGES_REQUESTED", reason: "no other reviewers available" } }
         });
+      }
+
+      if (article.authorId) {
+        const authorUser = await tx.user.findFirst({ where: { authorId: article.authorId } });
+        if (authorUser && authorUser.id !== actor.id) {
+          await tx.notification.create({
+            data: {
+              userId: authorUser.id,
+              message: `Changes requested on "${article.title || 'Untitled'}": ${reason.trim().slice(0, 140)}`,
+              link: `/admin/editor/${id}`
+            }
+          });
+        }
       }
     });
 
@@ -415,6 +453,19 @@ export async function rejectArticle(id: string, reason: string, reasonCode: stri
           data: { userId: actor.id, action: "SELF_REVIEW", entityType: "Article", entityId: id, details: { decision: "REJECTED", reason: "no other reviewers available" } }
         });
       }
+
+      if (article.authorId) {
+        const authorUser = await tx.user.findFirst({ where: { authorId: article.authorId } });
+        if (authorUser && authorUser.id !== actor.id) {
+          await tx.notification.create({
+            data: {
+              userId: authorUser.id,
+              message: `"${article.title || 'Untitled'}" was rejected: ${reason.trim().slice(0, 140)}`,
+              link: `/admin/editor/${id}`
+            }
+          });
+        }
+      }
     });
 
     await notifyRejected(article, actor.id, reason);
@@ -468,6 +519,7 @@ export async function publishArticle(id: string): Promise<ActionResponse> {
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/review`);
     revalidatePath(`/admin/editor/${id}`);
+    revalidatePath(`/admin`, `layout`);
     revalidateArticleRoutes(article);
     return { ok: true };
   });
@@ -623,14 +675,18 @@ export async function deleteOwnDraft(id: string): Promise<ActionResponse> {
   const actor = await getActor();
   if (!actor) return { ok: false, code: "UNAUTHENTICATED", message: "Sign in required." };
   
-  if (!authorize(actor.role, "article.delete.own.draft")) {
+  if (!authorize(actor.role, "article.delete.own.draft") && !authorize(actor.role, "article.delete")) {
     return { ok: false, code: "FORBIDDEN", message: "Insufficient permissions." };
   }
 
   const article = await getArticle(id);
   if (!article) return { ok: false, code: "NOT_FOUND", message: "Article not found." };
 
-  if (article.status !== "DRAFT" || article.authorId !== actor.authorId) {
+  if (article.status !== "DRAFT") {
+    return { ok: false, code: "FORBIDDEN", message: "Only drafts can be deleted this way." };
+  }
+
+  if (article.authorId !== actor.authorId && !authorize(actor.role, "article.delete")) {
     return { ok: false, code: "FORBIDDEN", message: "You can only delete your own drafts." };
   }
 

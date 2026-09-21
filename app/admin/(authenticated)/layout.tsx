@@ -94,7 +94,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </div>
       <div className="cs-body">
         <ConsoleNavDrawer>
-        <nav className="cs-nav" aria-label="Console sections">
+        <nav className="cs-nav h-full" aria-label="Console sections">
 
           {/* ── Profile Card ─────────────────────── */}
           <Link

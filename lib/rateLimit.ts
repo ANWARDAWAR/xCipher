@@ -10,23 +10,7 @@
  *   if (!result.allowed) return { success: false, error: "Too many requests." };
  */
 
-interface Entry {
-  count: number;
-  resetAt: number;
-}
-
-// Global map keyed by "action:ip"
-const store = new Map<string, Entry>();
-
-// Periodically prune expired entries to prevent unbounded memory growth
-if (typeof setInterval !== "undefined") {
-  setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of store.entries()) {
-      if (entry.resetAt < now) store.delete(key);
-    }
-  }, 60_000); // prune every minute
-}
+import { db } from "./db";
 
 interface RateLimitOptions {
   /** Maximum requests allowed in the window */
@@ -45,29 +29,45 @@ interface RateLimitResult {
  * Check and record a rate-limit hit for a given action + key (typically an IP).
  * Returns { allowed: true } when under the limit.
  */
-export function checkRateLimit(
+export async function checkRateLimit(
   action: string,
   key: string,
   options: RateLimitOptions
-): RateLimitResult {
+): Promise<RateLimitResult> {
   const mapKey = `${action}:${key}`;
-  const now = Date.now();
+  const now = new Date();
+  const resetAt = new Date(now.getTime() + options.windowMs);
 
-  const existing = store.get(mapKey);
-
-  if (!existing || existing.resetAt < now) {
-    // First request or window expired — start a fresh window
-    const entry: Entry = { count: 1, resetAt: now + options.windowMs };
-    store.set(mapKey, entry);
-    return { allowed: true, remaining: options.limit - 1, resetAt: entry.resetAt };
+  // Stochastic prune: 1% chance to clean expired tokens to prevent table bloat
+  if (Math.random() < 0.01) {
+    (db as any).rateLimit.deleteMany({
+      where: { resetAt: { lt: now } }
+    }).catch(console.error);
   }
 
-  if (existing.count >= options.limit) {
-    return { allowed: false, remaining: 0, resetAt: existing.resetAt };
-  }
+  return await db.$transaction(async (tx) => {
+    let entry = await (tx as any).rateLimit.findUnique({ where: { actionKey: mapKey } });
 
-  existing.count++;
-  return { allowed: true, remaining: options.limit - existing.count, resetAt: existing.resetAt };
+    if (!entry || entry.resetAt < now) {
+      entry = await (tx as any).rateLimit.upsert({
+        where: { actionKey: mapKey },
+        update: { count: 1, resetAt },
+        create: { actionKey: mapKey, count: 1, resetAt },
+      });
+      return { allowed: true, remaining: Math.max(0, options.limit - 1), resetAt: entry.resetAt.getTime() };
+    }
+
+    if (entry.count >= options.limit) {
+      return { allowed: false, remaining: 0, resetAt: entry.resetAt.getTime() };
+    }
+
+    entry = await (tx as any).rateLimit.update({
+      where: { actionKey: mapKey },
+      data: { count: { increment: 1 } },
+    });
+
+    return { allowed: true, remaining: Math.max(0, options.limit - entry.count), resetAt: entry.resetAt.getTime() };
+  });
 }
 
 /**

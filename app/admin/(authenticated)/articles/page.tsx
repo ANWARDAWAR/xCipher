@@ -89,6 +89,11 @@ export default async function AdminArticles({ searchParams }: PageProps) {
     if (statuses.length > 0) {
       filterConditions.push({ status: { in: statuses } });
     }
+  } else {
+    // If no explicit status filter is applied, hide terminal statuses from the "All" view
+    filterConditions.push({
+      status: { notIn: ["ARCHIVED", "REJECTED"] },
+    });
   }
 
   // Author filter

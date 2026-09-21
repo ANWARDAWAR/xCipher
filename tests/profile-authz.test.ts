@@ -5,8 +5,11 @@ import type { Role } from "@prisma/client";
 // The rule updateProfile enforces for cross-user edits. Kept as a capability
 // test because the action itself imports lib/db and cannot be unit-tested.
 describe("who may edit another user's profile", () => {
-  it.each(["OWNER", "ADMIN"] as Role[])("%s can", (r) => {
+  it.each(["OWNER"] as Role[])("%s can", (r) => {
     expect(authorize(r, "author.manage.all")).toBe(true);
+  });
+  it("ADMIN cannot", () => {
+    expect(authorize("ADMIN", "author.manage.all")).toBe(false);
   });
 
   it.each(["EDITOR", "AUTHOR", "REVIEWER", "MODERATOR", "STAFF"] as Role[])("%s cannot", (r) => {
@@ -20,11 +23,12 @@ describe("who may edit another user's profile", () => {
   });
 
   it("role assignment stays narrower than profile editing", () => {
-    // ADMIN may edit a colleague's profile and also set their official role;
-    // EDITOR may do neither. The two capabilities are still distinct, which is
-    // what keeps "fix a byline" separate from "promote someone".
-    expect(authorize("ADMIN", "author.manage.all")).toBe(true);
-    expect(authorize("ADMIN", "user.manage")).toBe(true);
+    // OWNER may edit a colleague's profile and also set their official role;
+    // ADMIN may edit the profile but not the role; EDITOR may do neither.
+    expect(authorize("OWNER", "author.manage.all")).toBe(true);
+    expect(authorize("OWNER", "user.manage")).toBe(true);
+    expect(authorize("ADMIN", "author.manage.all")).toBe(false);
+    expect(authorize("ADMIN", "user.manage")).toBe(false);
     expect(authorize("EDITOR", "author.manage.all")).toBe(false);
     expect(authorize("EDITOR", "user.manage")).toBe(false);
   });
