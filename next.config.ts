@@ -123,8 +123,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "*.r2.dev" },
       ...r2RemotePattern(),
     ],
-  },
-  serverExternalPackages: ["jsdom", "html-encoding-sniffer"],
+  }
 };
 
 export default nextConfig;
