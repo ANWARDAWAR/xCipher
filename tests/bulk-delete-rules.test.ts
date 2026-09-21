@@ -93,3 +93,21 @@ describe("the capability set this depends on", () => {
     expect(holders.sort()).toEqual(["ADMIN", "OWNER"]);
   });
 });
+
+function canDeleteArticlePermanently(role: Role, status: ArticleStatus) {
+  if (!authorize(role, "article.delete")) return false;
+  if (status !== "ARCHIVED") return false;
+  return true;
+}
+
+describe("deleteArticlePermanently rules", () => {
+  it("cannot delete a PUBLISHED article (must be archived first)", () => {
+    expect(canDeleteArticlePermanently("OWNER", "PUBLISHED")).toBe(false);
+    expect(canDeleteArticlePermanently("ADMIN", "PUBLISHED")).toBe(false);
+  });
+  
+  it("CAN delete an ARCHIVED article", () => {
+    expect(canDeleteArticlePermanently("OWNER", "ARCHIVED")).toBe(true);
+    expect(canDeleteArticlePermanently("ADMIN", "ARCHIVED")).toBe(true);
+  });
+});

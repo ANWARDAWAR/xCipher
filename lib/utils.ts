@@ -125,3 +125,7 @@ export function calculateReadTime(html?: string | null): number {
   const wpm = 200;
   return Math.max(1, Math.ceil(words / wpm));
 }
+
+export function deriveIsFeatured(placement: string | null): boolean {
+  return !!placement;
+}

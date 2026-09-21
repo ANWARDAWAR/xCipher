@@ -35,7 +35,7 @@ export async function sendInvitationEmail({ to, role, inviteUrl }: SendInvitatio
   }
   try {
     const { data, error } = await resend.emails.send({
-      from: "xSypher <onboarding@resend.dev>", // Typically you'd use your verified domain here
+      from: process.env.EMAIL_FROM_ADDRESS || "xSypher <onboarding@resend.dev>",
       to,
       subject: "You have been invited to join xSypher",
       html: `
@@ -62,6 +62,50 @@ export async function sendInvitationEmail({ to, role, inviteUrl }: SendInvitatio
     return { success: true, data };
   } catch (error: any) {
     console.error("Failed to send invitation email:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export interface SendPasswordResetEmailParams {
+  to: string;
+  resetUrl: string;
+}
+
+export async function sendPasswordResetEmail({ to, resetUrl }: SendPasswordResetEmailParams) {
+  const resend = getResend();
+  if (!resend) {
+    console.error("[email] RESEND_API_KEY is not set; password reset not sent to", to);
+    return { success: false, error: "Email delivery is not configured." };
+  }
+  try {
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM_ADDRESS || "xSypher <onboarding@resend.dev>",
+      to,
+      subject: "Reset your xSypher password",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #111; color: #fff; padding: 20px; border-radius: 8px;">
+          <h1 style="color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px;">x<span style="color: #666;">Sypher</span></h1>
+          <p style="font-size: 16px; color: #ccc;">Hello,</p>
+          <p style="font-size: 16px; color: #ccc;">We received a request to reset the password for your xSypher account.</p>
+          <p style="font-size: 16px; color: #ccc;">Click the button below to choose a new password. This link will expire in 1 hour.</p>
+          <div style="margin: 30px 0;">
+            <a href="${resetUrl}" style="background-color: #fff; color: #000; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">Reset Password</a>
+          </div>
+          <p style="font-size: 14px; color: #666; border-top: 1px solid #333; padding-top: 20px;">
+            If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.
+          </p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("Resend error:", error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data };
+  } catch (error: any) {
+    console.error("Failed to send password reset email:", error);
     return { success: false, error: error.message };
   }
 }
@@ -114,7 +158,7 @@ export async function sendNotificationEmail({
 
   try {
     const { data, error } = await resend.emails.send({
-      from: "xSypher <onboarding@resend.dev>",
+      from: process.env.EMAIL_FROM_ADDRESS || "xSypher <onboarding@resend.dev>",
       to,
       // The message already reads as a sentence about a specific article, so it
       // makes a better subject than a generic "You have a notification".

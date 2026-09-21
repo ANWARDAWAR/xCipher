@@ -7,6 +7,7 @@ import { isValidSafeUrl, ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
 import { SETTINGS_ID } from "@/lib/settings";
 import { revalidatePath } from "next/cache";
 import type { Role } from "@prisma/client";
+import { handleServerError } from "@/lib/errors";
 
 // ---------------------------------------------------------------------------
 // Publication settings
@@ -94,8 +95,6 @@ export async function updatePublicationSettings(input: PublicationSettingsInput)
 
     return { success: true };
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Failed to save settings";
-    return { success: false, error: message };
+    return handleServerError(error, "Failed to save settings");
   }
 }

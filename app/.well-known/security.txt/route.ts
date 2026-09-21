@@ -1,3 +1,5 @@
+import { siteConfig } from "@/lib/seo";
+
 export const revalidate = 86400; // Cache for 24 hours
 
 export async function GET() {
@@ -8,8 +10,8 @@ export async function GET() {
 Contact: mailto:privacy@xsypher.com
 Expires: ${expiresDate.toISOString()}
 Preferred-Languages: en
-Canonical: https://www.xsypher.com/.well-known/security.txt
-Policy: https://www.xsypher.com/page/privacy-policy`;
+Canonical: ${siteConfig.url}/.well-known/security.txt
+Policy: ${siteConfig.url}/page/privacy-policy`;
 
   return new Response(content, {
     headers: {

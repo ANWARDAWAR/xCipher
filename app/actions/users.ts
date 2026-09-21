@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { canManageUser, canAssignRole } from "@/lib/permissions";
 import { Role } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { handleServerError } from "@/lib/errors";
 
 export async function updateUserRole(userId: string, newRole: Role) {
   try {
@@ -43,8 +44,7 @@ export async function updateUserRole(userId: string, newRole: Role) {
     revalidatePath("/admin/users");
     return { success: true };
   } catch (error: any) {
-    console.error("Error updating user role:", error);
-    return { success: false, error: error.message };
+    return handleServerError(error, "Failed to update user role");
   }
 }
 
@@ -79,7 +79,6 @@ export async function deleteUser(userId: string) {
     revalidatePath("/admin/users");
     return { success: true };
   } catch (error: any) {
-    console.error("Error deleting user:", error);
-    return { success: false, error: error.message };
+    return handleServerError(error, "Failed to delete user");
   }
 }

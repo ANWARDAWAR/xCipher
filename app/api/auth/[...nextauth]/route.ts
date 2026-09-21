@@ -3,6 +3,8 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+import { headers } from "next/headers";
 
 export const authOptions: AuthOptions = {
   secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
@@ -17,6 +19,21 @@ export const authOptions: AuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null;
+        }
+
+        const reqHeaders = await headers();
+        const ip = getClientIp(reqHeaders);
+
+        // Throttle by IP
+        const ipRl = await checkRateLimit("login:ip", ip, { limit: 20, windowMs: 15 * 60 * 1000 });
+        if (!ipRl.allowed) {
+          throw new Error("Invalid email or password");
+        }
+
+        // Throttle by Email
+        const emailRl = await checkRateLimit("login:email", credentials.email, { limit: 5, windowMs: 15 * 60 * 1000 });
+        if (!emailRl.allowed) {
+          throw new Error("Invalid email or password");
         }
 
         const user = await db.user.findUnique({

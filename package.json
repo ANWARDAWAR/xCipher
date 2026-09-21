@@ -36,6 +36,7 @@
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.11.0",
     "clsx": "^2.1.1",
+    "deepmerge-ts": "^8.0.2",
     "isomorphic-dompurify": "^4.2.0",
     "lowlight": "^3.3.0",
     "lucide-react": "^1.46.0",

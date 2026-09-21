@@ -35,9 +35,5 @@ jobs:
       - name: Unit tests
         run: npm test
 
-      # Not gating on lint yet. The repository carries ~146 pre-existing
-      # violations, almost all no-explicit-any, so a hard failure here would
-      # block every PR on debt that predates it. Reported, not enforced, until
-      # that backlog is cleared.
-      - name: Lint (non-blocking)
-        run: npx eslint . || true
+      - name: Lint
+        run: npx eslint .

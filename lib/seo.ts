@@ -5,7 +5,7 @@ export const siteConfig = {
   twitter: "@xSypherTech",
   locale: "en_US",
   publisher: "xSypher Media",
-  logoUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/logo.png`, // Assuming a logo exists
+  logoUrl: undefined, // Conditionally populated or omitted
 };
 
 export function constructMetadata({
@@ -90,10 +90,12 @@ export function generateNewsArticleJsonLd(article: any) {
     "publisher": {
       "@type": "Organization",
       "name": siteConfig.publisher,
-      "logo": {
-        "@type": "ImageObject",
-        "url": siteConfig.logoUrl
-      }
+      ...(siteConfig.logoUrl ? {
+        "logo": {
+          "@type": "ImageObject",
+          "url": siteConfig.logoUrl
+        }
+      } : {})
     },
     "mainEntityOfPage": {
       "@type": "WebPage",

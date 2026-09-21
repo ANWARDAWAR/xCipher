@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { siteConfig } from "@/lib/seo";
 
 export const revalidate = 3600;
 
@@ -20,7 +21,7 @@ export async function GET() {
       },
     });
 
-    const siteUrl = "https://www.xsypher.com";
+    const siteUrl = siteConfig.url;
     
     const escapeXml = (unsafe: string) => {
       return unsafe

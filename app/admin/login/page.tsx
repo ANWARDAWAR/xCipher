@@ -100,12 +100,12 @@ function LoginForm() {
           >
             Password
           </label>
-          <a 
-            href="#" 
+          <Link 
+            href="/admin/forgot-password" 
             className="text-xs font-medium text-neutral-400 hover:text-neutral-200 transition-colors focus:outline-none focus-visible:underline"
           >
             Forgot password?
-          </a>
+          </Link>
         </div>
         <input 
           id="password"

@@ -7,8 +7,11 @@ import { ArticleStatus, Role } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { canEditArticle, canPublishArticle, canDeleteArticle } from "@/lib/permissions";
 import { sanitizeArticleHtml, isValidSafeUrl, ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
-import { calculateReadTime } from "@/lib/utils";
+import { calculateReadTime, deriveIsFeatured } from "@/lib/utils";
 import { authorize } from "@/lib/capabilities";
+import { handleServerError } from "@/lib/errors";
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+import { headers } from "next/headers";
 
 async function logAudit(action: string, entityType: string, entityId?: string, details?: any) {
   try {
@@ -138,7 +141,7 @@ export async function upsertArticle(data: any) {
       contentJson: data.bodyJson || null,
       author: data.author?.trim() || user.name || "xSypher Staff",
       role: data.role?.trim() || user.role || null,
-      featured: true,
+      featured: deriveIsFeatured(data.homepagePlacement || null),
       img: data.img || null,
       seoTitle: data.seoTitle || null,
       seoDesc: data.seoDesc || null,
@@ -239,73 +242,10 @@ export async function upsertArticle(data: any) {
 
     return { success: true, article };
   } catch (error: any) {
-    console.error(">>> [SERVER] Save failed with error:", error.message);
-    return { success: false, error: error.message || "Failed to save article" };
+    return handleServerError(error, "Failed to save article");
   }
 }
 
-export async function deleteArticle(id: string) {
-  try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, error: "Unauthenticated" };
-    }
-
-    if (!id || typeof id !== "string") {
-      return { success: false, error: "Invalid article ID" };
-    }
-
-    const targetArticle = await db.article.findUnique({
-      where: { id },
-      select: { id: true, status: true, authorId: true },
-    });
-
-    if (!targetArticle) {
-      return { success: false, error: "Article not found" };
-    }
-
-    const userRole = user.role as Role;
-    const canGlobalDelete = authorize(userRole, "article.delete");
-    const canOwnDraftDelete = authorize(userRole, "article.delete.own.draft") 
-                              && targetArticle.status === "DRAFT" 
-                              && targetArticle.authorId !== null
-                              && targetArticle.authorId === user.authorId;
-
-    if (!canGlobalDelete && !canOwnDraftDelete) {
-      return { success: false, error: "Unauthorized: You do not have permission to delete this article." };
-    }
-
-    const article = await db.article.delete({
-      where: { id },
-      include: { category: true },
-    });
-
-    await logAudit("DELETE_ARTICLE", "Article", id, { title: article.title });
-
-    try {
-      revalidatePath("/admin/articles", "page");
-      // Deleting a published article removes it from the public site, so it is a
-      // public-visible transition like unpublish or archive and needs the same
-      // invalidation. A draft has no public representation, so skip it there.
-      if (article.status === "PUBLISHED") {
-        // Tag-scoped rather than dropping the whole layout: the listings and
-        // this article's own page are what changed.
-        for (const tag of articleMutationTags(article)) {
-          updateTag(tag);
-        }
-        revalidatePath(`/article/${article.slug}`, "page");
-        revalidatePath("/sitemap.xml");
-      }
-    } catch (revalError) {
-      console.warn(">>> [SERVER] Revalidation error:", revalError);
-    }
-
-    return { success: true };
-  } catch (error: any) {
-    console.error(">>> [SERVER] Delete failed:", error.message);
-    return { success: false, error: error.message || "Failed to delete article" };
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Revision restore
@@ -420,15 +360,20 @@ export async function restoreRevision(revisionId: string) {
 
     return { success: true, articleId: article.id };
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Failed to restore revision";
-    console.error(">>> [SERVER] Restore revision failed:", message);
-    return { success: false, error: message };
+    return handleServerError(error, "Failed to restore revision");
   }
 }
 
 export async function incrementArticleView(id: string) {
   try {
+    const reqHeaders = await headers();
+    const ip = getClientIp(reqHeaders);
+    const rl = await checkRateLimit("view", `${id}:${ip}`, { limit: 5, windowMs: 60 * 60 * 1000 });
+    
+    if (!rl.allowed) {
+      return { success: false };
+    }
+
     await db.article.update({
       where: { id },
       data: { views: { increment: 1 } },
@@ -436,7 +381,6 @@ export async function incrementArticleView(id: string) {
     // Deliberately avoiding revalidatePath here to prevent cache churn on every view.
     return { success: true };
   } catch (error) {
-    console.error("Failed to increment view:", error);
-    return { success: false };
+    return handleServerError(error, "Failed to increment view");
   }
 }

@@ -75,7 +75,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https:; font-src 'self' data:; frame-src 'self' https://www.youtube-nocookie.com; frame-ancestors 'none'; connect-src 'self' https:;",
+            value: `default-src 'self'; script-src 'self' ${process.env.NODE_ENV === "development" ? "'unsafe-eval'" : ""} 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https:; font-src 'self' data:; frame-src 'self' https://www.youtube-nocookie.com; frame-ancestors 'none'; connect-src 'self' https:;`,
           },
           {
             key: "X-Frame-Options",

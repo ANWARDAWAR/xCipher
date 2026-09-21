@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getCategoryArticles } from "@/lib/cached-queries";
-import { CATS } from "@/lib/mockData";
 import { siteConfig } from "@/lib/seo";
 import StoryRow from "@/components/article/StoryRow";
 import Sidebar from "@/components/layout/Sidebar";
@@ -21,9 +20,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     where: { slug },
   });
 
-  const fallbackCat = CATS[slug];
-  const catName = cat?.name || fallbackCat?.name;
-  const catDesc = cat?.description || fallbackCat?.desc;
+  const catName = cat?.name;
+  const catDesc = cat?.description;
 
   if (!catName) return { title: `Category — ${siteConfig.name}` };
 
@@ -50,15 +48,13 @@ export default async function CategoryPage({ params }: Props) {
     where: { slug },
   });
 
-  const fallbackCat = CATS[slug];
-
-  if (!category && !fallbackCat) {
+  if (!category) {
     notFound();
   }
 
-  const catName = category?.name || fallbackCat?.name || slug;
-  const catFullTitle = category?.fullTitle || fallbackCat?.full || catName;
-  const catDesc = category?.description || fallbackCat?.desc || `${catName} news and updates on xSypher.`;
+  const catName = category.name || slug;
+  const catFullTitle = category.fullTitle || catName;
+  const catDesc = category.description || `${catName} news and updates on xSypher.`;
 
   // Tagged per category, so an article landing in AI does not invalidate the
   // twelve other sections.

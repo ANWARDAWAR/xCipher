@@ -103,7 +103,7 @@ export default function SiteHeader() {
                 <Link href="/" className="hover:text-[var(--accent)] transition-colors" aria-label="Home">
                   <Home className="w-3.5 h-3.5 sm:w-[14px] sm:h-[14px]" strokeWidth={2.5} />
                 </Link>
-                <Link href="https://github.com/xSypher" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors" aria-label="About">
+                <Link href="/page/about" className="hover:text-[var(--accent)] transition-colors" aria-label="About">
                   <Info className="w-3.5 h-3.5 sm:w-[14px] sm:h-[14px]" strokeWidth={2.5} />
                 </Link>
                 <Link href="/page/contact" className="hover:text-[var(--accent)] transition-colors" aria-label="Contact">

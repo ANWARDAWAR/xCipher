@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { ARTICLES, CATS } from "@/lib/mockData";
 import { fmtViews } from "@/lib/utils";
 import NewsletterSignup from "@/components/newsletter/NewsletterSignup";
 
@@ -29,43 +28,30 @@ export default async function Sidebar() {
     console.error("Failed to fetch most read articles for sidebar:", error);
   }
 
-  // Fallback to mock data if database has no published articles
-  if (mostRead.length === 0) {
-    mostRead = [...ARTICLES]
-      .filter(a => a.most)
-      .sort((a, b) => (a.most || 0) - (b.most || 0))
-      .slice(0, 5)
-      .map(a => ({
-        id: a.id,
-        rank: a.most || 1,
-        slug: a.slug,
-        title: a.title,
-        catName: (CATS as any)[a.cat]?.name || "News",
-        views: a.views,
-        mins: (a as any).mins || 5,
-      }));
-  }
-
   return (
     <aside className="side-col" aria-label="Sidebar">
       {/* Most Read */}
       <section className="panel" aria-labelledby="mrH">
         <h2 className="panel-h" id="mrH">Most Read</h2>
-        <ol className="mostread">
-          {mostRead.map(a => (
-            <li key={a.id}>
-              <span className="rank">{String(a.rank).padStart(2, "0")}</span>
-              <div>
-                <h3>
-                  <Link href={`/article/${a.slug}`}>
-                    <span className="hlink">{a.title}</span>
-                  </Link>
-                </h3>
-                <span className="mr-cat">{a.catName} · {a.mins || 5} min read</span>
-              </div>
-            </li>
-          ))}
-        </ol>
+        {mostRead.length > 0 ? (
+          <ol className="mostread">
+            {mostRead.map(a => (
+              <li key={a.id}>
+                <span className="rank">{String(a.rank).padStart(2, "0")}</span>
+                <div>
+                  <h3>
+                    <Link href={`/article/${a.slug}`}>
+                      <span className="hlink">{a.title}</span>
+                    </Link>
+                  </h3>
+                  <span className="mr-cat">{a.catName} · {a.mins || 5} min read</span>
+                </div>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="muted" style={{ fontSize: "14px", marginTop: "12px" }}>No articles available yet.</p>
+        )}
       </section>
 
       {/* Sidebar Ad */}

@@ -17,7 +17,7 @@ interface Props {
 
 export default function ArticleActionMenu({ id, title, status, canArchive, canDeletePermanently, canDeleteOwnDraft }: Props) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showConfirm, setShowConfirm] = useState<"archive" | "delete" | "draftDelete" | "publishedDeleteWarning" | null>(null);
+  const [showConfirm, setShowConfirm] = useState<"archive" | "delete" | "draftDelete" | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
 
@@ -67,7 +67,7 @@ export default function ArticleActionMenu({ id, title, status, canArchive, canDe
   };
 
   const showArchive = canArchive && status !== "ARCHIVED";
-  const showDeletePerm = canDeletePermanently;
+  const showDeletePerm = canDeletePermanently && status === "ARCHIVED";
   const showDeleteDraft = canDeleteOwnDraft && status === "DRAFT";
 
   if (!showArchive && !showDeletePerm && !showDeleteDraft) return null;
@@ -132,7 +132,7 @@ export default function ArticleActionMenu({ id, title, status, canArchive, canDe
             )}
             {showDeletePerm && (
               <button 
-                onClick={() => setShowConfirm(status === "PUBLISHED" ? "publishedDeleteWarning" : "delete")}
+                onClick={() => setShowConfirm("delete")}
                 style={{ textAlign: "left", padding: "8px 12px", background: "none", border: "none", fontSize: "13px", cursor: "pointer", color: "var(--error)", borderRadius: "4px" }}
                 className="hover-bg-surface-2"
               >
@@ -164,15 +164,7 @@ export default function ArticleActionMenu({ id, title, status, canArchive, canDe
         onCancel={() => setShowConfirm(null)}
       />
 
-      <ConfirmDialog 
-        isOpen={showConfirm === "publishedDeleteWarning"}
-        title="Cannot Delete Live Story"
-        description="This post is currently LIVE. Please unpublish it to DRAFT before deleting."
-        confirmText="Understood"
-        isDestructive={false}
-        onConfirm={() => setShowConfirm(null)}
-        onCancel={() => setShowConfirm(null)}
-      />
+
 
       <ConfirmDialog 
         isOpen={showConfirm === "draftDelete"}
