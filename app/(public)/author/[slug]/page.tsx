@@ -13,11 +13,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const author = await db.author.findUnique({ where: { slug }, include: { user: true } });
   if (!author) return { title: `Author — ${siteConfig.name}` };
+  
+  const authorName = author.name || "Author";
+  
   return {
-    title: `${author.name} — ${siteConfig.name}`,
-    description: author.overview || author.bio?.slice(0, 160) || `${author.name} on ${siteConfig.name}.`,
+    title: `${authorName} — ${siteConfig.name}`,
+    description: author.overview || author.bio?.slice(0, 160) || `${authorName} on ${siteConfig.name}.`,
     openGraph: {
-      title: `${author.name} — ${siteConfig.name}`,
+      title: `${authorName} — ${siteConfig.name}`,
       description: author.overview || author.bio?.slice(0, 160) || "",
       images: author.avatar ? [author.avatar] : [],
     },
@@ -56,7 +59,7 @@ export default async function AuthorProfile({ params }: Props) {
   // Fetch articles
   const authorArticleWhere = {
     status: "PUBLISHED" as const,
-    OR: [{ authorId: author.id }, { author: author.name }],
+    OR: [{ authorId: author.id }, ...(author.name ? [{ author: author.name }] : [])],
   };
 
   // The list is capped, so the view total cannot be summed from it -- that

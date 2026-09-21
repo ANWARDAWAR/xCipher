@@ -45,10 +45,10 @@ export default function AuthorProfileView({ author, articles, socials, totalView
         <div className="wrap ap-hero-inner flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-6 md:gap-8">
           <div className="ap-avatar-wrap shrink-0">
             {author.avatar ? (
-              <img src={author.avatar} alt={author.name} className="ap-avatar" />
+              <img src={author.avatar} alt={author.name || "Author"} className="ap-avatar" />
             ) : (
               <div className="ap-avatar ap-avatar-initial">
-                {author.name.charAt(0).toUpperCase()}
+                {(author.name || "A").charAt(0).toUpperCase()}
               </div>
             )}
           </div>
@@ -56,7 +56,7 @@ export default function AuthorProfileView({ author, articles, socials, totalView
           <div className="ap-hero-info flex flex-col items-center md:items-start text-center md:text-left">
             <div className="flex flex-row items-center justify-center md:justify-start gap-2 w-full text-center md:text-left flex-wrap">
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[var(--ink)] tracking-tight max-w-full break-words text-balance">
-                {author.name}
+                {author.name || "Author"}
               </h1>
               {author.verifiedTitle && (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--accent)" className="shrink-0 translate-y-[2px]" aria-label="Verified Staff">

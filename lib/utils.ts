@@ -41,8 +41,6 @@ export function showToast(msg: string, type?: 'default' | 'success' | 'error' | 
 
   const t = document.createElement("div");
   t.id = "toast";
-  t.classList.add("show");
-  if (variant === "premium") t.classList.add("toast-premium");
   t.dataset.type = resolved;
 
   const assertive = resolved === 'error';
@@ -62,8 +60,10 @@ export function showToast(msg: string, type?: 'default' | 'success' | 'error' | 
   if (resolved === 'error') bgClass = "bg-red-950 border-red-500/50";
   if (resolved === 'success') bgClass = "bg-green-950 border-green-500/50";
 
-  t.className = `fixed top-[20px] left-1/2 -translate-x-1/2 z-[99999] flex items-center gap-3 ${bgClass} text-white shadow-2xl rounded-2xl px-6 py-4 border`;
-
+  const classes = ["toast", "show", "fixed", "top-[20px]", "left-1/2", "-translate-x-1/2", "z-[99999]", "flex", "items-center", "gap-3", "text-white", "shadow-2xl", "rounded-2xl", "px-6", "py-4", "border"];
+  if (variant === "premium") classes.push("toast-premium");
+  
+  t.className = `${classes.join(" ")} ${bgClass}`;
   const icon = document.createElement("div");
   icon.className = `${iconColor} [&>svg]:w-6 [&>svg]:h-6 shrink-0`;
   icon.innerHTML = TOAST_ICONS[resolved];

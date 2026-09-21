@@ -856,8 +856,15 @@ export default function ArticleEditor({
   const currentTags = typeof currentTagsString === "string" ? currentTagsString.split(",").map(t => t.trim()).filter(Boolean) : (Array.isArray(currentTagsString) ? currentTagsString : []);
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col min-h-0 bg-[var(--bg)]">
-
+    <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col min-h-0 bg-[var(--bg)] relative">
+      {busy && (
+        <div className="absolute inset-0 z-50 bg-white/20 dark:bg-black/20 backdrop-blur-[2px] flex items-center justify-center pointer-events-none transition-opacity duration-300">
+           <div className="bg-[var(--surface)] text-[var(--ink)] shadow-xl rounded-full px-4 py-2 flex items-center gap-2 font-medium text-sm animate-pulse border border-[var(--line)]">
+             <Loader2 className="h-4 w-4 animate-spin" />
+             Syncing...
+           </div>
+        </div>
+      )}
       {/* ── Sticky Top Editorial Command Header ── */}
       {/* sticky top-0 as well as flex-shrink-0: the form is a flex column with
           its own scroll containers, but the header still needs to pin when a

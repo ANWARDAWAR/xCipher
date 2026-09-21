@@ -124,6 +124,7 @@ const nextConfig: NextConfig = {
       ...r2RemotePattern(),
     ],
   },
+  serverExternalPackages: ["jsdom", "html-encoding-sniffer"],
 };
 
 export default nextConfig;

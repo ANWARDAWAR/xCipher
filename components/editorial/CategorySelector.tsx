@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { getSubcategories, createSubcategory } from "@/app/actions/taxonomy";
 import { CreatableCombobox, ComboboxOption } from "@/components/ui/CreatableCombobox";
+import { showToast } from "@/lib/utils";
 
 const PRIMARY_CATEGORIES = [
   { value: "ai", label: "Artificial Intelligence" },
@@ -66,9 +67,11 @@ export default function CategorySelector({ initialCategory, initialFallbackSlug 
     const res = await createSubcategory(name, parentSlug);
     if (res.success && res.category) {
       setSubcategories(prev => [...prev, { value: res.category.slug, label: res.category.name }]);
+      showToast(`Subcategory "${res.category.name}" created!`, "success");
       return res.category.slug;
     } else {
       console.error(res.error);
+      showToast(res.error || "Failed to create subcategory", "error");
       return null;
     }
   };
