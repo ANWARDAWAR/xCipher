@@ -35,7 +35,7 @@ export async function sendInvitationEmail({ to, role, inviteUrl }: SendInvitatio
   }
   try {
     const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM_ADDRESS || "xSypher <onboarding@resend.dev>",
+      from: process.env.EMAIL_FROM_ADDRESS || "xSypher <noreply@xsypher.com>",
       to,
       subject: "You have been invited to join xSypher",
       html: `

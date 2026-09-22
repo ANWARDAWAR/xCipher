@@ -14,7 +14,7 @@ export default withAuth(
     let effectivePath = pathname;
     
     // 1. Subdomain rewriting
-    if (isAdminSubdomain && !pathname.startsWith("/admin")) {
+    if (isAdminSubdomain && !pathname.startsWith("/admin") && !pathname.startsWith("/invite")) {
       effectivePath = `/admin${pathname}`;
     }
     
@@ -25,9 +25,13 @@ export default withAuth(
     }
     
     // 3. Authorization guard for protected routes
-    const isProtected = effectivePath.startsWith("/admin") && 
-                        !effectivePath.startsWith("/admin/login") && 
-                        !effectivePath.startsWith("/admin/setup");
+    const isAuthPublicRoute = 
+      effectivePath.startsWith("/admin/login") || 
+      effectivePath.startsWith("/admin/setup") ||
+      effectivePath.startsWith("/admin/forgot-password") ||
+      effectivePath.startsWith("/admin/reset-password");
+
+    const isProtected = effectivePath.startsWith("/admin") && !isAuthPublicRoute;
                         
     if (isProtected) {
       if (!token) {
@@ -45,7 +49,7 @@ export default withAuth(
     }
     
     // 4. Perform the rewrite if it's the admin subdomain
-    if (isAdminSubdomain && !pathname.startsWith("/admin")) {
+    if (isAdminSubdomain && !pathname.startsWith("/admin") && !pathname.startsWith("/invite")) {
       url.pathname = effectivePath;
       return NextResponse.rewrite(url);
     }

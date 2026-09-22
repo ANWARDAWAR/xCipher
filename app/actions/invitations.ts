@@ -68,8 +68,8 @@ export async function inviteUser(formData: FormData) {
       },
     });
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const inviteUrl = `${siteUrl}/invite/${token}`;
+    const baseUrl = process.env.NODE_ENV === "production" ? "https://admin.xsypher.com" : (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000");
+    const inviteUrl = `${baseUrl}/invite/${token}`;
 
     const emailResult = await sendInvitationEmail({ to: email, role, inviteUrl });
     
