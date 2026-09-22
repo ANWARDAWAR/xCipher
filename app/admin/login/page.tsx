@@ -209,13 +209,13 @@ export default function LoginPage() {
       
       {/* Return Link & Footer */}
       <div className="mt-6 mb-3 relative z-10 flex flex-col items-center gap-3 text-center">
-        <Link 
-          href="/" 
+        <a 
+          href={process.env.NEXT_PUBLIC_SITE_URL || "https://www.xsypher.com"} 
           className="group inline-flex items-center gap-2 text-xs font-medium text-neutral-400 hover:text-white transition-colors duration-200 py-1.5 px-3.5 rounded-full hover:bg-white/5 border border-transparent hover:border-white/10"
         >
           <ArrowLeft className="w-4 h-4 text-neutral-400 group-hover:text-white transition-transform duration-200 group-hover:-translate-x-1" />
           <span>Return to publication</span>
-        </Link>
+        </a>
         <p className="text-[11px] text-neutral-500 tracking-wider uppercase">
           &copy; {new Date().getFullYear()} xSypher Media Network · Authorized Editorial Staff Only
         </p>

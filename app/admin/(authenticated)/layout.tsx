@@ -70,9 +70,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="flex items-center gap-2">
           <NotificationBell items={notifications} unreadCount={unreadCount} />
           <ThemeToggle />
-          <Link 
+          <a 
             className="btn-cs" 
-            href="/" 
+            href={process.env.NEXT_PUBLIC_SITE_URL || "https://www.xsypher.com"} 
             target="_blank" 
             rel="noopener noreferrer"
             title="Open public website in a new tab"
@@ -83,7 +83,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <polyline points="15 3 21 3 21 9" />
               <line x1="10" y1="14" x2="21" y2="3" />
             </svg>
-          </Link>
+          </a>
           <SignOutButton />
         </div>
       </div>
