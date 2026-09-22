@@ -63,7 +63,31 @@ export const authOptions: AuthOptions = {
   session: {
     strategy: "jwt" as const,
   },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production" ? "__Secure-next-auth.session-token" : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        domain: process.env.NODE_ENV === "production" ? ".xsypher.com" : undefined,
+        secure: process.env.NODE_ENV === "production",
+      }
+    }
+  },
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      try {
+        const urlObj = new URL(url);
+        if (urlObj.origin === baseUrl || urlObj.hostname.endsWith(".xsypher.com") || urlObj.hostname.includes("localhost")) {
+          return url;
+        }
+      } catch (e) {
+        return baseUrl;
+      }
+      return baseUrl;
+    },
     async jwt({ token, user }: any) {
       if (user) {
         token.id = user.id;

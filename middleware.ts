@@ -4,26 +4,63 @@ import { NextResponse } from "next/server";
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
-    const { pathname } = req.nextUrl;
-
-    // Reject STAFF from accessing the admin console
-    if (pathname.startsWith("/admin") && token?.role === "STAFF") {
-      return NextResponse.redirect(new URL("/", req.url));
+    const url = req.nextUrl.clone();
+    const hostname = req.headers.get("host") || "";
+    const pathname = url.pathname;
+    
+    const isAdminSubdomain = hostname === "admin.xsypher.com" || hostname.startsWith("admin.localhost");
+    const isApex = hostname === "xsypher.com" || hostname === "www.xsypher.com";
+    
+    let effectivePath = pathname;
+    
+    // 1. Subdomain rewriting
+    if (isAdminSubdomain && !pathname.startsWith("/admin")) {
+      effectivePath = `/admin${pathname}`;
+    }
+    
+    // 2. Apex domain redirection for /admin
+    if (isApex && pathname.startsWith("/admin")) {
+      url.hostname = "admin.xsypher.com";
+      return NextResponse.redirect(url);
+    }
+    
+    // 3. Authorization guard for protected routes
+    const isProtected = effectivePath.startsWith("/admin") && 
+                        !effectivePath.startsWith("/admin/login") && 
+                        !effectivePath.startsWith("/admin/setup");
+                        
+    if (isProtected) {
+      if (!token) {
+        url.pathname = isAdminSubdomain ? "/login" : "/admin/login";
+        url.searchParams.set("callbackUrl", req.url);
+        return NextResponse.redirect(url);
+      }
+      
+      // Reject STAFF from accessing the admin console
+      if (token.role === "STAFF") {
+        url.pathname = "/";
+        url.hostname = isApex ? hostname : (process.env.NODE_ENV === "production" ? "xsypher.com" : "localhost:3000");
+        return NextResponse.redirect(url);
+      }
+    }
+    
+    // 4. Perform the rewrite if it's the admin subdomain
+    if (isAdminSubdomain && !pathname.startsWith("/admin")) {
+      url.pathname = effectivePath;
+      return NextResponse.rewrite(url);
     }
     
     return NextResponse.next();
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
-    },
-    pages: {
-      signIn: "/admin/login",
+      authorized: () => true, // Let the middleware body handle all auth logic and redirects
     },
   }
 );
 
 export const config = {
-  // Protect all /admin routes EXCEPT /admin/login and /admin/setup
-  matcher: ["/admin/((?!login|setup).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api).*)",
+  ],
 };
