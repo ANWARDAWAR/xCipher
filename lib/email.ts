@@ -79,7 +79,7 @@ export async function sendPasswordResetEmail({ to, resetUrl }: SendPasswordReset
   }
   try {
     const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM_ADDRESS || "xSypher <onboarding@resend.dev>",
+      from: process.env.EMAIL_FROM_ADDRESS || "xSypher <noreply@xsypher.com>",
       to,
       subject: "Reset your xSypher password",
       html: `

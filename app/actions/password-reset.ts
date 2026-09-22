@@ -33,7 +33,9 @@ export async function requestPasswordReset(email: string): Promise<{ success: bo
         });
 
         const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-        const resetUrl = `${baseUrl}/admin/reset-password/${token}`;
+        const resetUrl = process.env.NODE_ENV === "production" 
+          ? `https://admin.xsypher.com/reset-password?token=${token}`
+          : `${baseUrl}/admin/reset-password?token=${token}`;
 
         await sendPasswordResetEmail({ to: email, resetUrl });
 

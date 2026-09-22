@@ -3,8 +3,16 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import Logo from "@/components/common/Logo";
 
-export default async function ResetPasswordPage({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params;
+export default async function ResetPasswordPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
+  const { token } = await searchParams;
+  
+  if (!token) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center text-neutral-200">
+        <p>Invalid reset link. Token is missing.</p>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center text-neutral-200 p-4 sm:p-6 lg:p-8 relative selection:bg-accent selection:text-white">

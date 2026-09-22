@@ -102,7 +102,7 @@ function LoginForm() {
             Password
           </label>
           <Link 
-            href="/admin/forgot-password" 
+            href="/forgot-password" 
             className="text-xs font-medium text-neutral-400 hover:text-neutral-200 transition-colors focus:outline-none focus-visible:underline"
           >
             Forgot password?

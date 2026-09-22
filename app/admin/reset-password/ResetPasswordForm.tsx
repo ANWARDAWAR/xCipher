@@ -33,7 +33,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
     if (result.success) {
       setSuccess(true);
       setTimeout(() => {
-        router.push("/admin/login");
+        router.push("/login?reset=success");
       }, 2000);
     } else {
       setError(result.error || "Failed to reset password.");
