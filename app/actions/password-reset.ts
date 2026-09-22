@@ -7,50 +7,52 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
-export async function requestPasswordReset(email: string): Promise<{ success: boolean }> {
+export async function requestPasswordReset(email: string): Promise<{ success?: string, error?: string }> {
   try {
     const user = await db.user.findUnique({
       where: { email },
     });
 
-    if (user && user.password) {
-      const rl = await checkRateLimit("password-reset:email", email, { limit: 3, windowMs: 30 * 60 * 1000 });
-      if (rl.allowed) {
-        await db.passwordResetToken.updateMany({
-          where: { userId: user.id, used: false },
-          data: { used: true },
-        });
-
-        const token = crypto.randomBytes(32).toString("hex");
-        const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-        await db.passwordResetToken.create({
-          data: {
-            userId: user.id,
-            email: user.email,
-            token,
-            expires,
-          },
-        });
-
-        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-        const resetUrl = process.env.NODE_ENV === "production" 
-          ? `https://admin.xsypher.com/reset-password?token=${token}`
-          : `${baseUrl}/admin/reset-password?token=${token}`;
-
-        await sendPasswordResetEmail({ to: email, resetUrl });
-
-        await db.auditLog.create({
-          data: { action: "REQUEST_PASSWORD_RESET", entityType: "User", entityId: user.id },
-        });
-      }
+    if (!user || !user.password) {
+      return { error: "No account found with this email address." };
     }
+
+    const rl = await checkRateLimit("password-reset:email", email, { limit: 3, windowMs: 30 * 60 * 1000 });
+    if (rl.allowed) {
+      await db.passwordResetToken.updateMany({
+        where: { userId: user.id, used: false },
+        data: { used: true },
+      });
+
+      const token = crypto.randomBytes(32).toString("hex");
+      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await db.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          email: email,
+          token,
+          expires,
+        },
+      });
+
+      const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+      const resetUrl = process.env.NODE_ENV === "production" 
+        ? `https://admin.xsypher.com/reset-password?token=${token}`
+        : `${baseUrl}/admin/reset-password?token=${token}`;
+
+      await sendPasswordResetEmail({ to: email, resetUrl });
+
+      await db.auditLog.create({
+        data: { action: "REQUEST_PASSWORD_RESET", entityType: "User", entityId: user.id },
+      });
+    }
+
+    return { success: "A password reset link has been sent to your email." };
   } catch (e) {
     console.error("Password reset request error:", e);
+    return { error: "An unexpected error occurred." };
   }
-
-  // Always return success to prevent email enumeration
-  return { success: true };
 }
 
 export async function resetPassword(token: string, newPassword: string): Promise<{ success: boolean, error?: string }> {

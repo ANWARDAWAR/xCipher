@@ -8,13 +8,19 @@ import { Loader2, CheckCircle2 } from "lucide-react";
 export default function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await requestPasswordReset(email);
-    setSuccess(true);
+    setError(null);
+    const response = await requestPasswordReset(email);
+    if (response.error) {
+      setError(response.error);
+    } else if (response.success) {
+      setSuccess(response.success);
+    }
     setLoading(false);
   };
 
@@ -24,7 +30,7 @@ export default function ForgotPasswordForm() {
         <div className="flex items-start gap-3 p-3.5 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 rounded-lg text-sm" role="status">
           <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
           <p className="font-medium text-xs sm:text-sm leading-relaxed">
-            If that address is registered, a reset link has been sent. Check your inbox.
+            {success}
           </p>
         </div>
         <Link 
@@ -54,6 +60,12 @@ export default function ForgotPasswordForm() {
           className="block w-full h-11 px-3.5 py-2.5 bg-neutral-900/90 border border-neutral-700/80 rounded-lg text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/40 transition-all box-border" 
         />
       </div>
+
+      {error && (
+        <div className="p-3 bg-red-500/10 border border-red-500/25 text-red-400 rounded-lg text-sm font-medium">
+          {error}
+        </div>
+      )}
 
       <div className="pt-1">
         <button 
