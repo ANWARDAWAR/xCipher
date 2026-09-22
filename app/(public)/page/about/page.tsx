@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import { 
   Brain, 
   Terminal, 
@@ -79,7 +79,7 @@ export default function AboutPage() {
           <div className="mt-12 pt-8 border-t border-[var(--line)] grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
             <div className="flex flex-col">
               <span className="font-[family:var(--f-display)] text-2xl sm:text-3xl font-bold text-[var(--ink)]">
-                2019
+                2025
               </span>
               <span className="text-xs sm:text-sm text-[var(--muted)] font-[family:var(--f-ui)] mt-1">
                 Founded &amp; Independent
@@ -532,35 +532,41 @@ export default function AboutPage() {
             </div>
           </div>
 
-          {/* 3 ADDITIONAL TEAM MEMBERS GRID */}
+          {/* TEAM MEMBERS GRID */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
             
             {/* Team Member 1 */}
             <div className="group p-6 rounded-xl bg-[var(--surface)] border border-[var(--line)] hover:border-[var(--accent)] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg flex flex-col justify-between">
               <div>
-                <div className="flex items-center gap-4 mb-5">
-                  <div className="w-16 h-16 rounded-xl bg-[var(--surface-2)] border border-[var(--line)] group-hover:border-[var(--accent)]/50 flex items-center justify-center font-[family:var(--f-display)] font-bold text-xl text-[var(--ink)] transition-colors">
-                    ER
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[var(--surface-2)] border border-[var(--line)] group-hover:border-[var(--accent)]/50 flex items-center justify-center overflow-hidden shrink-0 shadow-sm transition-colors">
+                    <Image
+                      src="/amk.webp"
+                      alt="Ameer Muawiya Khattak"
+                      width={96}
+                      height={96}
+                      className="w-full h-full object-cover object-top"
+                    />
                   </div>
-                  <div>
-                    <h3 className="font-[family:var(--f-display)] text-lg font-bold text-[var(--ink)]">
-                      Dr. Elena Rostova
+                  <div className="pt-0.5 min-w-0">
+                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)]/20 mb-1">
+                      Co-Founder &amp; CTO
+                    </span>
+                    <h3 className="font-[family:var(--f-display)] text-lg sm:text-xl font-bold text-[var(--ink)] leading-snug">
+                      Ameer Muawiya Khattak
                     </h3>
-                    <p className="text-xs text-[var(--accent)] font-semibold uppercase tracking-wider">
-                      Chief AI Research Analyst
-                    </p>
-                    <p className="text-[11px] text-[var(--faint)]">ex-Neural Systems Researcher</p>
+                    <p className="text-[11px] text-[var(--faint)] mt-0.5">Engineering &amp; Infrastructure</p>
                   </div>
                 </div>
                 <p className="text-sm text-[var(--muted)] font-[family:var(--f-body)] leading-relaxed">
-                  Specializes in transformer attention mechanics, LLM alignment benchmarking, and synthetic data auditing. Leads our evaluation laboratory for generative models.
+                  Oversees xSypher&apos;s technical infrastructure and system architecture, driving platform scalability and engineering excellence across all services.
                 </p>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-[var(--line)] flex items-center justify-between">
+              <div className="mt-5 pt-4 border-t border-[var(--line)] flex items-center justify-between">
                 <div className="flex gap-1.5 text-xs text-[var(--faint)]">
-                  <span className="px-2 py-0.5 rounded bg-[var(--surface-2)]">PyTorch</span>
-                  <span className="px-2 py-0.5 rounded bg-[var(--surface-2)]">Transformers</span>
+                  <span className="px-2 py-0.5 rounded bg-[var(--surface-2)]">Infrastructure</span>
+                  <span className="px-2 py-0.5 rounded bg-[var(--surface-2)]">Architecture</span>
                 </div>
                 <div className="flex gap-2">
                   <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub" className="text-[var(--muted)] hover:text-[var(--ink)] transition-colors">
@@ -576,29 +582,35 @@ export default function AboutPage() {
             {/* Team Member 2 */}
             <div className="group p-6 rounded-xl bg-[var(--surface)] border border-[var(--line)] hover:border-[var(--accent)] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg flex flex-col justify-between">
               <div>
-                <div className="flex items-center gap-4 mb-5">
-                  <div className="w-16 h-16 rounded-xl bg-[var(--surface-2)] border border-[var(--line)] group-hover:border-[var(--accent)]/50 flex items-center justify-center font-[family:var(--f-display)] font-bold text-xl text-[var(--ink)] transition-colors">
-                    MV
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[var(--surface-2)] border border-[var(--line)] group-hover:border-[var(--accent)]/50 flex items-center justify-center overflow-hidden shrink-0 shadow-sm transition-colors">
+                    <Image
+                      src="/tariq.webp"
+                      alt="Tariq Aziz"
+                      width={96}
+                      height={96}
+                      className="w-full h-full object-cover object-top"
+                    />
                   </div>
-                  <div>
-                    <h3 className="font-[family:var(--f-display)] text-lg font-bold text-[var(--ink)]">
-                      Marcus Vance
+                  <div className="pt-0.5 min-w-0">
+                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)]/20 mb-1">
+                      Social Media Coordinator
+                    </span>
+                    <h3 className="font-[family:var(--f-display)] text-lg sm:text-xl font-bold text-[var(--ink)] leading-snug">
+                      Tariq Aziz
                     </h3>
-                    <p className="text-xs text-[var(--accent)] font-semibold uppercase tracking-wider">
-                      Lead Vulnerability Analyst
-                    </p>
-                    <p className="text-[11px] text-[var(--faint)]">OSCP &bull; Security Researcher</p>
+                    <p className="text-[11px] text-[var(--faint)] mt-0.5">Community &amp; Communications</p>
                   </div>
                 </div>
                 <p className="text-sm text-[var(--muted)] font-[family:var(--f-body)] leading-relaxed">
-                  Focuses on zero-day vulnerability discovery, kernel exploit chains, memory corruption mitigations, and red team methodologies across distributed networks.
+                  Coordinates xSypher&apos;s digital footprint and community engagement, ensuring our technical journalism reaches a worldwide audience across all platforms.
                 </p>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-[var(--line)] flex items-center justify-between">
+              <div className="mt-5 pt-4 border-t border-[var(--line)] flex items-center justify-between">
                 <div className="flex gap-1.5 text-xs text-[var(--faint)]">
-                  <span className="px-2 py-0.5 rounded bg-[var(--surface-2)]">Kernel</span>
-                  <span className="px-2 py-0.5 rounded bg-[var(--surface-2)]">Exploit Dev</span>
+                  <span className="px-2 py-0.5 rounded bg-[var(--surface-2)]">Social Media</span>
+                  <span className="px-2 py-0.5 rounded bg-[var(--surface-2)]">Community</span>
                 </div>
                 <div className="flex gap-2">
                   <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub" className="text-[var(--muted)] hover:text-[var(--ink)] transition-colors">
@@ -614,29 +626,35 @@ export default function AboutPage() {
             {/* Team Member 3 */}
             <div className="group p-6 rounded-xl bg-[var(--surface)] border border-[var(--line)] hover:border-[var(--accent)] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg flex flex-col justify-between">
               <div>
-                <div className="flex items-center gap-4 mb-5">
-                  <div className="w-16 h-16 rounded-xl bg-[var(--surface-2)] border border-[var(--line)] group-hover:border-[var(--accent)]/50 flex items-center justify-center font-[family:var(--f-display)] font-bold text-xl text-[var(--ink)] transition-colors">
-                    SL
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[var(--surface-2)] border border-[var(--line)] group-hover:border-[var(--accent)]/50 flex items-center justify-center overflow-hidden shrink-0 shadow-sm transition-colors">
+                    <Image
+                      src="/km.webp"
+                      alt="Khizar Muzzamail"
+                      width={96}
+                      height={96}
+                      className="w-full h-full object-cover object-top"
+                    />
                   </div>
-                  <div>
-                    <h3 className="font-[family:var(--f-display)] text-lg font-bold text-[var(--ink)]">
-                      Sophia Lin
+                  <div className="pt-0.5 min-w-0">
+                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)]/20 mb-1">
+                      Lead Security Researcher
+                    </span>
+                    <h3 className="font-[family:var(--f-display)] text-lg sm:text-xl font-bold text-[var(--ink)] leading-snug">
+                      Khizar Muzzamail
                     </h3>
-                    <p className="text-xs text-[var(--accent)] font-semibold uppercase tracking-wider">
-                      Systems &amp; Hardware Editor
-                    </p>
-                    <p className="text-[11px] text-[var(--faint)]">Embedded Systems Engineer</p>
+                    <p className="text-[11px] text-[var(--faint)] mt-0.5">Vulnerability Research &amp; Audits</p>
                   </div>
                 </div>
                 <p className="text-sm text-[var(--muted)] font-[family:var(--f-body)] leading-relaxed">
-                  Covers edge silicon architectures, RISC-V developments, firmware forensics, and the physical engineering behind next-generation consumer and developer gadgets.
+                  Leads vulnerability analysis, threat intelligence, and deep-dive security audits to bring cutting-edge cybersecurity insights to our readers.
                 </p>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-[var(--line)] flex items-center justify-between">
+              <div className="mt-5 pt-4 border-t border-[var(--line)] flex items-center justify-between">
                 <div className="flex gap-1.5 text-xs text-[var(--faint)]">
-                  <span className="px-2 py-0.5 rounded bg-[var(--surface-2)]">Rust</span>
-                  <span className="px-2 py-0.5 rounded bg-[var(--surface-2)]">RISC-V</span>
+                  <span className="px-2 py-0.5 rounded bg-[var(--surface-2)]">Threat Intel</span>
+                  <span className="px-2 py-0.5 rounded bg-[var(--surface-2)]">Security Audits</span>
                 </div>
                 <div className="flex gap-2">
                   <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub" className="text-[var(--muted)] hover:text-[var(--ink)] transition-colors">

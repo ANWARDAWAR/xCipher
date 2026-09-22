@@ -76,25 +76,27 @@ export const getLatestArticles = unstable_cache(
  * single section be invalidated when an article lands in it, without dropping
  * the other twelve categories.
  */
-export function getCategoryArticles(slug: string) {
+export function getCategoryArticles(slug: string, subSlug?: string) {
   return unstable_cache(
     async () =>
       db.article.findMany({
         where: { 
           status: "PUBLISHED", 
-          category: {
-            OR: [
-              { slug },
-              { parent: { slug } }
-            ]
-          }
+          category: subSlug 
+            ? { slug: subSlug, parent: { slug } } 
+            : {
+                OR: [
+                  { slug },
+                  { parent: { slug } }
+                ]
+              }
         },
         orderBy: { createdAt: "desc" },
         take: LISTING_ARTICLE_LIMIT,
         select: ARTICLE_CARD_SELECT,
       }),
-    ["category-articles", slug],
-    { tags: [CACHE_TAGS.articles, categoryTag(slug)], revalidate: 300 }
+    ["category-articles", slug, subSlug || "all"],
+    { tags: [CACHE_TAGS.articles, categoryTag(slug), ...(subSlug ? [categoryTag(subSlug)] : [])], revalidate: 300 }
   )();
 }
 

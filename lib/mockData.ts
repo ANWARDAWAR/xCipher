@@ -561,7 +561,7 @@ export interface PageData {
 export const PAGES: Record<string, PageData> = {
   about: {
     t: "About xSypher", h: `<h1>About xSypher</h1>
-<p>xSypher is an independent technology publication, founded in 2019 and read in more than 140 countries. We cover artificial intelligence, cybersecurity, gadgets, software, programming, startups, gaming and the business of technology — with original reporting, hands-on reviews and analysis written for people who actually use and build this stuff.</p>
+<p>xSypher is an independent technology publication, founded in 2025 and read in more than 140 countries. We cover artificial intelligence, cybersecurity, gadgets, software, programming, startups, gaming and the business of technology — with original reporting, hands-on reviews and analysis written for people who actually use and build this stuff.</p>
 <h2>What we believe</h2>
 <ul><li><b>Independence.</b> No vendor owns us, funds our coverage or approves our stories. Advertising and editorial are separate departments with a wall between them.</li>
 <li><b>Accuracy before speed.</b> We would rather be right second than wrong first, and we correct ourselves loudly when we miss.</li>

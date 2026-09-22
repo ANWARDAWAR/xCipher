@@ -11,6 +11,7 @@ import { getNotifications } from "@/app/actions/notifications";
 import { canViewReviewQueue, canViewUsersList, canViewAuditLogs, canModerateComments, canViewSubscribers, canViewTaxonomy } from "@/lib/permissions";
 import { authorize } from "@/lib/capabilities";
 import { Role } from "@prisma/client";
+import Logo from "@/components/common/Logo";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -62,13 +63,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </a>
       <div className="cs-top">
         <Link href="/admin" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-          <svg width="22" height="22" viewBox="0 0 26 26" aria-hidden="true" style={{ color: "var(--ink)" }}>
-            <rect x="1" y="1" width="10" height="10" fill="currentColor" />
-            <rect x="15" y="1" width="10" height="10" fill="currentColor" opacity=".35" />
-            <rect x="1" y="15" width="10" height="10" fill="currentColor" opacity=".35" />
-            <path d="M15.5 15.5 24.5 24.5M24.5 15.5l-9 9" stroke="var(--accent)" strokeWidth="3.2" strokeLinecap="round" />
-          </svg>
-          <span className="wm">x<span className="wm-x">Sypher</span></span>
+          <Logo variant="brand" className="text-[19px]" />
         </Link>
         <span className="cs-tag">Editorial Console</span>
         <span className="spacer"></span>

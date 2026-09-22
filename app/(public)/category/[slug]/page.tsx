@@ -10,9 +10,11 @@ import Sidebar from "@/components/layout/Sidebar";
 import { getImgSrc } from "@/lib/utils";
 import RelativeTime from "@/components/common/RelativeTime";
 import AdUnit from "@/components/common/AdUnit";
+import SubcategoryStrip from "@/components/category/SubcategoryStrip";
 
 interface Props {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ sub?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -43,8 +45,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 // a view count.
 export const revalidate = 300; // category listing
 
-export default async function CategoryPage({ params }: Props) {
+export default async function CategoryPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const { sub } = await searchParams;
   const category = await db.category.findUnique({
     where: { slug },
   });
@@ -53,13 +56,19 @@ export default async function CategoryPage({ params }: Props) {
     notFound();
   }
 
+  const subcategories = await db.category.findMany({
+    where: { parent: { slug } },
+    orderBy: { name: "asc" },
+    select: { name: true, slug: true }
+  });
+
   const catName = category.name || slug;
   const catFullTitle = category.fullTitle || catName;
   const catDesc = category.description || `${catName} news and updates on xSypher.`;
 
   // Tagged per category, so an article landing in AI does not invalidate the
   // twelve other sections.
-  const articles = await getCategoryArticles(slug);
+  const articles = await getCategoryArticles(slug, sub);
 
   const feat = articles[0];
   const rest = articles.slice(1);
@@ -75,6 +84,8 @@ export default async function CategoryPage({ params }: Props) {
           <span>Updated {feat ? <RelativeTime dateTime={new Date(feat.createdAt).toISOString()} /> : "recently"}</span>
         </div>
       </section>
+
+      <SubcategoryStrip subcategories={subcategories} parentSlug={slug} />
 
       {/* Category Top Ad */}
       {/* Category Top Ad */}

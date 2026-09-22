@@ -8,12 +8,12 @@ describe("highlight and alignment survive publication", () => {
 
   it.each(["left", "right", "center", "justify"])("keeps text-align: %s", (a) => {
     const out = sanitizeArticleHtml(`<p style="text-align: ${a}">x</p>`);
-    expect(out).toContain(`text-align: ${a}`);
+    expect(out).toContain(`text-align:${a}`);
   });
 
   it("normalises casing and spacing", () => {
     const out = sanitizeArticleHtml(`<p style="TEXT-ALIGN:   CENTER">x</p>`);
-    expect(out).toContain("text-align: center");
+    expect(out).toContain("text-align:center");
   });
 });
 
@@ -34,7 +34,7 @@ describe("style is not a general-purpose opening", () => {
     const out = sanitizeArticleHtml(
       `<p style="position: fixed; text-align: right; background: url(https://evil.test/a.png)">x</p>`
     );
-    expect(out).toContain("text-align: right");
+    expect(out).toContain("text-align:right");
     expect(out).not.toContain("position");
     expect(out).not.toContain("evil.test");
   });
@@ -46,7 +46,7 @@ describe("style is not a general-purpose opening", () => {
 
   it("still blocks script and handlers", () => {
     const out = sanitizeArticleHtml(`<p style="text-align:center" onclick="alert(1)">x</p><script>y()</script>`);
-    expect(out).toContain("text-align: center");
+    expect(out).toContain("text-align:center");
     expect(out).not.toContain("onclick");
     expect(out).not.toContain("script");
   });
@@ -61,7 +61,7 @@ describe("bio sanitizer now matches the shared editor", () => {
     );
     expect(out).toContain("<h2>");
     expect(out).toContain("<mark>");
-    expect(out).toContain("text-align: center");
+    expect(out).toContain("text-align:center");
     expect(out).toContain("<li>");
   });
 

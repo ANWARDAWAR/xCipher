@@ -72,6 +72,13 @@ export async function generateMetadata(): Promise<Metadata> {
       ? `${settings.siteName} — ${settings.tagline}`
       : settings.siteName,
     description: settings.description,
+    icons: {
+      icon: [
+        { url: settings.faviconUrl || "/icon.svg", type: "image/svg+xml" },
+        { url: settings.faviconUrl || "/favicon.ico", sizes: "any" },
+      ],
+      apple: "/apple-icon.png",
+    },
   };
 }
 

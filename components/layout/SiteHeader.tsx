@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { SearchProvider, SearchButton } from "../search/SearchOverlay";
 import { SocialIcon } from "@/components/author/AuthorProfileView";
 import { Home, Info, Mail } from "lucide-react";
+import Logo from "@/components/common/Logo";
 
 const NAV_ROW = [
   { name: "Home", href: "/", className: "nr-home" },
@@ -25,8 +26,12 @@ const NAV_ROW = [
   { name: "Science", href: "/category/science" },
 ];
 
+import { useNavStore } from "@/lib/store/useNavStore";
+
 export default function SiteHeader() {
   const pathname = usePathname() || "";
+  const activeCategorySlug = useNavStore((state) => state.activeCategorySlug);
+  
   const now = new Date();
   const todayDateFull = now.toLocaleDateString("en-US", {
     weekday: "long",
@@ -76,9 +81,29 @@ export default function SiteHeader() {
     };
   }, []);
 
+  // Mobile Auto-Slide logic
+  useEffect(() => {
+    const navrowIn = document.getElementById("navrowIn");
+    if (!navrowIn) return;
+    
+    // Give it a tiny delay to ensure the DOM has painted the .on class
+    const timeoutId = setTimeout(() => {
+      const activeLink = navrowIn.querySelector(".on");
+      if (activeLink) {
+        activeLink.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
+    }, 50);
+    
+    return () => clearTimeout(timeoutId);
+  }, [pathname, activeCategorySlug]);
+
   const isLinkActive = (href: string) => {
     if (href === "/") {
       return pathname === "/";
+    }
+    // Check if the link matches the explicitly set active category
+    if (activeCategorySlug && href === `/category/${activeCategorySlug}`) {
+      return true;
     }
     return pathname === href || pathname.startsWith(href + "/");
   };
@@ -144,15 +169,9 @@ export default function SiteHeader() {
         <div className="wrap masthead relative">
           <MobileDrawer />
           <Link className="logo" href="/" aria-label="xSypher — home">
-            <svg width="27" height="27" viewBox="0 0 26 26" aria-hidden="true">
-              <rect x="1" y="1" width="10" height="10" fill="currentColor" />
-              <rect x="15" y="1" width="10" height="10" fill="currentColor" opacity=".32" />
-              <rect x="1" y="15" width="10" height="10" fill="currentColor" opacity=".32" />
-              <path d="M15.5 15.5 24.5 24.5M24.5 15.5l-9 9" stroke="var(--accent)" strokeWidth="3.2" strokeLinecap="round" />
-            </svg>
-            <span className="wm flex items-baseline"><span>x</span><span className="wm-x font-kremlin font-normal tracking-wide">Sypher</span></span>
+            <Logo variant="brand" className="text-[26px]" />
           </Link>
-          <div className="hidden sm:block border-l border-[var(--line)] pl-3 ml-1 text-[9px] uppercase tracking-[0.15em] font-bold text-[var(--muted)] leading-tight">
+          <div className="hidden sm:block border-l border-[var(--line)] pl-3.5 ml-3.5 text-[9px] uppercase tracking-[0.15em] font-bold text-[var(--muted)] leading-tight">
             ADVANCED TECH &<br />SECURITY INSIGHTS
           </div>
           

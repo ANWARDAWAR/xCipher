@@ -18,6 +18,7 @@ import ProgressBar from "@/components/article/ProgressBar";
 import ListenButton from "@/components/article/ListenButton";
 import ArticleMobileToolbar from "@/components/article/ArticleMobileToolbar";
 import ViewCounter from "@/components/article/ViewCounter";
+import ActiveCategorySetter from "@/components/layout/ActiveCategorySetter";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -199,6 +200,7 @@ export default async function ArticlePage({ params }: Props) {
 
   return (
     <>
+      <ActiveCategorySetter slug={catSlug} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(generateNewsArticleJsonLd(article)) }}

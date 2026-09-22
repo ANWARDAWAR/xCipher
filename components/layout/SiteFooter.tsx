@@ -1,5 +1,6 @@
 import Link from "next/link";
 import AdUnit from "@/components/common/AdUnit";
+import Logo from "@/components/common/Logo";
 
 export default function SiteFooter() {
   return (
@@ -9,13 +10,7 @@ export default function SiteFooter() {
         <div className="foot-grid">
           <div className="foot-brand">
             <Link className="logo" href="/" aria-label="xSypher — home">
-              <svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true" style={{ color: "#fff" }}>
-                <rect x="1" y="1" width="10" height="10" fill="currentColor" />
-                <rect x="15" y="1" width="10" height="10" fill="currentColor" opacity=".32" />
-                <rect x="1" y="15" width="10" height="10" fill="currentColor" opacity=".32" />
-                <path d="M15.5 15.5 24.5 24.5M24.5 15.5l-9 9" stroke="var(--accent)" strokeWidth="3.2" strokeLinecap="round" />
-              </svg>
-              <span className="wm flex items-baseline" style={{ color: "#fff" }}><span>x</span><span className="wm-x font-kremlin font-normal tracking-wide">Sypher</span></span>
+              <Logo variant="brand" className="text-[26px] text-white" />
             </Link>
             <p>
               xSypher is an independent technology publication. We cover the companies, code and ideas shaping

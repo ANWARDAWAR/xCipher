@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Loader2, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
+import Logo from "@/components/common/Logo";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -183,15 +184,7 @@ export default function LoginPage() {
         {/* Header Section with Brand Mark */}
         <div className="flex flex-col items-center mb-6 text-center w-full">
           <div className="flex items-center gap-2.5 mb-3">
-            <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" className="text-white shrink-0">
-              <rect x="1" y="1" width="10" height="10" fill="currentColor" />
-              <rect x="15" y="1" width="10" height="10" fill="currentColor" opacity=".35" />
-              <rect x="1" y="15" width="10" height="10" fill="currentColor" opacity=".35" />
-              <path d="M15.5 15.5 24.5 24.5M24.5 15.5l-9 9" stroke="#f04552" strokeWidth="3.2" strokeLinecap="round" />
-            </svg>
-            <span className="text-2xl font-bold tracking-tight text-white font-[var(--f-ui)]">
-              x<span className="text-[#f04552]">Sypher</span>
-            </span>
+            <Logo variant="sans" className="text-2xl text-white" />
             <span className="px-2 py-0.5 text-[10px] font-semibold tracking-widest uppercase bg-white/5 border border-white/10 text-neutral-400 rounded">
               Console
             </span>

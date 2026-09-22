@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTheme } from "next-themes";
 import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
+import Logo from "@/components/common/Logo";
 
 export default function MobileDrawer() {
   const [isOpen, setIsOpen] = useState(false);
@@ -76,14 +77,8 @@ export default function MobileDrawer() {
       >
         <div className="drawer-head sticky top-0 z-50 bg-[var(--surface)] border-b border-[var(--line)]">
           <Link className="logo" href="/" aria-label="xSypher — home" onClick={() => setIsOpen(false)}>
-            <svg width="23" height="23" viewBox="0 0 26 26" aria-hidden="true">
-              <rect x="1" y="1" width="10" height="10" fill="currentColor" />
-              <rect x="15" y="1" width="10" height="10" fill="currentColor" opacity=".32" />
-              <rect x="1" y="15" width="10" height="10" fill="currentColor" opacity=".32" />
-              <path d="M15.5 15.5 24.5 24.5M24.5 15.5l-9 9" stroke="var(--accent)" strokeWidth="3.2" strokeLinecap="round" />
-            </svg>
-            <span className="wm flex items-baseline" style={{ fontSize: "22px" }}><span>x</span><span className="wm-x font-kremlin font-normal tracking-wide">Sypher</span></span>
-            <div className="flex flex-col text-[8px] font-bold tracking-widest text-[var(--muted)] uppercase leading-tight ml-2 border-l border-[var(--line)] pl-2">
+            <Logo variant="brand" className="text-[22px]" />
+            <div className="flex flex-col text-[8px] font-bold tracking-widest text-[var(--muted)] uppercase leading-tight ml-3 border-l border-[var(--line)] pl-3">
               <span>ADVANCED TECH &</span>
               <span>SECURITY INSIGHTS</span>
             </div>

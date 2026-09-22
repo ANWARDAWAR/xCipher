@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import Link from "next/link";
 import AcceptInviteForm from "./AcceptInviteForm";
+import Logo from "@/components/common/Logo";
 
 export const metadata = {
   title: "Accept Invitation — xSypher Editorial",
@@ -33,20 +34,7 @@ export default async function InviteAcceptancePage({
         {/* Exact xSypher Brand SVG Logo */}
         <div className="flex flex-col items-center justify-center mb-8">
           <Link href="/" className="flex items-center gap-2.5" aria-label="xSypher">
-            <svg width="28" height="28" viewBox="0 0 26 26" aria-hidden="true" className="text-[var(--ink)]">
-              <rect x="1" y="1" width="10" height="10" fill="currentColor" />
-              <rect x="15" y="1" width="10" height="10" fill="currentColor" opacity=".32" />
-              <rect x="1" y="15" width="10" height="10" fill="currentColor" opacity=".32" />
-              <path
-                d="M15.5 15.5 24.5 24.5M24.5 15.5l-9 9"
-                stroke="var(--accent)"
-                strokeWidth="3.2"
-                strokeLinecap="round"
-              />
-            </svg>
-            <span className="wm">
-              x<span className="wm-x">Sypher</span>
-            </span>
+            <Logo variant="brand" className="text-[26px]" />
           </Link>
           <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] font-[family:var(--f-ui)] font-semibold mt-2">
             Editorial Newsroom

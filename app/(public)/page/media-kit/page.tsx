@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { Download, Palette, Type, ShieldCheck, User } from 'lucide-react';
 import type { Metadata } from 'next';
 
@@ -59,14 +60,21 @@ export default function MediaKitPage() {
             Executive Profiles
           </h2>
           <div className="bg-[var(--surface-2)] border border-[var(--line)] rounded-sm p-6 sm:p-8 flex flex-col md:flex-row gap-8 items-start shadow-sm">
-            <div className="w-32 h-32 shrink-0 bg-[var(--surface)] border border-[var(--line)] rounded-full flex items-center justify-center overflow-hidden">
-              <User className="w-12 h-12 text-[var(--muted)] opacity-50" />
+            <div className="w-32 h-32 shrink-0 border border-[var(--line)] rounded-full overflow-hidden">
+              <Image
+                src="/anwar.webp"
+                alt="Anwar Iqbal Dawar"
+                width={128}
+                height={128}
+                className="w-full h-full object-cover"
+                priority
+              />
             </div>
             <div>
-              <h3 className="font-[family:var(--f-display)] text-2xl font-bold text-[var(--ink)] mb-1">Ahmad Khan</h3>
-              <p className="text-sm font-bold uppercase tracking-widest text-[var(--accent)] mb-4">Founder &amp; Editor-in-Chief</p>
+              <h3 className="font-[family:var(--f-display)] text-2xl font-bold text-[var(--ink)] mb-1">Anwar Iqbal Dawar</h3>
+              <p className="text-sm font-bold uppercase tracking-widest text-[var(--accent)] mb-4">Founder &amp; Lead Editor</p>
               <p className="text-[var(--muted)] font-[family:var(--f-body)] text-sm sm:text-base leading-relaxed mb-4">
-                Ahmad Khan is the founder and Editor-in-Chief of xSypher. With a background in secure systems architecture and adversarial threat intelligence, Ahmad established xSypher to bridge the gap between academic security research and frontline engineering application. Under his leadership, the publication has pioneered a new model for independent, technically uncompromising journalism devoid of corporate influence.
+                Anwar Iqbal Dawar is the founder and Lead Editor of xSypher. As a Computer Engineering scholar with a deep focus on systems architecture and structural vulnerability research, Anwar established xSypher to bridge the gap between academic security research and frontline engineering application. Under his leadership, the publication delivers noise-free, rigorous intelligence across artificial intelligence and cybersecurity with unyielding technical independence.
               </p>
               <a href="mailto:press@xsypher.com" className="text-sm font-bold text-[var(--ink)] hover:text-[var(--accent)] transition-colors">Request Interview &rarr;</a>
             </div>

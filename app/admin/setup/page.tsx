@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import SetupForm from "./SetupForm";
+import Logo from "@/components/common/Logo";
 
 export default async function SetupPage() {
   const userCount = await db.user.count();
@@ -12,6 +13,9 @@ export default async function SetupPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh]">
       <div className="w-full max-w-md p-8 bg-[#111] rounded-2xl border border-white/10">
+        <div className="mb-4">
+          <Logo variant="sans" className="text-2xl text-white" />
+        </div>
         <h1 className="text-2xl font-semibold mb-2">Welcome to xSypher</h1>
         <p className="text-white/60 mb-6">Create the initial Owner account to access the newsroom CMS.</p>
         <SetupForm />
