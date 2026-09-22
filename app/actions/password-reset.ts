@@ -27,6 +27,7 @@ export async function requestPasswordReset(email: string): Promise<{ success: bo
         await db.passwordResetToken.create({
           data: {
             userId: user.id,
+            email: user.email,
             token,
             expires,
           },
