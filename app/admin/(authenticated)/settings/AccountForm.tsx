@@ -3,12 +3,16 @@
 import { useState } from "react";
 import { showToast } from "@/lib/utils";
 import { updateNotificationPrefs } from "@/app/actions/profile";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function AccountForm({ user }: { user: any }) {
   const [isPending, setIsPending] = useState(false);
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   
   // Notification Prefs
   const initialPrefs = user?.notificationPrefs || {
@@ -75,15 +79,30 @@ export default function AccountForm({ user }: { user: any }) {
           <form onSubmit={handlePasswordSubmit} className="cs-settings-grid">
             <div className="cs-settings-full">
               <label className="ed-label">Current Password</label>
-              <input type="password" className="ed-input" value={password} onChange={e => setPassword(e.target.value)} required />
+              <div style={{ position: "relative" }}>
+                <input type={showCurrent ? "text" : "password"} className="ed-input [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_50px_#121212_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]" style={{ paddingRight: "40px" }} value={password} onChange={e => setPassword(e.target.value)} required />
+                <button type="button" onClick={() => setShowCurrent(!showCurrent)} style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)" }}>
+                  {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="ed-label">New Password</label>
-              <input type="password" className="ed-input" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} />
+              <div style={{ position: "relative" }}>
+                <input type={showNew ? "text" : "password"} className="ed-input [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_50px_#121212_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]" style={{ paddingRight: "40px" }} value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} />
+                <button type="button" onClick={() => setShowNew(!showNew)} style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)" }}>
+                  {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="ed-label">Confirm New Password</label>
-              <input type="password" className="ed-input" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={8} />
+              <div style={{ position: "relative" }}>
+                <input type={showConfirm ? "text" : "password"} className="ed-input [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_50px_#121212_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]" style={{ paddingRight: "40px" }} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={8} />
+                <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)" }}>
+                  {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
             <div className="cs-settings-full" style={{ display: "flex", justifyContent: "flex-end" }}>
               <button type="submit" className="btn-cs primary" disabled={isPending}>Update Password</button>

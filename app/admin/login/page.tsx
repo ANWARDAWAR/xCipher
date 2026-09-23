@@ -4,12 +4,13 @@ import { useState, Suspense, useEffect, useRef } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Loader2, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import Logo from "@/components/common/Logo";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   
@@ -88,7 +89,7 @@ function LoginForm() {
           placeholder="editor@xsypher.com"
           required 
           autoComplete="email"
-          className="block w-full h-11 px-3.5 py-2.5 bg-neutral-900/90 border border-neutral-700/80 rounded-lg text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/40 transition-all box-border" 
+          className="block w-full h-11 px-3.5 py-2.5 bg-neutral-900/90 border border-neutral-700/80 rounded-lg text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/40 transition-all box-border [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_50px_#171717_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]" 
         />
       </div>
 
@@ -108,16 +109,25 @@ function LoginForm() {
             Forgot password?
           </Link>
         </div>
-        <input 
-          id="password"
-          type="password" 
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="••••••••••••"
-          required 
-          autoComplete="current-password"
-          className="block w-full h-11 px-3.5 py-2.5 bg-neutral-900/90 border border-neutral-700/80 rounded-lg text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/40 transition-all box-border" 
-        />
+        <div className="relative">
+          <input 
+            id="password"
+            type={showPassword ? "text" : "password"} 
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••••••"
+            required 
+            autoComplete="current-password"
+            className="block w-full h-11 px-3.5 py-2.5 pr-10 bg-neutral-900/90 border border-neutral-700/80 rounded-lg text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/40 transition-all box-border [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_50px_#171717_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]" 
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 focus:outline-none transition-colors"
+          >
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
       </div>
 
       {/* Primary CTA Action */}

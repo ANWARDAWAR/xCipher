@@ -77,7 +77,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
             required 
             minLength={8}
             autoComplete="new-password"
-            className="block w-full h-11 px-3.5 py-2.5 pr-10 bg-neutral-900/90 border border-neutral-700/80 rounded-lg text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/40 transition-all box-border" 
+            className="block w-full h-11 px-3.5 py-2.5 pr-10 bg-neutral-900/90 border border-neutral-700/80 rounded-lg text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/40 transition-all box-border [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_50px_#171717_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]" 
           />
           <button
             type="button"
@@ -103,7 +103,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
             required 
             minLength={8}
             autoComplete="new-password"
-            className="block w-full h-11 px-3.5 py-2.5 pr-10 bg-neutral-900/90 border border-neutral-700/80 rounded-lg text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/40 transition-all box-border" 
+            className="block w-full h-11 px-3.5 py-2.5 pr-10 bg-neutral-900/90 border border-neutral-700/80 rounded-lg text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/40 transition-all box-border [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_50px_#171717_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]" 
           />
           <button
             type="button"

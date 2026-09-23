@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { acceptInvitation } from "@/app/actions/invitations";
+import { Eye, EyeOff } from "lucide-react";
 
 interface AcceptInviteFormProps {
   token: string;
@@ -12,6 +13,7 @@ interface AcceptInviteFormProps {
 export default function AcceptInviteForm({ token, email }: AcceptInviteFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -46,7 +48,7 @@ export default function AcceptInviteForm({ token, email }: AcceptInviteFormProps
           type="email"
           value={email}
           disabled
-          className="w-full bg-[var(--surface-2)] border border-[var(--line-2)] rounded-[var(--r-sm)] px-3.5 py-2.5 text-sm text-[var(--muted)] font-[family:var(--f-ui)] cursor-not-allowed opacity-75 select-none"
+          className="w-full bg-[var(--surface-2)] border border-[var(--line-2)] rounded-[var(--r-sm)] px-3.5 py-2.5 text-sm text-[var(--muted)] font-[family:var(--f-ui)] cursor-not-allowed opacity-75 select-none [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_50px_#121212_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]"
         />
         <span className="text-[10px] text-[var(--faint)] font-[family:var(--f-ui)] mt-1.5 block">
           Locked to the invited recipient
@@ -62,7 +64,7 @@ export default function AcceptInviteForm({ token, email }: AcceptInviteFormProps
           type="text"
           required
           placeholder="e.g. Jane Doe"
-          className="w-full bg-[var(--surface-2)] border border-[var(--line-2)] rounded-[var(--r-sm)] px-3.5 py-2.5 text-sm text-[var(--ink)] placeholder-[var(--faint)] font-[family:var(--f-ui)] focus:border-[var(--accent)] focus:outline-none transition-colors"
+          className="w-full bg-[var(--surface-2)] border border-[var(--line-2)] rounded-[var(--r-sm)] px-3.5 py-2.5 text-sm text-[var(--ink)] placeholder-[var(--faint)] font-[family:var(--f-ui)] focus:border-[var(--accent)] focus:outline-none transition-colors [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_50px_#121212_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]"
         />
       </div>
 
@@ -70,14 +72,23 @@ export default function AcceptInviteForm({ token, email }: AcceptInviteFormProps
         <label className="text-[11px] uppercase tracking-[0.12em] text-[var(--muted)] font-[family:var(--f-ui)] font-semibold mb-2 block">
           Set Password
         </label>
-        <input
-          name="password"
-          type="password"
-          required
-          minLength={8}
-          placeholder="••••••••"
-          className="w-full bg-[var(--surface-2)] border border-[var(--line-2)] rounded-[var(--r-sm)] px-3.5 py-2.5 text-sm text-[var(--ink)] placeholder-[var(--faint)] font-[family:var(--f-ui)] focus:border-[var(--accent)] focus:outline-none transition-colors"
-        />
+        <div className="relative">
+          <input
+            name="password"
+            type={showPassword ? "text" : "password"}
+            required
+            minLength={8}
+            placeholder="••••••••"
+            className="w-full bg-[var(--surface-2)] border border-[var(--line-2)] rounded-[var(--r-sm)] px-3.5 py-2.5 pr-10 text-sm text-[var(--ink)] placeholder-[var(--faint)] font-[family:var(--f-ui)] focus:border-[var(--accent)] focus:outline-none transition-colors [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_50px_#121212_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--ink)] focus:outline-none transition-colors"
+          >
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
         <span className="text-[10px] text-[var(--muted)] font-[family:var(--f-ui)] mt-1.5 block">
           Must be at least 8 characters long
         </span>
