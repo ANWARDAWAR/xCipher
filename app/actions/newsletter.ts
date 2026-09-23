@@ -155,7 +155,7 @@ export async function sendNewsletterBroadcast(subject: string, htmlContent: stri
       }
     }
 
-    return { success: true, message: \`Broadcast successfully sent to \${activeSubscribers.length} subscribers.\` };
+    return { success: true, message: `Broadcast successfully sent to ${activeSubscribers.length} subscribers.` };
   } catch (error: any) {
     console.error("[newsletter] sendNewsletterBroadcast error:", error);
     return { success: false, error: "Failed to send newsletter broadcast." };

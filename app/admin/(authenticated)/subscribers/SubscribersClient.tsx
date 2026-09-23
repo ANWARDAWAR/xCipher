@@ -321,7 +321,7 @@ export default function SubscribersClient({
       <ConfirmDialog 
         isOpen={showConfirmBroadcast}
         title="Send Newsletter Broadcast"
-        description={\`You are about to send "\${subject}" to ALL \${stats.active} active subscribers. This action will invoke the Brevo API and cannot be undone.\`}
+        description={`You are about to send "${subject}" to ALL ${stats.active} active subscribers. This action will invoke the Brevo API and cannot be undone.`}
         confirmText={sending ? "Sending Broadcast..." : "Send Broadcast"}
         isDestructive={false}
         onConfirm={handleSendBroadcast}

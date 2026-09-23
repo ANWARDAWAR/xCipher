@@ -227,7 +227,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
           {canEdit && (
             <Link
               href={`/admin/editor/${article.id}`}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-ink text-paper rounded-md hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-ink text-white dark:text-black rounded-md hover:opacity-90 transition-opacity"
             >
               <Edit3 className="w-3.5 h-3.5" />
               Edit
