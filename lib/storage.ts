@@ -1,4 +1,5 @@
-import { S3Client } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { v2 as cloudinary } from "cloudinary";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cloudflare R2 client
@@ -89,4 +90,58 @@ export function buildObjectKey(prefix: string, extension: string): string {
   const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
   const id = crypto.randomUUID();
   return `${prefix}/${yyyy}/${mm}/${id}.${extension}`;
+}
+
+export async function uploadFileToR2(file: File | Blob, bucket: string, key: string): Promise<string> {
+  const config = getR2Config();
+  if ("error" in config) {
+    throw new Error(config.error);
+  }
+  const s3 = getR2Client(config);
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const type = file.type || "application/octet-stream";
+  
+  await s3.send(new PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    Body: buffer,
+    ContentType: type,
+  }));
+  
+  return `${config.publicBase}/${key}`;
+}
+
+export function checkCloudinaryEnv() {
+  const missing = [
+    !process.env.CLOUDINARY_CLOUD_NAME && "CLOUDINARY_CLOUD_NAME",
+    !process.env.CLOUDINARY_API_KEY && "CLOUDINARY_API_KEY",
+    !process.env.CLOUDINARY_API_SECRET && "CLOUDINARY_API_SECRET",
+  ].filter(Boolean);
+  
+  if (missing.length) {
+    throw new Error(`Cloudinary is not configured. Missing: ${missing.join(", ")}`);
+  }
+}
+
+export async function uploadImageToCloudinary(file: File | Blob, folder: string): Promise<string> {
+  checkCloudinaryEnv();
+  
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder },
+      (error, result) => {
+        if (error) reject(error);
+        else if (result) resolve(result.secure_url);
+        else reject(new Error("No result from Cloudinary"));
+      }
+    );
+    stream.end(buffer);
+  });
 }
