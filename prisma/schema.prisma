@@ -55,7 +55,6 @@ model User {
   moderatedComments Comment[]
   notifications     Notification[]
   sessions          Session[]
-  resetTokens       PasswordResetToken[]
   authorProfile     Author?           @relation(fields: [authorId], references: [id])
 }
 
@@ -68,16 +67,13 @@ model VerificationToken {
 }
 
 model PasswordResetToken {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   email     String
-  userId    String
   token     String   @unique
   expires   DateTime
-  used      Boolean  @default(false)
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@index([userId])
+  userId    String
+  used      Boolean  @default(false)
 }
 
 model Author {
