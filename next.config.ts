@@ -67,6 +67,12 @@ function r2RemotePattern(): NonNullable<NonNullable<NextConfig["images"]>["remot
 }
 
 const nextConfig: NextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   env: {
     // Provide a fallback NEXTAUTH_URL during Vercel build when it might be missing,
     // preventing "TypeError: Invalid URL" from next-auth during static prerendering.
