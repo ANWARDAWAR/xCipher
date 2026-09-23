@@ -40,12 +40,12 @@ export async function sendInvitationEmail({ to, role, inviteUrl }: SendInvitatio
       subject: "You have been invited to join xSypher",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #111; color: #fff; padding: 20px; border-radius: 8px;">
-          <h1 style="color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px;">x<span style="color: #666;">Sypher</span></h1>
+          <h1 style="color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px; font-weight: bold; letter-spacing: -0.05em;">x<span style="color: #f04552;">Sypher</span></h1>
           <p style="font-size: 16px; color: #ccc;">Hello,</p>
           <p style="font-size: 16px; color: #ccc;">You have been invited to join the xSypher newsroom as a <strong>${role}</strong>.</p>
           <p style="font-size: 16px; color: #ccc;">Click the link below to set up your account. This link will expire in 48 hours.</p>
           <div style="margin: 30px 0;">
-            <a href="${inviteUrl}" style="background-color: #fff; color: #000; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">Accept Invitation</a>
+            <a href="${inviteUrl}" style="background-color: #f04552; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">Accept Invitation</a>
           </div>
           <p style="font-size: 14px; color: #666; border-top: 1px solid #333; padding-top: 20px;">
             If you did not expect this invitation, you can safely ignore this email.
@@ -84,12 +84,12 @@ export async function sendPasswordResetEmail({ to, resetUrl }: SendPasswordReset
       subject: "Reset your xSypher password",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #111; color: #fff; padding: 20px; border-radius: 8px;">
-          <h1 style="color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px;">x<span style="color: #666;">Sypher</span></h1>
+          <h1 style="color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px; font-weight: bold; letter-spacing: -0.05em;">x<span style="color: #f04552;">Sypher</span></h1>
           <p style="font-size: 16px; color: #ccc;">Hello,</p>
           <p style="font-size: 16px; color: #ccc;">We received a request to reset the password for your xSypher account.</p>
           <p style="font-size: 16px; color: #ccc;">Click the button below to choose a new password. This link will expire in 1 hour.</p>
           <div style="margin: 30px 0;">
-            <a href="${resetUrl}" style="background-color: #fff; color: #000; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">Reset Password</a>
+            <a href="${resetUrl}" style="background-color: #f04552; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">Reset Password</a>
           </div>
           <p style="font-size: 14px; color: #666; border-top: 1px solid #333; padding-top: 20px;">
             If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.
@@ -165,13 +165,13 @@ export async function sendNotificationEmail({
       subject: message.length > 90 ? `${message.slice(0, 87)}...` : message,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #111; color: #fff; padding: 20px; border-radius: 8px;">
-          <h1 style="color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px;">x<span style="color: #666;">Sypher</span></h1>
+          <h1 style="color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px; font-weight: bold; letter-spacing: -0.05em;">x<span style="color: #f04552;">Sypher</span></h1>
           <p style="font-size: 16px; color: #ccc;">${greeting}</p>
           <p style="font-size: 16px; color: #ccc;">${safeMessage}</p>
           ${
             absoluteLink
               ? `<div style="margin: 30px 0;">
-                   <a href="${absoluteLink}" style="background-color: #fff; color: #000; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">Open in the newsroom</a>
+                   <a href="${absoluteLink}" style="background-color: #f04552; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">Open in the newsroom</a>
                  </div>`
               : ""
           }
