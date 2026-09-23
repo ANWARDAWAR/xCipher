@@ -60,7 +60,7 @@ export function showToast(msg: string, type?: 'default' | 'success' | 'error' | 
   if (resolved === 'error') bgClass = "bg-red-950 border-red-500/50";
   if (resolved === 'success') bgClass = "bg-green-950 border-green-500/50";
 
-  const classes = ["toast", "show", "fixed", "top-[20px]", "left-1/2", "-translate-x-1/2", "z-[99999]", "flex", "items-center", "gap-3", "text-white", "shadow-2xl", "rounded-2xl", "px-6", "py-4", "border"];
+  const classes = ["toast", "show", "fixed", "z-[99999]", "flex", "items-center", "gap-3", "text-white", "shadow-2xl", "rounded-2xl", "px-6", "py-4", "border", "bottom-4", "left-1/2", "-translate-x-1/2", "w-[calc(100%-32px)]", "max-w-sm", "sm:bottom-4", "sm:right-4", "sm:left-auto", "sm:translate-x-0", "sm:w-auto"];
   if (variant === "premium") classes.push("toast-premium");
   
   t.className = `${classes.join(" ")} ${bgClass}`;
