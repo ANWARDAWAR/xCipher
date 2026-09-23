@@ -2,9 +2,11 @@
 
 import React, { useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Search, Plus, Download, MoreHorizontal, RefreshCw, Trash2, MailX } from "lucide-react";
+import { Search, Plus, Download, MoreHorizontal, RefreshCw, Trash2, MailX, Mail, X } from "lucide-react";
 import Pagination from "@/components/console/Pagination";
-import { showToast } from "@/lib/utils"; // Assuming you have a toast helper
+import { showToast } from "@/lib/utils";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { sendNewsletterBroadcast } from "@/app/actions/newsletter";
 
 interface Subscriber {
   id: string;
@@ -44,6 +46,13 @@ export default function SubscribersClient({
   const [searchQuery, setSearchQuery] = useState(searchParams.get("query") || "");
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
+  // Broadcast state
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [subject, setSubject] = useState("");
+  const [content, setContent] = useState("");
+  const [showConfirmBroadcast, setShowConfirmBroadcast] = useState(false);
+  const [sending, setSending] = useState(false);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const params = new URLSearchParams(searchParams.toString());
@@ -54,6 +63,28 @@ export default function SubscribersClient({
     }
     params.set("page", "1");
     router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const handleSendBroadcast = async () => {
+    setShowConfirmBroadcast(false);
+    setSending(true);
+    showToast("Dispatching broadcast...", "info");
+    
+    try {
+      const res = await sendNewsletterBroadcast(subject, content);
+      if (res.success) {
+        showToast(res.message || "Broadcast sent!", "success", "premium");
+        setComposeOpen(false);
+        setSubject("");
+        setContent("");
+      } else {
+        showToast(res.error || "Broadcast failed", "error", "premium");
+      }
+    } catch (e: any) {
+      showToast(e.message || "An error occurred", "error", "premium");
+    } finally {
+      setSending(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -77,7 +108,6 @@ export default function SubscribersClient({
     showToast(`${action} action triggered for ${email} (Demo)`);
   };
 
-  // Close dropdown when clicking outside (simple hack, better to use Radix/DropdownMenu)
   React.useEffect(() => {
     const handleClickOutside = () => setOpenDropdown(null);
     document.addEventListener("click", handleClickOutside);
@@ -85,7 +115,7 @@ export default function SubscribersClient({
   }, []);
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 relative">
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-surface border border-line border-t-[3px] border-t-ink rounded-xl p-5 text-center shadow-sm">
@@ -122,6 +152,13 @@ export default function SubscribersClient({
           <button className="flex items-center justify-center flex-1 md:flex-none h-[38px] px-3 gap-2 text-sm font-medium border border-line bg-surface text-ink-2 hover:bg-surface-2 rounded-md transition-colors whitespace-nowrap">
             <Download className="w-4 h-4" />
             Export CSV
+          </button>
+          <button 
+            onClick={() => setComposeOpen(true)}
+            className="flex items-center justify-center flex-1 md:flex-none h-[38px] px-4 gap-2 text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 border border-transparent rounded-md transition-colors whitespace-nowrap"
+          >
+            <Mail className="w-4 h-4" />
+            Compose Newsletter
           </button>
           <button className="flex items-center justify-center flex-1 md:flex-none h-[38px] px-4 gap-2 text-sm font-medium bg-accent text-white hover:bg-accent-deep border border-transparent rounded-md transition-colors whitespace-nowrap">
             <Plus className="w-4 h-4" />
@@ -225,6 +262,71 @@ export default function SubscribersClient({
           />
         </div>
       </div>
+
+      {/* Compose Newsletter Modal */}
+      {composeOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-surface border border-line rounded-xl shadow-xl w-full max-w-3xl flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-line flex items-center justify-between bg-surface-2/30 rounded-t-xl">
+              <h2 className="text-lg font-bold text-ink flex items-center gap-2">
+                <Mail className="w-5 h-5 text-accent" /> Compose Newsletter
+              </h2>
+              <button onClick={() => setComposeOpen(false)} className="text-muted hover:text-ink transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-ink mb-1.5">Subject Line</label>
+                <input 
+                  type="text" 
+                  value={subject} 
+                  onChange={e => setSubject(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-paper border border-line rounded-md text-ink focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 font-medium"
+                  placeholder="E.g., Your Weekly xSypher Updates"
+                />
+              </div>
+              <div className="flex-1 min-h-[350px] flex flex-col">
+                <label className="block text-sm font-semibold text-ink mb-1.5">HTML Content</label>
+                <textarea 
+                  value={content}
+                  onChange={e => setContent(e.target.value)}
+                  className="w-full flex-1 px-4 py-3 bg-paper border border-line rounded-md text-ink focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 font-mono text-[13px] resize-none leading-relaxed"
+                  placeholder="<h1 style='color: #111;'>Hello from xSypher!</h1><p>Write your beautiful HTML newsletter here...</p>"
+                />
+                <p className="text-[11px] text-muted mt-2">
+                  An unsubscribe link will automatically be appended to the bottom of the email.
+                </p>
+              </div>
+            </div>
+            <div className="p-5 border-t border-line flex justify-end gap-3 bg-surface-2/30 rounded-b-xl">
+              <button 
+                onClick={() => setComposeOpen(false)}
+                className="px-5 py-2 text-sm font-semibold text-ink-2 hover:bg-surface hover:text-ink rounded-md transition-colors border border-transparent hover:border-line"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => setShowConfirmBroadcast(true)}
+                disabled={!subject || !content || sending}
+                className="px-5 py-2 text-sm font-semibold bg-accent text-white hover:bg-accent-deep rounded-md transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {sending ? "Processing..." : "Review & Send"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <ConfirmDialog 
+        isOpen={showConfirmBroadcast}
+        title="Send Newsletter Broadcast"
+        description={\`You are about to send "\${subject}" to ALL \${stats.active} active subscribers. This action will invoke the Brevo API and cannot be undone.\`}
+        confirmText={sending ? "Sending Broadcast..." : "Send Broadcast"}
+        isDestructive={false}
+        onConfirm={handleSendBroadcast}
+        onCancel={() => setShowConfirmBroadcast(false)}
+      />
     </div>
   );
 }
