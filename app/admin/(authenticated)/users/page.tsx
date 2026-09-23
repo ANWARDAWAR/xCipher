@@ -97,7 +97,7 @@ export default async function UsersPage() {
           className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs hover:shadow transition-all duration-150 active:scale-[0.99] self-start sm:self-auto"
         >
           <UserPlus className="w-4 h-4" />
-          <span>+ Invite User</span>
+          <span className="text-white">+ Invite User</span>
         </Link>
       </div>
 

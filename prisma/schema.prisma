@@ -155,7 +155,7 @@ model Article {
   submittedById     String?
   authorModel       Author?           @relation(fields: [authorId], references: [id])
   category          Category?         @relation(fields: [categoryId], references: [id])
-  reviewer          User?             @relation("ArticleReviewer", fields: [reviewedById], references: [id])
+  reviewer          User?             @relation("ArticleReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
   reviews           ArticleReview[]
   revisions         ArticleRevision[]
   comments          Comment[]
@@ -181,7 +181,7 @@ model ArticleRevision {
   deck         String?
   title        String?
   article      Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  user         User     @relation(fields: [userId], references: [id])
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ArticleReview {
@@ -196,7 +196,7 @@ model ArticleReview {
   passNumber Int      @default(1)
   createdAt  DateTime @default(now())
   article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  reviewer   User     @relation(fields: [reviewerId], references: [id])
+  reviewer   User     @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
 
   @@index([articleId, createdAt])
 }
@@ -209,7 +209,7 @@ model AuditLog {
   entityId   String?
   details    Json?
   createdAt  DateTime @default(now())
-  user       User?    @relation(fields: [userId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
 model Notification {
@@ -217,6 +217,7 @@ model Notification {
   userId    String
   message   String
   link      String?
+  type      String   @default("SYSTEM")
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -259,7 +260,7 @@ model Comment {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   article       Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  moderator     User?         @relation(fields: [moderatorId], references: [id])
+  moderator     User?         @relation(fields: [moderatorId], references: [id], onDelete: SetNull)
 }
 
 enum Role {

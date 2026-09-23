@@ -97,7 +97,7 @@ export default function AcceptInviteForm({ token, email }: AcceptInviteFormProps
       <button
         type="submit"
         disabled={loading}
-        className="w-full mt-2 py-3 px-5 bg-[var(--accent)] hover:bg-[var(--accent-deep)] text-white font-[family:var(--f-ui)] font-semibold text-xs uppercase tracking-wider rounded-[var(--r-sm)] transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors w-full mt-2 flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
       >
         {loading ? (
           <>

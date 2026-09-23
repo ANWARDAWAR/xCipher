@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { canAssignRole, canManageUser, hasRequiredRole } from "@/lib/permissions";
 import crypto from "crypto";
 import { sendInvitationEmail } from "@/lib/email";
+import { createNotification } from "./notifications";
 import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
 
@@ -149,6 +150,20 @@ export async function acceptInvitation(token: string, formData: FormData) {
         details: { role: user.role }
       }
     });
+
+    const admins = await db.user.findMany({
+      where: { role: { in: ["ADMIN", "OWNER"] } },
+      select: { id: true },
+    });
+
+    for (const admin of admins) {
+      await createNotification(
+        admin.id,
+        `${name} (${invitation.email}) has joined as ${invitation.role}.`,
+        "INVITE_ACCEPTED",
+        "/admin/users"
+      );
+    }
 
     return { success: true };
   } catch (error: any) {

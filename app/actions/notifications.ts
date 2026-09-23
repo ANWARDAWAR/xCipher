@@ -15,6 +15,24 @@ import { revalidatePath } from "next/cache";
 // forgets it.
 // ──────────────────────────────────────────────────────────────────────────────
 
+export async function createNotification(userId: string, message: string, type: string, link?: string) {
+  try {
+    const notification = await db.notification.create({
+      data: {
+        userId,
+        message,
+        type,
+        link,
+      },
+    });
+    return { success: true, notification };
+  } catch (error: any) {
+    console.error("Failed to create notification:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+
 export type NotificationItem = {
   id: string;
   message: string;
