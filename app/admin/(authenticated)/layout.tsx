@@ -48,6 +48,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     });
   }
 
+  let pendingCommentsCount = 0;
+  if (canModerateComments(userRole as Role)) {
+    pendingCommentsCount = await db.comment.count({
+      where: { status: "PENDING" }
+    });
+  }
+
   const { items: notifications, unreadCount } = await getNotifications();
 
   // The wrapper below was role="dialog" aria-modal="true". That is a factual
@@ -131,6 +138,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             canViewTaxonomy={canViewTaxonomy(userRole as Role)}
             canManageAuthors={authorize(userRole as Role, "author.manage.all")}
             reviewCount={reviewCount}
+            pendingCommentsCount={pendingCommentsCount}
           />
         </nav>
         </ConsoleNavDrawer>

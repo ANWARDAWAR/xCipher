@@ -197,3 +197,41 @@ export async function unsubscribeByToken(token: string) {
     return { success: false, error: "Failed to process unsubscribe request." };
   }
 }
+
+export async function adminUnsubscribeUser(email: string) {
+  const user = await getCurrentUser();
+  if (!user || (user.role !== "OWNER" && user.role !== "ADMIN")) {
+    return { success: false, error: "Unauthorized. Only OWNER or ADMIN can perform this action." };
+  }
+  
+  try {
+    const subscriber = await db.subscriber.findUnique({ where: { email } });
+    if (!subscriber) return { success: false, error: "Subscriber not found." };
+    
+    await db.subscriber.update({
+      where: { email },
+      data: { status: "UNSUBSCRIBED" }
+    });
+    return { success: true, message: `Successfully unsubscribed ${email}.` };
+  } catch (error) {
+    console.error("[newsletter] adminUnsubscribeUser error:", error);
+    return { success: false, error: "Failed to unsubscribe user." };
+  }
+}
+
+export async function adminDeleteSubscriber(email: string) {
+  const user = await getCurrentUser();
+  if (!user || (user.role !== "OWNER" && user.role !== "ADMIN")) {
+    return { success: false, error: "Unauthorized. Only OWNER or ADMIN can perform this action." };
+  }
+  
+  try {
+    await db.subscriber.delete({
+      where: { email }
+    });
+    return { success: true, message: `Successfully deleted ${email} from database.` };
+  } catch (error) {
+    console.error("[newsletter] adminDeleteSubscriber error:", error);
+    return { success: false, error: "Failed to delete subscriber." };
+  }
+}

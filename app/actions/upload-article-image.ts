@@ -75,7 +75,7 @@ export async function uploadArticleImage(formData: FormData): Promise<UploadResu
     const processedBuffer = await sharp(input)
       .resize(MAX_IMAGE_WIDTH, null, { withoutEnlargement: true, fit: 'inside' })
       .webp({ quality: WEBP_QUALITY })
-      .withMetadata(false)
+      
       .toBuffer();
 
     const key = buildObjectKey("xsypher/articles", "webp");

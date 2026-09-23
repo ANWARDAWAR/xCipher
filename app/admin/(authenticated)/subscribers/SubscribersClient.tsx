@@ -6,7 +6,7 @@ import { Search, Plus, Download, MoreHorizontal, RefreshCw, Trash2, MailX, Mail,
 import Pagination from "@/components/console/Pagination";
 import { showToast } from "@/lib/utils";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { sendNewsletterBroadcast } from "@/app/actions/newsletter";
+import { sendNewsletterBroadcast, adminUnsubscribeUser, adminDeleteSubscriber } from "@/app/actions/newsletter";
 
 interface Subscriber {
   id: string;
@@ -52,6 +52,9 @@ export default function SubscribersClient({
   const [content, setContent] = useState("");
   const [showConfirmBroadcast, setShowConfirmBroadcast] = useState(false);
   const [sending, setSending] = useState(false);
+  
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [actionPending, setActionPending] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,9 +106,56 @@ export default function SubscribersClient({
     }
   };
 
+  const handleUnsubscribe = async (email: string) => {
+    setOpenDropdown(null);
+    if (actionPending) return;
+    setActionPending(true);
+    showToast(`Unsubscribing ${email}...`, "info");
+    
+    try {
+      const res = await adminUnsubscribeUser(email);
+      if (res.success) {
+        showToast(res.message || "Unsubscribed successfully.", "success", "premium");
+        router.refresh();
+      } else {
+        showToast(res.error || "Failed to unsubscribe.", "error", "premium");
+      }
+    } catch (e: any) {
+      showToast("An error occurred.", "error", "premium");
+    } finally {
+      setActionPending(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || actionPending) return;
+    setActionPending(true);
+    
+    try {
+      const res = await adminDeleteSubscriber(deleteTarget);
+      if (res.success) {
+        showToast(res.message || "Subscriber deleted.", "success", "premium");
+        setDeleteTarget(null);
+        router.refresh();
+      } else {
+        showToast(res.error || "Failed to delete.", "error", "premium");
+      }
+    } catch (e: any) {
+      showToast("An error occurred.", "error", "premium");
+    } finally {
+      setActionPending(false);
+    }
+  };
+
   const handleAction = (action: string, email: string) => {
     setOpenDropdown(null);
-    showToast(`${action} action triggered for ${email} (Demo)`);
+    if (action === "Unsubscribe") {
+      handleUnsubscribe(email);
+    } else if (action === "Remove") {
+      setDeleteTarget(email);
+    } else {
+      showToast(`${action} action triggered for ${email} (Demo)`);
+    }
   };
 
   React.useEffect(() => {
@@ -326,6 +376,16 @@ export default function SubscribersClient({
         isDestructive={false}
         onConfirm={handleSendBroadcast}
         onCancel={() => setShowConfirmBroadcast(false)}
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        title="Delete Subscriber"
+        description={`Are you sure you want to permanently delete the subscriber ${deleteTarget}? This action cannot be undone.`}
+        confirmText={actionPending ? "Deleting..." : "Delete Record"}
+        isDestructive={true}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
       />
     </div>
   );

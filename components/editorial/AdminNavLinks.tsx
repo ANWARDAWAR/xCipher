@@ -25,6 +25,7 @@ interface AdminNavLinksProps {
   canViewTaxonomy: boolean;
   canManageAuthors: boolean;
   reviewCount?: number;
+  pendingCommentsCount?: number;
 }
 
 export default function AdminNavLinks({
@@ -37,6 +38,7 @@ export default function AdminNavLinks({
   canViewTaxonomy,
   canManageAuthors,
   reviewCount = 0,
+  pendingCommentsCount = 0,
 }: AdminNavLinksProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -179,11 +181,31 @@ export default function AdminNavLinks({
       )}
 
       {canModerateComments && (
-        <Link href="/admin/comments" {...navProps(isActive("/admin/comments"))}>
-          <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-          Comments
+        <Link 
+          href="/admin/comments" 
+          {...navProps(isActive("/admin/comments"))}
+          style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            Comments
+          </span>
+          {pendingCommentsCount > 0 && (
+            <span style={{
+              background: "var(--accent)",
+              color: "white",
+              fontSize: "11px",
+              fontWeight: 600,
+              padding: "2px 6px",
+              borderRadius: "10px",
+              minWidth: "20px",
+              textAlign: "center"
+            }}>
+              {pendingCommentsCount}
+            </span>
+          )}
         </Link>
       )}
 
