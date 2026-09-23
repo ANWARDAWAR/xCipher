@@ -32,7 +32,13 @@ interface AuthorRow {
  * thousands, and the whole list is already in memory. Adding a round trip per
  * keystroke would be slower and more code for no benefit.
  */
-export default function AuthorDirectoryTable({ authors }: { authors: AuthorRow[] }) {
+export default function AuthorDirectoryTable({ 
+  authors,
+  currentUser 
+}: { 
+  authors: AuthorRow[];
+  currentUser: { id: string; role: string };
+}) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -61,7 +67,11 @@ export default function AuthorDirectoryTable({ authors }: { authors: AuthorRow[]
   }
 
   return (
-    <div className="space-y-4">
+  const activeTeam = filtered.filter(a => a.linkedUserEmail !== null);
+  const guests = filtered.filter(a => a.linkedUserEmail === null);
+
+  return (
+    <div className="space-y-8">
       <div className="relative max-w-md">
         <Search
           className="w-4 h-4 text-faint absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
@@ -84,22 +94,57 @@ export default function AuthorDirectoryTable({ authors }: { authors: AuthorRow[]
           </p>
         </div>
       ) : (
-        <div className="bg-surface border border-line rounded-xl overflow-hidden">
-          <div className="hidden md:grid grid-cols-[2.5fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 border-b border-line bg-surface-2/60 text-[11px] uppercase tracking-wider font-semibold text-muted">
-            <span>Author</span>
-            <span className="text-right">Published</span>
-            <span className="text-right">Total</span>
-            <span className="text-right">Views</span>
-            <span className="w-16" />
-          </div>
+        <>
+          {activeTeam.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold text-ink font-[var(--f-ui)]">Active Team</h2>
+              <div className="bg-surface border border-line rounded-xl overflow-hidden">
+                <div className="hidden md:grid grid-cols-[2.5fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 border-b border-line bg-surface-2/60 text-[11px] uppercase tracking-wider font-semibold text-muted">
+                  <span>Author</span>
+                  <span className="text-right">Published</span>
+                  <span className="text-right">Total</span>
+                  <span className="text-right">Views</span>
+                  <span className="w-16" />
+                </div>
+                <div className="divide-y divide-line">
+                  {activeTeam.map((a) => (
+                    <AuthorRowItem key={a.id} a={a} currentUser={currentUser} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
-          <div className="divide-y divide-line">
-            {filtered.map((a) => (
-              <div
-                key={a.id}
-                className="grid grid-cols-1 md:grid-cols-[2.5fr_1fr_1fr_1fr_auto] gap-2 md:gap-4 px-4 py-3.5 items-center hover:bg-surface-2/40 transition-colors"
-              >
-                <div className="flex items-center gap-3 min-w-0">
+          {guests.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold text-ink font-[var(--f-ui)]">Guest & Former Contributors</h2>
+              <div className="bg-surface border border-line rounded-xl overflow-hidden">
+                <div className="hidden md:grid grid-cols-[2.5fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 border-b border-line bg-surface-2/60 text-[11px] uppercase tracking-wider font-semibold text-muted">
+                  <span>Author</span>
+                  <span className="text-right">Published</span>
+                  <span className="text-right">Total</span>
+                  <span className="text-right">Views</span>
+                  <span className="w-16" />
+                </div>
+                <div className="divide-y divide-line">
+                  {guests.map((a) => (
+                    <AuthorRowItem key={a.id} a={a} currentUser={currentUser} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function AuthorRowItem({ a, currentUser }: { a: AuthorRow; currentUser: { id: string; role: string } }) {
+  const canEdit = a.linkedUserId && (currentUser.id === a.linkedUserId || currentUser.role === "ADMIN" || currentUser.role === "OWNER");
+  
+  return (
+              <div className="grid grid-cols-1 md:grid-cols-[2.5fr_1fr_1fr_1fr_auto] gap-2 md:gap-4 px-4 py-3.5 items-center hover:bg-surface-2/40 transition-colors">
                   {a.avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -160,7 +205,7 @@ export default function AuthorDirectoryTable({ authors }: { authors: AuthorRow[]
                   >
                     Articles
                   </Link>
-                  {a.linkedUserId && (
+                  {canEdit && (
                     <Link
                       href={`/admin/settings?tab=profile&edit=true&user=${a.linkedUserId}`}
                       className="px-2.5 py-1.5 text-xs font-semibold text-ink bg-surface-2 hover:bg-surface-3 border border-line rounded-md transition-colors"
@@ -181,9 +226,8 @@ export default function AuthorDirectoryTable({ authors }: { authors: AuthorRow[]
                   </Link>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
+  );
+}
       )}
     </div>
   );

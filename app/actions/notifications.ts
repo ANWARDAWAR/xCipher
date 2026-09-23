@@ -23,7 +23,7 @@ export async function createNotification(userId: string, message: string, type: 
         message,
         type,
         link,
-      },
+      } as any,
     });
     return { success: true, notification };
   } catch (error: any) {

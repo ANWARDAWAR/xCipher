@@ -121,7 +121,7 @@ export default async function AuthorsPage() {
         </Link>
       </div>
 
-      <AuthorDirectoryTable authors={rows} />
+      <AuthorDirectoryTable authors={rows} currentUser={{ id: user.id, role: user.role }} />
     </div>
   );
 }
