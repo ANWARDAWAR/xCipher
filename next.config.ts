@@ -129,6 +129,9 @@ const nextConfig: any = {
       { protocol: "https", hostname: "*.r2.dev" },
       ...r2RemotePattern(),
     ],
+  },
+  serverActions: {
+    bodySizeLimit: "5mb",
   }
 };
 

@@ -115,7 +115,7 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
 
   return (
     <div 
-      className="fixed bottom-0 md:sticky md:top-0 md:bottom-auto left-0 right-0 z-40 bg-[var(--surface)]/95 backdrop-blur-md border-t md:border-t-0 md:border-b border-[var(--line)] py-2 md:mb-8 flex md:flex-wrap items-center gap-1 mx-auto w-full overflow-x-auto overflow-y-hidden md:max-w-3xl px-2 md:px-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] md:shadow-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+      className="sticky top-0 z-50 bg-[var(--surface)] border-b border-[var(--line)] py-2 md:mb-8 flex md:flex-wrap items-center gap-1 mx-auto w-full overflow-x-auto overflow-y-hidden md:max-w-3xl px-2 md:px-0 shadow-md md:shadow-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
       role="toolbar" 
       aria-label="Formatting"
     >
