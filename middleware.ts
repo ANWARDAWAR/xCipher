@@ -9,6 +9,7 @@ export default withAuth(
     const pathname = url.pathname;
     
     const isAdminSubdomain = hostname === "admin.xsypher.com" || hostname.startsWith("admin.localhost");
+    const isPreviewSubdomain = hostname === "preview.xsypher.com" || hostname.startsWith("preview.localhost");
     const isApex = hostname === "xsypher.com" || hostname === "www.xsypher.com";
     
     let effectivePath = pathname;
@@ -51,6 +52,12 @@ export default withAuth(
     // 4. Perform the rewrite if it's the admin subdomain
     if (isAdminSubdomain && !pathname.startsWith("/admin") && !pathname.startsWith("/invite")) {
       url.pathname = effectivePath;
+      return NextResponse.rewrite(url);
+    }
+    
+    // 5. Perform the rewrite if it's the preview subdomain
+    if (isPreviewSubdomain && !pathname.startsWith("/preview")) {
+      url.pathname = `/preview${pathname}`;
       return NextResponse.rewrite(url);
     }
     

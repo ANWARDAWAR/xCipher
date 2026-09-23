@@ -794,7 +794,11 @@ export default function ArticleEditor({
     try {
       const saved = await handleSave(currentStatus);
       if (saved && saved.id) {
-        window.open(`/preview/${saved.id}`, "_blank");
+        const isDev = process.env.NODE_ENV === "development";
+        const previewUrl = isDev 
+          ? `http://preview.localhost:3000/${saved.id}`
+          : `https://preview.xsypher.com/${saved.id}`;
+        window.open(previewUrl, "_blank");
       }
     } catch (err: any) {
       showToast(err.message || "Preview failed", "error");
