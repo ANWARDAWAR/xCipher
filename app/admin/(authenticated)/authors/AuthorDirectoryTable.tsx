@@ -66,7 +66,6 @@ export default function AuthorDirectoryTable({
     );
   }
 
-  return (
   const activeTeam = filtered.filter(a => a.linkedUserEmail !== null);
   const guests = filtered.filter(a => a.linkedUserEmail === null);
 
@@ -144,8 +143,9 @@ function AuthorRowItem({ a, currentUser }: { a: AuthorRow; currentUser: { id: st
   const canEdit = a.linkedUserId && (currentUser.id === a.linkedUserId || currentUser.role === "ADMIN" || currentUser.role === "OWNER");
   
   return (
-              <div className="grid grid-cols-1 md:grid-cols-[2.5fr_1fr_1fr_1fr_auto] gap-2 md:gap-4 px-4 py-3.5 items-center hover:bg-surface-2/40 transition-colors">
-                  {a.avatar ? (
+    <div className="grid grid-cols-1 md:grid-cols-[2.5fr_1fr_1fr_1fr_auto] gap-2 md:gap-4 px-4 py-3.5 items-center hover:bg-surface-2/40 transition-colors">
+      <div className="flex items-center gap-3 min-w-0">
+        {a.avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={a.avatar}
@@ -225,10 +225,6 @@ function AuthorRowItem({ a, currentUser }: { a: AuthorRow; currentUser: { id: st
                     <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
                   </Link>
                 </div>
-              </div>
-  );
-}
-      )}
     </div>
   );
 }
