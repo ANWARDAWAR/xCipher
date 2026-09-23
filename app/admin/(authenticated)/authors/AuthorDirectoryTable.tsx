@@ -97,7 +97,7 @@ export default function AuthorDirectoryTable({ authors }: { authors: AuthorRow[]
             {filtered.map((a) => (
               <div
                 key={a.id}
-                className="grid grid-cols-1 md:grid-cols-[2.5fr_1fr_1fr_1fr_auto] gap-2 md:gap-4 px-4 py-3.5 md:items-center hover:bg-surface-2/40 transition-colors"
+                className="grid grid-cols-1 md:grid-cols-[2.5fr_1fr_1fr_1fr_auto] gap-2 md:gap-4 px-4 py-3.5 items-center hover:bg-surface-2/40 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {a.avatar ? (

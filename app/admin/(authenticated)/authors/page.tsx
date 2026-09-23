@@ -92,7 +92,7 @@ export default async function AuthorsPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-line">
+      <div className="flex flex-row items-center justify-between gap-4 pb-5 border-b border-line">
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-bold tracking-tight text-ink font-[var(--f-ui)]">

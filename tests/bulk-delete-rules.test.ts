@@ -1,3 +1,4 @@
+
 import { describe, it, expect } from "vitest";
 import { authorize } from "@/lib/capabilities";
 import type { Role } from "@prisma/client";
@@ -88,7 +89,7 @@ describe("draft ownership", () => {
 
 describe("the capability set this depends on", () => {
   it("article.delete is held by exactly OWNER and ADMIN", () => {
-    const holders = (["OWNER","ADMIN","EDITOR","AUTHOR","REVIEWER","MODERATOR","STAFF"] as Role[])
+    const holders = (["OWNER", "ADMIN", "EDITOR", "AUTHOR", "REVIEWER", "MODERATOR", "STAFF"] as Role[])
       .filter((r) => authorize(r, "article.delete"));
     expect(holders.sort()).toEqual(["ADMIN", "OWNER"]);
   });
@@ -105,7 +106,7 @@ describe("deleteArticlePermanently rules", () => {
     expect(canDeleteArticlePermanently("OWNER", "PUBLISHED")).toBe(false);
     expect(canDeleteArticlePermanently("ADMIN", "PUBLISHED")).toBe(false);
   });
-  
+
   it("CAN delete an ARCHIVED article", () => {
     expect(canDeleteArticlePermanently("OWNER", "ARCHIVED")).toBe(true);
     expect(canDeleteArticlePermanently("ADMIN", "ARCHIVED")).toBe(true);

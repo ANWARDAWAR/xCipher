@@ -127,12 +127,17 @@ export async function acceptInvitation(token: string, formData: FormData) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    const existingAuthor = await db.author.findFirst({
+      where: { email: invitation.email }
+    });
+
     const user = await db.user.create({
       data: {
         email: invitation.email,
         name,
         password: hashedPassword,
         role: invitation.role,
+        ...(existingAuthor ? { authorId: existingAuthor.id } : {})
       }
     });
 
