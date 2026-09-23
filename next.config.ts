@@ -66,7 +66,7 @@ function r2RemotePattern(): NonNullable<NonNullable<NextConfig["images"]>["remot
   }
 }
 
-const nextConfig: NextConfig = {
+const nextConfig: any = {
   eslint: {
     ignoreDuringBuilds: true,
   },
