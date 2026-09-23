@@ -1,0 +1,409 @@
+/home/lord/Music/GRID-X html/app/(public)/article/[slug]/page.tsx
+  @typescript-eslint/no-unused-vars: 'timeAgo' is defined but never used. (line 6)
+  @typescript-eslint/no-unused-vars: 'siteConfig' is defined but never used. (line 10)
+  @typescript-eslint/no-unused-vars: 'parent' is defined but never used. (line 27)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 117)
+  @typescript-eslint/no-unused-vars: 'authorBio' is assigned a value but never used. (line 126)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 269)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 285)
+  @next/next/no-img-element: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element (line 344)
+  @next/next/no-img-element: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element (line 351)
+/home/lord/Music/GRID-X html/app/(public)/author/[slug]/page.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 53)
+/home/lord/Music/GRID-X html/app/(public)/error.tsx
+  react/jsx-no-comment-textnodes: Comments inside children section of tag should be placed inside braces (line 30)
+/home/lord/Music/GRID-X html/app/(public)/not-found.tsx
+  react/jsx-no-comment-textnodes: Comments inside children section of tag should be placed inside braces (line 20)
+/home/lord/Music/GRID-X html/app/(public)/page.tsx
+  @next/next/no-img-element: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element (line 158)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 325)
+  @next/next/no-img-element: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element (line 346)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 372)
+  @next/next/no-img-element: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element (line 421)
+/home/lord/Music/GRID-X html/app/(public)/page/accessibility/page.tsx
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 72)
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 72)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 83)
+/home/lord/Music/GRID-X html/app/(public)/page/careers/page.tsx
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 19)
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 65)
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 65)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 194)
+/home/lord/Music/GRID-X html/app/(public)/page/cookie-policy/page.tsx
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 99)
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 99)
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 99)
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 99)
+/home/lord/Music/GRID-X html/app/(public)/page/corrections/page.tsx
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 99)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 107)
+/home/lord/Music/GRID-X html/app/(public)/page/disclaimer/page.tsx
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 129)
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 129)
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 129)
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 129)
+/home/lord/Music/GRID-X html/app/(public)/page/editorial-standards/page.tsx
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 102)
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 102)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 126)
+/home/lord/Music/GRID-X html/app/(public)/page/media-kit/page.tsx
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 103)
+/home/lord/Music/GRID-X html/app/(public)/page/newsletters/page.tsx
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 98)
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 98)
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 98)
+  @next/next/no-html-link-for-pages: Do not use an `<a>` element to navigate to `/page/privacy-policy/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages (line 158)
+  @next/next/no-html-link-for-pages: Do not use an `<a>` element to navigate to `/page/privacy-policy/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages (line 192)
+/home/lord/Music/GRID-X html/app/(public)/page/privacy-policy/page.tsx
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 176)
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 176)
+  @next/next/no-html-link-for-pages: Do not use an `<a>` element to navigate to `/page/contact/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages (line 225)
+/home/lord/Music/GRID-X html/app/(public)/page/terms-of-use/page.tsx
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 171)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 171)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 171)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 171)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 171)
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 171)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 190)
+  @next/next/no-html-link-for-pages: Do not use an `<a>` element to navigate to `/page/contact/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages (line 193)
+/home/lord/Music/GRID-X html/app/(public)/search/page.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 34)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 38)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 113)
+/home/lord/Music/GRID-X html/app/actions/article.ts
+  @typescript-eslint/no-unused-vars: 'updateTag' is defined but never used. (line 4)
+  @typescript-eslint/no-unused-vars: 'articleMutationTags' is defined but never used. (line 5)
+  @typescript-eslint/no-unused-vars: 'canPublishArticle' is defined but never used. (line 8)
+  @typescript-eslint/no-unused-vars: 'canDeleteArticle' is defined but never used. (line 8)
+  @typescript-eslint/no-unused-vars: 'authorize' is defined but never used. (line 11)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 16)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 52)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 167)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 180)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 197)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 237)
+/home/lord/Music/GRID-X html/app/actions/comments.ts
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 114)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 156)
+/home/lord/Music/GRID-X html/app/actions/invitations.ts
+  @typescript-eslint/no-unused-vars: 'hasRequiredRole' is defined but never used. (line 5)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 11)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 83)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 107)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 154)
+/home/lord/Music/GRID-X html/app/actions/newsletter.ts
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 53)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 81)
+/home/lord/Music/GRID-X html/app/actions/profile.ts
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 10)
+  @typescript-eslint/no-unused-vars: 'e' is defined but never used. (line 89)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 155)
+/home/lord/Music/GRID-X html/app/actions/setup.ts
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 36)
+/home/lord/Music/GRID-X html/app/actions/users.ts
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 46)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 81)
+/home/lord/Music/GRID-X html/app/actions/workflow.ts
+  @typescript-eslint/no-unused-vars: 'TRANSITIONS' is defined but never used. (line 11)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 23)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 50)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 50)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 97)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 210)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 210)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 295)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 359)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 424)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 669)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 706)
+/home/lord/Music/GRID-X html/app/admin/(authenticated)/audit-logs/AuditLogDetailsDialog.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 9)
+/home/lord/Music/GRID-X html/app/admin/(authenticated)/audit-logs/AuditLogsClient.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 16)
+/home/lord/Music/GRID-X html/app/admin/(authenticated)/audit-logs/page.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 65)
+/home/lord/Music/GRID-X html/app/admin/(authenticated)/comments/page.tsx
+  @typescript-eslint/no-unused-vars: 'CommentStatus' is defined but never used. (line 4)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 31)
+/home/lord/Music/GRID-X html/app/admin/(authenticated)/page.tsx
+  @typescript-eslint/no-unused-vars: 'Eye' is defined but never used. (line 17)
+  @typescript-eslint/no-unused-vars: 'ExternalLink' is defined but never used. (line 18)
+  @typescript-eslint/no-unused-vars: 'Clock' is defined but never used. (line 20)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 55)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 56)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 69)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 95)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 572)
+/home/lord/Music/GRID-X html/app/admin/(authenticated)/review/page.tsx
+  react-hooks/purity: Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/home/lord/Music/GRID-X html/app/admin/(authenticated)/review/page.tsx:156:27
+  154 |         ) : (
+  155 |           articles.map((article) => {
+> 156 |             const ageMs = Date.now() - new Date(article.submittedAt || article.updatedAt).getTime();
+      |                           ^^^^^^^^^^ Cannot call impure function
+  157 |             const ageDays = ageMs / (1000 * 60 * 60 * 24);
+  158 |             let ageColor = "var(--ink-muted)";
+  159 |             if (ageDays >= 3) ageColor = "var(--error)"; (line 156)
+/home/lord/Music/GRID-X html/app/admin/(authenticated)/settings/AccountForm.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 7)
+/home/lord/Music/GRID-X html/app/admin/(authenticated)/settings/ProfileForm.tsx
+  @typescript-eslint/no-unused-vars: 'useCallback' is defined but never used. (line 3)
+  @typescript-eslint/no-unused-vars: 'ZoomIn' is defined but never used. (line 11)
+  @typescript-eslint/no-unused-vars: 'ZoomOut' is defined but never used. (line 12)
+  @typescript-eslint/no-unused-vars: 'RotateCw' is defined but never used. (line 13)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 60)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 61)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 250)
+  prefer-const: 'finalAvatarUrl' is never reassigned. Use 'const' instead. (line 337)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 391)
+/home/lord/Music/GRID-X html/app/admin/(authenticated)/settings/page.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 62)
+/home/lord/Music/GRID-X html/app/admin/(authenticated)/subscribers/page.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 27)
+/home/lord/Music/GRID-X html/app/admin/actions/dashboard-actions.ts
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 18)
+/home/lord/Music/GRID-X html/app/api/auth/[...nextauth]/route.ts
+  @typescript-eslint/no-unused-vars: 'e' is defined but never used. (line 86)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 91)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 99)
+/home/lord/Music/GRID-X html/app/not-found.tsx
+  react/jsx-no-comment-textnodes: Comments inside children section of tag should be placed inside braces (line 23)
+/home/lord/Music/GRID-X html/app/preview/[id]/page.tsx
+  @next/next/no-img-element: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element (line 163)
+  @next/next/no-img-element: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element (line 170)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 189)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 197)
+  @next/next/no-img-element: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element (line 248)
+  @next/next/no-img-element: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element (line 255)
+/home/lord/Music/GRID-X html/components/article/ArticleSidebar.tsx
+  react-hooks/set-state-in-effect: Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/lord/Music/GRID-X html/components/article/ArticleSidebar.tsx:18:5
+  16 |
+  17 |   useEffect(() => {
+> 18 |     setShareUrl(window.location.href);
+     |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  19 |     const initialFs = getInitialFs();
+  20 |     applyFs(initialFs, false);
+  21 |   }, []); (line 18)
+/home/lord/Music/GRID-X html/components/article/StoryCard.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 19)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 29)
+/home/lord/Music/GRID-X html/components/article/StoryRow.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 19)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 29)
+/home/lord/Music/GRID-X html/components/author/AuthorProfileView.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 36)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 36)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 36)
+  @next/next/no-img-element: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element (line 48)
+  @next/next/no-img-element: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element (line 204)
+/home/lord/Music/GRID-X html/components/console/ArticleIndex.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 266)
+/home/lord/Music/GRID-X html/components/editorial/ArticleActionMenu.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 60)
+/home/lord/Music/GRID-X html/components/editorial/ArticleEditor.tsx
+  @typescript-eslint/no-unused-vars: 'TiptapImage' is defined but never used. (line 20)
+  @typescript-eslint/no-unused-vars: 'Role' is defined but never used. (line 32)
+  @typescript-eslint/no-unused-vars: 'ArticleStatus' is defined but never used. (line 32)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 112)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 117)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 118)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 119)
+  @typescript-eslint/no-unused-vars: 'availableCategories' is assigned a value but never used. (line 140)
+  @typescript-eslint/no-unused-vars: 'availableTags' is assigned a value but never used. (line 141)
+  @typescript-eslint/no-unused-vars: 'savedData' is assigned a value but never used. (line 155)
+  @typescript-eslint/no-unused-vars: 'setSavedData' is assigned a value but never used. (line 155)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 155)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 156)
+  @typescript-eslint/no-unused-vars: 'reviewNotes' is assigned a value but never used. (line 166)
+  @typescript-eslint/no-unused-vars: 'setReviewNotes' is assigned a value but never used. (line 166)
+  @typescript-eslint/no-unused-vars: 'err' is defined but never used. (line 235)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 270)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 337)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 340)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 359)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 369)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 374)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 408)
+  react-hooks/exhaustive-deps: React Hook useEffect has missing dependencies: 'authorName' and 'authorRole'. Either include them or remove the dependency array. (line 421)
+  react-hooks/incompatible-library: Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+/home/lord/Music/GRID-X html/components/editorial/ArticleEditor.tsx:455:26
+  453 |
+  454 |   useEffect(() => {
+> 455 |     const subscription = watch(() => {
+      |                          ^^^^^ React Hook Form's `useForm()` API returns a `watch()` function which cannot be memoized safely.
+  456 |       // Cache locally on every change, even while a save is in flight or a
+  457 |       // conflict is unresolved. This is the copy that survives a crash, so it
+  458 |       // must keep pace with the keystrokes rather than with the server. (line 455)
+  react-hooks/exhaustive-deps: React Hook useEffect has missing dependencies: 'getValues' and 'runAutosave'. Either include them or remove the dependency array. (line 483)
+  @typescript-eslint/no-unused-vars: 'handleDiscardAndRestart' is assigned a value but never used. (line 586)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 650)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 717)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 727)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 762)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 799)
+  @typescript-eslint/no-unused-vars: 'isEditorial' is assigned a value but never used. (line 808)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 954)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 979)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 1013)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 1285)
+/home/lord/Music/GRID-X html/components/editorial/CategorySelector.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 23)
+  react-hooks/set-state-in-effect: Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/lord/Music/GRID-X html/components/editorial/CategorySelector.tsx:44:5
+  42 |     if (!parentSlug) return;
+  43 |     let active = true;
+> 44 |     setLoading(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  45 |     getSubcategories(parentSlug).then(res => {
+  46 |       if (active) {
+  47 |         setSubcategories(res.map(c => ({ value: c.slug, label: c.name }))); (line 44)
+/home/lord/Music/GRID-X html/components/editorial/EditorBubbleMenu.tsx
+  react-hooks/set-state-in-effect: Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/lord/Music/GRID-X html/components/editorial/EditorBubbleMenu.tsx:96:7
+  94 |   useEffect(() => {
+  95 |     if (typeof window !== "undefined") {
+> 96 |       setIsTouch("ontouchstart" in window || navigator.maxTouchPoints > 0);
+     |       ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  97 |     }
+  98 |   }, []);
+  99 | (line 96)
+/home/lord/Music/GRID-X html/components/editorial/EditorToolbar.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 102)
+/home/lord/Music/GRID-X html/components/editorial/ReviewWorkspace.tsx
+  @typescript-eslint/no-unused-vars: 'Role' is defined but never used. (line 4)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 88)
+/home/lord/Music/GRID-X html/components/editorial/SlashCommandList.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 7)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 7)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 10)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 197)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 232)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 254)
+/home/lord/Music/GRID-X html/components/editorial/extensions/AdvancedImage.ts
+  @typescript-eslint/no-unused-vars: 'mergeAttributes' is defined but never used. (line 1)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 76)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 77)
+/home/lord/Music/GRID-X html/components/editorial/extensions/Callout.ts
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 4)
+/home/lord/Music/GRID-X html/components/editorial/extensions/CodeBlockLowlight.ts
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 40)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 64)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 66)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 71)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 117)
+/home/lord/Music/GRID-X html/components/editorial/extensions/SlashMenu.ts
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 11)
+/home/lord/Music/GRID-X html/components/layout/MobileDrawer.tsx
+  @typescript-eslint/no-unused-vars: 'theme' is assigned a value but never used. (line 13)
+  react-hooks/set-state-in-effect: Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/lord/Music/GRID-X html/components/layout/MobileDrawer.tsx:18:5
+  16 |
+  17 |   useEffect(() => {
+> 18 |     setMounted(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  19 |   }, []);
+  20 |
+  21 |   useEffect(() => { (line 18)
+  react-hooks/set-state-in-effect: Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/lord/Music/GRID-X html/components/layout/MobileDrawer.tsx:40:5
+  38 |   // Close drawer on navigation
+  39 |   useEffect(() => {
+> 40 |     setIsOpen(false);
+     |     ^^^^^^^^^ Avoid calling setState() directly within an effect
+  41 |     // Optional: Collapse "More" section on navigation so it is fresh next time
+  42 |     setShowMore(false);
+  43 |   }, [pathname]); (line 40)
+/home/lord/Music/GRID-X html/components/layout/Sidebar.tsx
+  @typescript-eslint/no-unused-vars: 'ARTICLE_CARD_SELECT' is defined but never used. (line 3)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 8)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 25)
+/home/lord/Music/GRID-X html/components/layout/ThemeToggle.tsx
+  @typescript-eslint/no-unused-vars: 'theme' is assigned a value but never used. (line 8)
+  react-hooks/set-state-in-effect: Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/lord/Music/GRID-X html/components/layout/ThemeToggle.tsx:12:5
+  10 |   // Prevent hydration mismatch
+  11 |   useEffect(() => {
+> 12 |     setMounted(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  13 |   }, []);
+  14 |
+  15 |   if (!mounted) { (line 12)
+/home/lord/Music/GRID-X html/components/newsletter/NewsletterSignup.tsx
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 31)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 44)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 54)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 67)
+  react/no-unescaped-entities: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`. (line 99)
+/home/lord/Music/GRID-X html/components/ui/CreatableCombobox.tsx
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 154)
+  react/no-unescaped-entities: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`. (line 154)
+/home/lord/Music/GRID-X html/lib/auth.ts
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 29)
+/home/lord/Music/GRID-X html/lib/email.ts
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 63)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 107)
+/home/lord/Music/GRID-X html/lib/mockData.ts
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 1)
+/home/lord/Music/GRID-X html/lib/rateLimit.ts
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 43)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 49)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 52)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 64)
+/home/lord/Music/GRID-X html/lib/seo.ts
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 73)
+/home/lord/Music/GRID-X html/scripts/migrate-taxonomy.ts
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 32)
+/home/lord/Music/GRID-X html/tests/password-reset.test.ts
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 63)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 78)
+  @typescript-eslint/no-explicit-any: Unexpected any. Specify a different type. (line 93)
