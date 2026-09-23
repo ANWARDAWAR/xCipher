@@ -19,6 +19,7 @@ import {
 } from "@/lib/notifications";
 import { revalidatePath, updateTag } from "next/cache";
 import { CACHE_TAGS, articleTag, articleMutationTags } from "@/lib/cache-tags";
+import { deleteFileFromR2 } from "@/lib/storage";
 
 export type ActionResponse<T = any> =
   | { ok: true; data?: T; updatedAt?: string }
@@ -43,6 +44,7 @@ async function getArticle(id: string) {
       authorModel: { select: { slug: true } },
       deck: true,
       contentHtml: true,
+      img: true,
     }
   });
 }
@@ -652,6 +654,12 @@ export async function deleteArticlePermanently(id: string): Promise<ActionRespon
   }
 
   try {
+    if (article.img) await deleteFileFromR2(article.img);
+    if (article.contentHtml) {
+      const urls = Array.from(article.contentHtml.matchAll(/<img[^>]+src="([^">]+)"/g)).map(m => m[1]);
+      await Promise.allSettled(urls.map(url => deleteFileFromR2(url)));
+    }
+
     await db.$transaction(async (tx) => {
       await tx.auditLog.create({
         data: { userId: actor.id, action: "DELETE_ARTICLE_PERMANENTLY", entityType: "Article", entityId: id, details: { title: article.title, slug: article.slug, authorId: article.authorId, status: article.status } }
@@ -691,6 +699,12 @@ export async function deleteOwnDraft(id: string): Promise<ActionResponse> {
   }
 
   try {
+    if (article.img) await deleteFileFromR2(article.img);
+    if (article.contentHtml) {
+      const urls = Array.from(article.contentHtml.matchAll(/<img[^>]+src="([^">]+)"/g)).map(m => m[1]);
+      await Promise.allSettled(urls.map(url => deleteFileFromR2(url)));
+    }
+
     await db.$transaction(async (tx) => {
       await tx.articleReview.deleteMany({ where: { articleId: id } });
       await tx.articleRevision.deleteMany({ where: { articleId: id } });

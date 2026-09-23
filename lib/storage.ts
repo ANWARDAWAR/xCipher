@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { v2 as cloudinary } from "cloudinary";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -111,6 +111,25 @@ export async function uploadFileToR2(file: File | Blob, bucket: string, key: str
   return `${config.publicBase}/${key}`;
 }
 
+export async function deleteFileFromR2(url: string): Promise<void> {
+  const config = getR2Config();
+  if ("error" in config) return;
+  if (!url.startsWith(config.publicBase)) return;
+  
+  const key = url.slice(config.publicBase.length).replace(/^\/+/, "");
+  if (!key) return;
+
+  const s3 = getR2Client(config);
+  try {
+    await s3.send(new DeleteObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+    }));
+  } catch (e) {
+    console.error("[storage] Failed to delete file from R2:", e);
+  }
+}
+
 export function checkCloudinaryEnv() {
   const missing = [
     !process.env.CLOUDINARY_CLOUD_NAME && "CLOUDINARY_CLOUD_NAME",
@@ -144,4 +163,24 @@ export async function uploadImageToCloudinary(file: File | Blob, folder: string)
     );
     stream.end(buffer);
   });
+}
+
+export async function deleteImageFromCloudinary(url: string): Promise<void> {
+  try {
+    checkCloudinaryEnv();
+    
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+
+    const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)\.[a-z0-9]+$/i);
+    if (!match) return;
+    const publicId = match[1];
+
+    await cloudinary.uploader.destroy(publicId);
+  } catch (e) {
+    console.error("[storage] Failed to delete image from Cloudinary:", e);
+  }
 }

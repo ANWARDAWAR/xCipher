@@ -3,8 +3,9 @@
 import { getCurrentUser } from "@/lib/auth";
 import { authorize } from "@/lib/capabilities";
 import { db } from "@/lib/db";
-import { uploadImageToCloudinary } from "@/lib/storage";
-import { MAX_UPLOAD_BYTES, formatBytes, sniffImageMime } from "@/lib/upload-constraints";
+import { uploadFileToR2, buildObjectKey, getR2Config } from "@/lib/storage";
+import { MAX_UPLOAD_BYTES, formatBytes, sniffImageMime, MAX_IMAGE_WIDTH, WEBP_QUALITY } from "@/lib/upload-constraints";
+import sharp from "sharp";
 
 export interface UploadResult {
   ok: boolean;
@@ -66,7 +67,20 @@ export async function uploadArticleImage(formData: FormData): Promise<UploadResu
   }
 
   try {
-    const url = await uploadImageToCloudinary(blob, "xsypher/articles");
+    const config = getR2Config();
+    if ("error" in config) {
+      return { ok: false, error: config.error };
+    }
+
+    const processedBuffer = await sharp(input)
+      .resize(MAX_IMAGE_WIDTH, null, { withoutEnlargement: true, fit: 'inside' })
+      .webp({ quality: WEBP_QUALITY })
+      .withMetadata(false)
+      .toBuffer();
+
+    const key = buildObjectKey("xsypher/articles", "webp");
+    const blobToUpload = new Blob([processedBuffer], { type: "image/webp" });
+    const url = await uploadFileToR2(blobToUpload, config.bucket, key);
     
     return {
       ok: true,
@@ -75,7 +89,7 @@ export async function uploadArticleImage(formData: FormData): Promise<UploadResu
       height: undefined,
     };
   } catch (e) {
-    console.error("[upload-article-image] Cloudinary upload failed:", e);
+    console.error("[upload-article-image] Image processing or R2 upload failed:", e);
     return { ok: false, error: "The image could not be uploaded. Please try again." };
   }
 }

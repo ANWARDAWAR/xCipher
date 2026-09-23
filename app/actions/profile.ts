@@ -6,6 +6,7 @@ import { authorize } from "@/lib/capabilities";
 import type { Role } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { sanitizeBioHtml, isValidSafeUrl, ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
+import { deleteImageFromCloudinary } from "@/lib/storage";
 
 export async function updateProfile(data: any) {
   try {
@@ -112,6 +113,10 @@ export async function updateProfile(data: any) {
         updatedPreviousSlugs = existing.slug !== finalSlug 
           ? Array.from(new Set([...currentPreviousSlugs, existing.slug]))
           : currentPreviousSlugs;
+          
+        if (existing.avatar && avatar !== existing.avatar) {
+          deleteImageFromCloudinary(existing.avatar).catch(console.error);
+        }
       }
     } else {
       finalSlug = submittedSlug || baseSlug;
