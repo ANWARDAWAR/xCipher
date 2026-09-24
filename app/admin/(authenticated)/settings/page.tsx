@@ -119,12 +119,12 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
                 <h2 style={{ fontSize: "16px" }}>Profile Preview</h2>
                 <div style={{ display: "flex", gap: "12px" }}>
                   {author.slug ? (
-                    <Link href={`/author/${author.slug}`} target="_blank" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
+                    <Link href={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/author/${author.slug}`} target="_blank" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
                       View Live
                     </Link>
                   ) : (
                     <span className="btn btn-ghost opacity-50 cursor-not-allowed" style={{ padding: "6px 12px", borderRadius: "6px" }} title="Save your profile first to view it live.">
-                      View Live
+                      View Live (Save Profile First)
                     </span>
                   )}
                   <Link href="/admin/settings?tab=profile&edit=true" className="btn btn-primary" style={{ padding: "6px 12px", borderRadius: "6px" }}>
@@ -156,10 +156,10 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
                 <div style={{ display: "flex", gap: "12px" }}>
                   {!author || !author.slug ? (
                     <span className="btn btn-ghost opacity-50 cursor-not-allowed" style={{ padding: "6px 12px", borderRadius: "6px" }} title="Save your profile first to view it live.">
-                      View Live
+                      View Live (Save Profile First)
                     </span>
                   ) : (
-                    <Link href={`/author/${author.slug}`} target="_blank" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
+                    <Link href={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/author/${author.slug}`} target="_blank" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
                       View Live
                     </Link>
                   )}
