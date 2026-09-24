@@ -1104,7 +1104,7 @@ export default function ArticleEditor({
       <div className="flex flex-row flex-1 w-full relative">
 
         {/* ── Main Writing Canvas (Left/Center) ── */}
-        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden px-4 sm:px-10 py-8">
+        <main className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-10 py-8">
           <div className="max-w-3xl mx-auto mb-32 space-y-4">
             
             {/* Templates Utility */}
