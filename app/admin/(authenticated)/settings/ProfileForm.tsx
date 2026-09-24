@@ -444,7 +444,7 @@ export default function ProfileForm({
   const completenessPercent = Math.round((completeness / 8) * 100);
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-4xl mx-auto pb-32">
+    <form onSubmit={handleSubmit} className="w-full max-w-4xl mx-auto pb-32 overflow-hidden max-w-full">
       {editingOtherName && (
         <div
           className="mb-8 p-4 rounded-xl bg-[var(--surface-2)] border border-[var(--line)] text-sm text-[var(--ink)] flex items-center gap-3"
@@ -544,8 +544,7 @@ export default function ProfileForm({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
-              className="hidden"
+              accept="image/*" className="max-w-full hidden"
               onChange={handleFileSelect}
             />
           </div>
@@ -571,7 +570,7 @@ export default function ProfileForm({
               </summary>
               <div className="mt-2 flex flex-col gap-1.5 max-w-md">
                 <input
-                  type="url"
+              type="url"
                   value={avatar}
                   onChange={(e) => {
                     setAvatar(e.target.value);
@@ -579,8 +578,7 @@ export default function ProfileForm({
                     setAvatarPreview(null);
                     setCroppedAvatarFile(null);
                   }}
-                  placeholder="https://example.com/your-avatar.jpg"
-                  className="w-full bg-[var(--surface-2)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
+                  placeholder="https://example.com/your-avatar.jpg" className="max-w-full w-full bg-[var(--surface-2)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
                 />
                 <span className="text-[11px] text-[var(--muted)]">
                   Note: URLs from social networks often expire. Uploading ensures permanence.
@@ -601,8 +599,7 @@ export default function ProfileForm({
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              placeholder="e.g. Jane Doe"
-              className="w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
+              placeholder="e.g. Jane Doe" className="max-w-full w-full max-w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
             />
           </div>
 
@@ -615,8 +612,7 @@ export default function ProfileForm({
               value={headline}
               onChange={(e) => setHeadline(e.target.value)}
               maxLength={100}
-              placeholder="e.g. Senior Tech Correspondent"
-              className="w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
+              placeholder="e.g. Senior Tech Correspondent" className="max-w-full w-full max-w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
             />
           </div>
 
@@ -628,8 +624,7 @@ export default function ProfileForm({
               type="text"
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
-              placeholder="e.g. jane-doe"
-              className="w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
+              placeholder="e.g. jane-doe" className="max-w-full w-full max-w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
             />
           </div>
 
@@ -655,7 +650,7 @@ export default function ProfileForm({
       </div>
 
       {/* ── Section: Editorial Credentials ───────────── */}
-      <div className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl p-6 sm:p-8 mb-8 shadow-sm">
+      <div className="max-w-full bg-[var(--surface)] border border-[var(--line)] rounded-2xl p-6 sm:p-8 mb-8 shadow-sm">
         <div className="flex items-center gap-2.5 pb-4 mb-6 border-b border-[var(--line)]">
           <Briefcase className="w-4 h-4 text-[var(--accent)]" />
           <h3 className="text-base font-semibold text-[var(--ink)]">Editorial Credentials</h3>
@@ -684,12 +679,11 @@ export default function ProfileForm({
             ))}
           </div>
           <input
-            type="text"
+              type="text"
             value={beatInput}
             onChange={(e) => setBeatInput(e.target.value)}
             onKeyDown={addBeat}
-            placeholder="Type a beat (e.g. AI, Cybersecurity) and press Enter or comma..."
-            className="w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
+            placeholder="Type a beat (e.g. AI, Cybersecurity) and press Enter or comma..." className="max-w-full w-full max-w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
           />
         </div>
 
@@ -702,8 +696,7 @@ export default function ProfileForm({
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g. San Francisco, CA"
-              className="w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
+              placeholder="e.g. San Francisco, CA" className="max-w-full w-full max-w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
             />
           </div>
 
@@ -711,10 +704,9 @@ export default function ProfileForm({
             <div className="flex items-center md:pt-6">
               <label className="flex items-center gap-2.5 cursor-pointer text-sm font-medium text-[var(--ink)]">
                 <input
-                  type="checkbox"
+              type="checkbox"
                   checked={verifiedTitle}
-                  onChange={(e) => setVerifiedTitle(e.target.checked)}
-                  className="w-4 h-4 accent-[var(--accent)] rounded"
+                  onChange={(e) => setVerifiedTitle(e.target.checked)} className="max-w-full w-4 h-4 accent-[var(--accent)] rounded"
                 />
                 <span>Verified Editorial Title</span>
                 <span className="text-xs text-[var(--warning)] font-normal">(Admin only)</span>
@@ -730,11 +722,10 @@ export default function ProfileForm({
             Ethical Disclosure (Optional)
           </label>
           <textarea
-            rows={2}
+              rows={2}
             value={disclosure}
             onChange={(e) => setDisclosure(e.target.value)}
-            placeholder="e.g. Holds shares in XYZ Corp. or actively advises startup ABC."
-            className="w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
+            placeholder="e.g. Holds shares in XYZ Corp. or actively advises startup ABC." className="max-w-full w-full max-w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
           />
         </div>
 
@@ -743,11 +734,10 @@ export default function ProfileForm({
             PGP Public Key (Optional)
           </label>
           <textarea
-            rows={4}
+              rows={4}
             value={pgpPublicKey}
             onChange={(e) => setPgpPublicKey(e.target.value)}
-            placeholder="-----BEGIN PGP PUBLIC KEY BLOCK-----..."
-            className="w-full font-mono bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-[10px] focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
+            placeholder="-----BEGIN PGP PUBLIC KEY BLOCK-----..." className="max-w-full w-full font-mono bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-[10px] focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
           />
           <p className="mt-2 text-xs text-red-500 font-[family:var(--f-body)]">
             Your public PGP key for secure communications and encrypted tips. Do NOT paste your private key.
@@ -767,12 +757,11 @@ export default function ProfileForm({
             Short Overview
           </label>
           <textarea
-            rows={2}
+              rows={2}
             maxLength={150}
             value={overview}
             onChange={(e) => setOverview(e.target.value)}
-            placeholder="e.g. Contributing writer covering AI, cryptography, and open source systems."
-            className="w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
+            placeholder="e.g. Contributing writer covering AI, cryptography, and open source systems." className="max-w-full w-full max-w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
           />
           <div className="flex justify-between items-center text-[11.5px] text-[var(--muted)] mt-1.5">
             <span>Displayed at the bottom of your articles.</span>
@@ -822,8 +811,7 @@ export default function ProfileForm({
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="public@example.com"
-              className="w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
+              placeholder="public@example.com" className="max-w-full w-full max-w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
             />
           </div>
 
@@ -835,18 +823,16 @@ export default function ProfileForm({
               type="url"
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
-              placeholder="https://yoursite.com"
-              className="w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
+              placeholder="https://yoursite.com" className="max-w-full w-full max-w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
             />
           </div>
         </div>
 
         <label className="flex items-center gap-2.5 cursor-pointer text-sm font-medium text-[var(--ink)] mb-6">
           <input
-            type="checkbox"
+              type="checkbox"
             checked={publicContact}
-            onChange={(e) => setPublicContact(e.target.checked)}
-            className="w-4 h-4 accent-[var(--accent)] rounded"
+            onChange={(e) => setPublicContact(e.target.checked)} className="max-w-full w-4 h-4 accent-[var(--accent)] rounded"
           />
           <span>Show email and contact forms on public profile</span>
         </label>
@@ -870,11 +856,10 @@ export default function ProfileForm({
                   ))}
                 </select>
                 <input
-                  type="url"
+              type="url"
                   value={social.url}
                   onChange={(e) => updateSocial(index, "url", e.target.value)}
-                  placeholder={`https://${social.platform.toLowerCase()}.com/username`}
-                  className="flex-1 bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
+                  placeholder={`https://${social.platform.toLowerCase()}.com/username`} className="max-w-full flex-1 bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
                 />
                 <button
                   type="button"

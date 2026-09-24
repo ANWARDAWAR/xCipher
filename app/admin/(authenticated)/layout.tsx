@@ -72,9 +72,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <Link href="/admin" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
           <Logo variant="brand" className="text-[19px]" />
         </Link>
-        <span className="cs-tag">Editorial Console</span>
+        <span className="cs-tag hidden sm:inline-flex">Editorial Console</span>
         <span className="spacer"></span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:gap-4">
           <NotificationBell items={notifications} unreadCount={unreadCount} />
           <ThemeToggle />
           <a 
@@ -84,7 +84,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             rel="noopener noreferrer"
             title="Open public website in a new tab"
           >
-            <span>View site</span>
+            <span className="hidden sm:inline">View site</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
               <polyline points="15 3 21 3 21 9" />

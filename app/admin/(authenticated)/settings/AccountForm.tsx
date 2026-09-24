@@ -67,7 +67,7 @@ export default function AccountForm({ user }: { user: any }) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px", maxWidth: "100%", overflow: "hidden" }}>
       
       {/* ── Section: Password Management ────────────────────────── */}
       <div className="cs-settings-section">
@@ -80,7 +80,7 @@ export default function AccountForm({ user }: { user: any }) {
             <div className="cs-settings-full">
               <label className="ed-label">Current Password</label>
               <div style={{ position: "relative" }}>
-                <input type={showCurrent ? "text" : "password"} className="ed-input [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_50px_#121212_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]" style={{ paddingRight: "40px" }} value={password} onChange={e => setPassword(e.target.value)} required />
+                <input type={showCurrent ? "text" : "password"} className="ed-input max-w-full [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_50px_#121212_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]" style={{ paddingRight: "40px" }} value={password} onChange={e => setPassword(e.target.value)} required />
                 <button type="button" onClick={() => setShowCurrent(!showCurrent)} style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)" }}>
                   {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -89,7 +89,7 @@ export default function AccountForm({ user }: { user: any }) {
             <div>
               <label className="ed-label">New Password</label>
               <div style={{ position: "relative" }}>
-                <input type={showNew ? "text" : "password"} className="ed-input [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_50px_#121212_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]" style={{ paddingRight: "40px" }} value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} />
+                <input type={showNew ? "text" : "password"} className="ed-input max-w-full [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_50px_#121212_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]" style={{ paddingRight: "40px" }} value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} />
                 <button type="button" onClick={() => setShowNew(!showNew)} style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)" }}>
                   {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -98,7 +98,7 @@ export default function AccountForm({ user }: { user: any }) {
             <div>
               <label className="ed-label">Confirm New Password</label>
               <div style={{ position: "relative" }}>
-                <input type={showConfirm ? "text" : "password"} className="ed-input [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_50px_#121212_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]" style={{ paddingRight: "40px" }} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={8} />
+                <input type={showConfirm ? "text" : "password"} className="ed-input max-w-full [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_50px_#121212_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:white]" style={{ paddingRight: "40px" }} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={8} />
                 <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)" }}>
                   {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
