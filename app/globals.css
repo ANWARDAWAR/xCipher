@@ -7024,6 +7024,7 @@ body.is-article .prose code {
 .tiptap table th,
 .tiptap table td {
     padding: 1.25rem 1.5rem !important; /* Spacious word-processor padding */
+    min-width: 120px !important; /* Ensure columns don't squish */
     white-space: normal !important;
     word-break: normal !important;
     vertical-align: middle !important;
@@ -7047,6 +7048,22 @@ body.is-article .prose code {
     letter-spacing: 0.06em !important;
     font-family: var(--f-ui, sans-serif) !important;
     font-size: 0.75rem !important;
+}
+
+/* 4. Mobile Responsive Tables */
+@media (max-width: 640px) {
+    .prose table, .tiptap table {
+        display: block !important;
+        overflow-x: auto !important;
+        width: 100% !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    .prose table th,
+    .prose table td,
+    .tiptap table th,
+    .tiptap table td {
+        white-space: nowrap !important;
+    }
 }
 
 /* Clean last row border */
