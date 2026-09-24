@@ -118,10 +118,14 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                 <h2 style={{ fontSize: "16px" }}>Profile Preview</h2>
                 <div style={{ display: "flex", gap: "12px" }}>
-                  {author.slug && (
+                  {author.slug ? (
                     <Link href={`/author/${author.slug}`} target="_blank" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
                       View Live
                     </Link>
+                  ) : (
+                    <span className="btn btn-ghost opacity-50 cursor-not-allowed" style={{ padding: "6px 12px", borderRadius: "6px" }} title="Save your profile first to view it live.">
+                      View Live
+                    </span>
                   )}
                   <Link href="/admin/settings?tab=profile&edit=true" className="btn btn-primary" style={{ padding: "6px 12px", borderRadius: "6px" }}>
                     Edit Profile
@@ -149,11 +153,22 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                 <h2 style={{ fontSize: "16px" }}>Edit Profile</h2>
-                {author && (
-                  <Link href="/admin/settings?tab=profile" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
-                    Cancel
-                  </Link>
-                )}
+                <div style={{ display: "flex", gap: "12px" }}>
+                  {!author || !author.slug ? (
+                    <span className="btn btn-ghost opacity-50 cursor-not-allowed" style={{ padding: "6px 12px", borderRadius: "6px" }} title="Save your profile first to view it live.">
+                      View Live
+                    </span>
+                  ) : (
+                    <Link href={`/author/${author.slug}`} target="_blank" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
+                      View Live
+                    </Link>
+                  )}
+                  {author && (
+                    <Link href="/admin/settings?tab=profile" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
+                      Cancel
+                    </Link>
+                  )}
+                </div>
               </div>
               <ProfileForm
                 user={dbUser || user}

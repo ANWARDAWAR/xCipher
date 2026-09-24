@@ -63,7 +63,7 @@ export default function SiteFooter() {
             <Link href="/page/advertising">Advertising & Partnerships</Link>
             <Link href="/page/careers">Careers</Link>
             <Link href="/page/media-kit">Media Kit</Link>
-            <Link href="/page/newsletters">Newsletters</Link>
+            <Link href="/page/newsletters#subscribe">Newsletters</Link>
             <Link href="/feed.xml">RSS Feed</Link>
           </div>
           <div>

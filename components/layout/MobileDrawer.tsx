@@ -126,7 +126,7 @@ export default function MobileDrawer() {
             <ul className="flex flex-col pl-4 border-l-2 border-[var(--line)] ml-4 mt-1 mb-2 space-y-1">
               <li><Link href="/page/media-kit" className="block py-1.5 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Media Kit</Link></li>
               <li><Link href="/page/careers" className="block py-1.5 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Careers</Link></li>
-              <li><Link href="/page/newsletters" className="block py-1.5 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Newsletters</Link></li>
+              <li><Link href="/page/newsletters#subscribe" className="block py-1.5 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Newsletters</Link></li>
               <li><Link href="/page/editorial-standards" className="block py-1.5 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Editorial Standards</Link></li>
               <li><Link href="/page/privacy-policy" className="block py-1.5 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Privacy Policy</Link></li>
               <li><Link href="/page/terms-of-use" className="block py-1.5 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors">Terms of Use</Link></li>
