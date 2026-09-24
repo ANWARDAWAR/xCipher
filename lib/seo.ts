@@ -1,3 +1,5 @@
+import { getImgSrc } from "@/lib/utils";
+
 export const siteConfig = {
   name: "xSypher",
   description: "xSypher is an independent technology publication covering AI, cybersecurity, gadgets, software, programming, startups, gaming and the tech business.",
@@ -76,7 +78,7 @@ export function generateNewsArticleJsonLd(article: any) {
     "@type": "NewsArticle",
     "headline": article.seoTitle || article.title,
     "description": article.seoDesc || article.deck,
-    "image": article.img ? [article.img] : undefined,
+    "image": article.img ? [getImgSrc(article.img, 1200, 630)] : undefined,
     "datePublished": article.publishedAt ? new Date(article.publishedAt).toISOString() : new Date(article.createdAt).toISOString(),
     "dateModified": new Date(article.updatedAt).toISOString(),
     "author": article.authorModel ? [{

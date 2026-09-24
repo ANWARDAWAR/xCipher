@@ -39,6 +39,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
+  const staticPages: MetadataRoute.Sitemap = [
+    { url: `${siteConfig.url}/page/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${siteConfig.url}/page/contact`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${siteConfig.url}/page/newsletters`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${siteConfig.url}/series`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.7 },
+  ];
+
   return [
     {
       url: siteConfig.url,
@@ -46,6 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'hourly',
       priority: 1.0,
     },
+    ...staticPages,
     ...articleEntries,
     ...categoryEntries,
     ...authorEntries,
