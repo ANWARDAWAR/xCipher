@@ -7204,28 +7204,6 @@ body.is-article .prose pre {
 }
 
 
-/* Ultimate Toast Centering Override — mobile bottom, desktop top, always centered */
-div.toast {
-  position: fixed !important;
-  z-index: 99999 !important;
-  left: 50% !important;
-  right: auto !important;
-  top: auto !important;
-  transform: translateX(-50%) !important;
-  margin: 0 !important;
-  width: calc(100% - 32px) !important;
-  max-width: 400px !important;
-  bottom: 24px !important;
-}
-@media (min-width: 640px) {
-  div.toast {
-    bottom: auto !important;
-    top: 24px !important;
-    right: auto !important;
-    width: auto !important;
-    min-width: 300px !important;
-  }
-}
 
 /* 1. Fix Interline / Paragraph Spacing on Paste */
 .tiptap p {
@@ -7266,7 +7244,7 @@ div.toast {
 }
 
 /* Prevent right border clipping when table overflows its container */
-.tableWrapper, .table-wrapper, .overflow-x-auto:has(table) { padding-right: 1px; padding-left: 1px; }
+.table-wrapper, .overflow-x-auto { padding-right: 1px; padding-left: 1px; }
 
 /* Fix Interline Spacing */
 .tiptap p:empty {
