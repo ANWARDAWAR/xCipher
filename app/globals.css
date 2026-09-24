@@ -4160,20 +4160,8 @@ select.ed-input {
 }
 
 /* ============ TOAST / FOOTER / MISC ============ */
-/* #toast positioning is fully controlled by Tailwind utility classes set in
-   lib/utils.ts. We only keep visual (non-positional) defaults here so the ID
-   selector does NOT override the class-based layout Tailwind provides. */
+/* #toast positioning is fully controlled by the bulletproof CSS at the end of the file */
 #toast {
-    /* Positioning properties intentionally UNSET — Tailwind !fixed / !left-1/2
-       etc. on the element handle all placement. */
-    position: unset;
-    top: unset;
-    right: unset;
-    bottom: unset;
-    left: unset;
-    transform: unset;
-    /* Visual defaults (no conflicts with positioning) */
-    z-index: 99999;
     font: 600 14px/1.4 var(--f-ui);
     box-shadow: var(--shadow-2);
     opacity: 0;
@@ -7314,3 +7302,23 @@ body.is-article .prose pre {
 .tiptap pre code.language-sh::before, .prose pre code.language-sh::before { content: "Shell"; }
 .tiptap pre code.language-json::before, .prose pre code.language-json::before { content: "JSON"; }
 
+#toast, .toast {
+  position: fixed !important;
+  z-index: 99999 !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  bottom: 24px !important;
+  top: auto !important;
+  width: calc(100% - 32px) !important;
+  max-width: 400px !important;
+  margin: 0 !important;
+  display: flex !important;
+}
+@media (min-width: 640px) {
+  #toast, .toast {
+    bottom: auto !important;
+    top: 24px !important;
+    width: max-content !important;
+    min-width: 300px !important;
+  }
+}

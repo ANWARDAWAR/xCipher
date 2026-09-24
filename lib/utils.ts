@@ -60,7 +60,7 @@ const existing = document.getElementById("toast");
   if (resolved === 'error') bgClass = "bg-red-950 border-red-500/50";
   if (resolved === 'success') bgClass = "bg-green-950 border-green-500/50";
 
-  const classes = "!fixed !z-[99999] !left-1/2 !-translate-x-1/2 !bottom-6 w-[calc(100%-32px)] max-w-sm sm:!bottom-auto sm:!top-6 sm:!w-auto sm:min-w-[300px] flex items-center gap-3 text-white shadow-2xl rounded-2xl px-6 py-4 border transition-all duration-300".split(" ");
+  const classes = ["toast", "show", "flex", "items-center", "gap-3", "text-white", "shadow-2xl", "rounded-2xl", "px-6", "py-4", "border", "transition-all", "duration-300"];
   if (variant === "premium") classes.push("toast-premium");
   
   t.className = `${classes.join(' ')} ${bgClass}`;
