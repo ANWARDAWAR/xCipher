@@ -4160,32 +4160,29 @@ select.ed-input {
 }
 
 /* ============ TOAST / FOOTER / MISC ============ */
+/* #toast positioning is fully controlled by Tailwind utility classes set in
+   lib/utils.ts. We only keep visual (non-positional) defaults here so the ID
+   selector does NOT override the class-based layout Tailwind provides. */
 #toast {
-    position: fixed;
-    top: 16px;
-    right: 16px;
-    z-index: 9999;
-    background: var(--surface);
-    color: var(--ink);
-    border: 1px solid var(--line);
+    /* Positioning properties intentionally UNSET — Tailwind !fixed / !left-1/2
+       etc. on the element handle all placement. */
+    position: unset;
+    top: unset;
+    right: unset;
+    bottom: unset;
+    left: unset;
+    transform: unset;
+    /* Visual defaults (no conflicts with positioning) */
+    z-index: 99999;
     font: 600 14px/1.4 var(--f-ui);
-    padding: 14px 20px;
-    border-radius: var(--r-md);
     box-shadow: var(--shadow-2);
     opacity: 0;
     pointer-events: none;
-    transform: translate(16px, 0);
     transition: opacity .25s, transform .25s;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    max-width: 90vw;
-    width: max-content;
 }
 
 #toast.show {
     opacity: 1;
-    transform: translate(0, 0);
     pointer-events: auto;
 }
 
@@ -5497,22 +5494,8 @@ pre:hover .code-copy-btn {
     color: var(--accent);
 }
 
-@media (max-width: 640px) {
-    #toast {
-        top: auto;
-        bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-        left: 16px;
-        right: 16px;
-        width: auto;
-        max-width: none;
-        /* Slides up from the bottom edge, matching its new anchor. */
-        transform: translate(0, 16px);
-    }
-
-    #toast.show {
-        transform: translate(0, 0);
-    }
-}
+/* Mobile #toast overrides removed — Tailwind responsive classes
+   (sm:!bottom-auto sm:!top-6 etc.) in lib/utils.ts handle this. */
 
 /* ---- Avatars: guarantee a circle ------------------------------------------
    The avatar rules already set border-radius:50% and object-fit:cover, which
@@ -7282,7 +7265,8 @@ div.toast {
   line-height: 1.7 !important;
 }
 
-.tableWrapper, .table-wrapper { padding-right: 1px; }
+/* Prevent right border clipping when table overflows its container */
+.tableWrapper, .table-wrapper, .overflow-x-auto:has(table) { padding-right: 1px; padding-left: 1px; }
 
 /* Fix Interline Spacing */
 .tiptap p:empty {

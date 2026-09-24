@@ -61,10 +61,11 @@ const existing = document.getElementById("toast");
   if (resolved === 'success') bgClass = "bg-green-950 border-green-500/50";
 
   const classes = [
-    "toast", "show", "!fixed", "z-[9999]", 
+    "toast", "show", "!fixed", "!z-[99999]", 
     "!left-1/2", "!-translate-x-1/2", 
+    "!right-auto", "!top-auto",
     "!bottom-6", "!w-[calc(100%-32px)]", "max-w-sm", 
-    "sm:!bottom-auto", "sm:!top-6", "sm:!w-auto", "sm:!min-w-[300px]", 
+    "sm:!bottom-auto", "sm:!top-6", "sm:!right-auto", "sm:!w-auto", "sm:!min-w-[300px]", 
     "flex", "items-center", "gap-3", "text-white", "shadow-2xl", "rounded-2xl", "px-6", "py-4", "border", 
     "transition-all", "duration-300"
   ];
