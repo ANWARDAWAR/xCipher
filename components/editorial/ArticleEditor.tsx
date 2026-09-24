@@ -1218,7 +1218,7 @@ export default function ArticleEditor({
         )}
 
         {/* ── Document Inspector Rail (Right Sidebar) ── */}
-        <aside className={`fixed inset-y-0 right-0 z-50 w-full max-w-[360px] lg:w-80 xl:w-96 shrink-0 border-l border-[var(--line)] bg-[var(--surface)] p-6 sm:p-8 transform transition-transform duration-300 ease-in-out lg:static lg:transform-none lg:translate-x-0 lg:block lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto ${isInspectorOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <aside className={`fixed inset-y-0 right-0 z-50 w-full max-w-[360px] lg:w-80 xl:w-96 shrink-0 border-l border-[var(--line)] bg-[var(--surface)] p-6 sm:p-8 transform transition-transform duration-300 ease-in-out lg:static lg:transform-none lg:translate-x-0 lg:block lg:sticky lg:z-30 lg:top-[112px] lg:h-[calc(100vh-112px)] lg:overflow-y-auto ${isInspectorOpen ? 'translate-x-0' : 'translate-x-full'}`}>
           <div className="ed-rail-head flex items-center justify-between lg:hidden mb-6">
             <h2 className="text-lg font-bold text-[var(--ink)]">Settings</h2>
             <button
