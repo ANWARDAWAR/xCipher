@@ -3235,7 +3235,9 @@ textarea.f-input {
     flex: 1;
     display: grid;
     grid-template-columns: 1fr;
-    overflow: hidden
+    /* overflow:hidden removed — it was breaking position:sticky on EditorToolbar.
+       .cs-main handles its own overflow-y:auto scroll context. */
+    min-height: 0;
 }
 
 @media(min-width:900px) {
@@ -7219,11 +7221,13 @@ body.is-article .prose pre {
 }
 
 
-/* Ultimate Toast Centering Override */
+/* Ultimate Toast Centering Override — mobile bottom, desktop top, always centered */
 div.toast {
   position: fixed !important;
   z-index: 99999 !important;
   left: 50% !important;
+  right: auto !important;
+  top: auto !important;
   transform: translateX(-50%) !important;
   margin: 0 !important;
   width: calc(100% - 32px) !important;
@@ -7234,6 +7238,7 @@ div.toast {
   div.toast {
     bottom: auto !important;
     top: 24px !important;
+    right: auto !important;
     width: auto !important;
     min-width: 300px !important;
   }
@@ -7299,6 +7304,11 @@ div.toast {
 .tiptap th, .tiptap td, .prose th, .prose td {
   border: 1px solid var(--line) !important;
   padding: 8px 12px !important;
+}
+/* Guarantee the rightmost column always has its right border rendered */
+.tiptap th:last-child, .tiptap td:last-child,
+.prose th:last-child, .prose td:last-child {
+  border-right: 1px solid var(--line) !important;
 }
 .tiptap th, .prose th {
   background-color: var(--surface-2) !important;
