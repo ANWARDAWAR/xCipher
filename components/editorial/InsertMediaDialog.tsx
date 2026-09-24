@@ -25,6 +25,7 @@ export type MediaKind = "image" | "video";
 
 interface Props {
   kind: MediaKind;
+  initialImage?: { src?: string; alt?: string; caption?: string; credit?: string } | null;
   open: boolean;
   onClose: () => void;
   onInsertImage: (v: { src: string; alt: string; caption: string; credit: string }) => void;
@@ -54,18 +55,18 @@ function imageError(raw: string): string | null {
   return null;
 }
 
-export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsertVideo }: Props) {
-  const [src, setSrc] = useState("");
-  const [alt, setAlt] = useState("");
-  const [caption, setCaption] = useState("");
-  const [credit, setCredit] = useState("");
+export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsertVideo, initialImage }: Props) {
+  const [src, setSrc] = useState(initialImage?.src || "");
+  const [alt, setAlt] = useState(initialImage?.alt || "");
+  const [caption, setCaption] = useState(initialImage?.caption || "");
+  const [credit, setCredit] = useState(initialImage?.credit || "");
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
 
   // Upload leads for images: it is the path most authors want, and the URL tab
   // remains for stock photography and anything already hosted elsewhere. A
   // video has nothing to upload, so that dialog keeps its single field.
-  const [tab, setTab] = useState<"upload" | "url">("upload");
+  const [tab, setTab] = useState<"upload" | "url">(initialImage?.src ? "url" : "upload");
 
   const firstFieldRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -165,7 +166,7 @@ export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsert
         <div className="imd-head">
           <h2 id={titleId} className="imd-title">
             <Icon className="w-4 h-4" aria-hidden="true" />
-            {isImage ? "Insert image" : "Insert video"}
+            {isImage ? (initialImage ? "Update Image" : "Insert image") : "Insert video"}
           </h2>
           <button type="button" onClick={onClose} className="imd-close" aria-label="Close">
             <X className="w-4 h-4" aria-hidden="true" />
@@ -308,7 +309,7 @@ export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsert
         <div className="imd-foot">
           <button type="button" onClick={onClose} className="imd-btn">Cancel</button>
           <button type="button" onClick={submit} className="imd-btn imd-btn-primary">
-            {isImage ? "Insert image" : "Insert video"}
+            {isImage ? (initialImage ? "Update Image" : "Insert image") : "Insert video"}
           </button>
         </div>
       </div>

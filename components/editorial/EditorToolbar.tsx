@@ -36,6 +36,7 @@ function ToolbarButton({ isActive = false, onClick, disabled = false, icon: Icon
   return (
     <button
       type="button"
+      onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       disabled={disabled}
       title={title}
@@ -79,22 +80,29 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
       alert('Please enter a valid URL.');
       return;
     }
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+    
+    if (editor.state.selection.empty) {
+      editor.chain().focus().insertContent(`[${url}](${url}) `).run();
+    } else {
+      editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+    }
   }, [editor]);
 
   // Media insertion moved out of window.prompt and into a real dialog: the
   // prompt chain could not be cancelled partway, validated nothing, showed no
   // preview, and was unusable on touch.
   const [mediaKind, setMediaKind] = useState<MediaKind | null>(null);
+  const [initialMedia, setInitialMedia] = useState<any>(null);
   // Bumped each time the dialog opens so it remounts with empty fields. This is
   // what lets InsertMediaDialog drop its reset-on-open effect: React discards
   // the previous instance's state instead of the component clearing it by hand
   // and forcing an extra render.
   const [mediaSession, setMediaSession] = useState(0);
 
-  const openMedia = (kind: MediaKind) => {
+  const openMedia = (kind: MediaKind, currentAttrs?: any) => {
     setMediaSession((n) => n + 1);
     setMediaKind(kind);
+    setInitialMedia(currentAttrs || null);
   };
 
   const insertImage = useCallback(
@@ -281,8 +289,15 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
       {/* Group 4: Media & Embeds */}
       <ToolbarButton
         icon={ImagePlus}
-        onClick={() => openMedia('image')}
-        title="Insert image"
+        onClick={() => {
+          if (editor.isActive('figure')) {
+            openMedia('image', editor.getAttributes('figure'));
+          } else {
+            openMedia('image');
+          }
+        }}
+        isActive={editor.isActive('figure')}
+        title={editor.isActive('figure') ? "Update image" : "Insert image"}
       />
       <ToolbarButton
         icon={MonitorPlay}
@@ -333,6 +348,7 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
       <InsertMediaDialog
         key={mediaSession}
         kind={mediaKind ?? 'image'}
+        initialImage={initialMedia}
         open={mediaKind !== null}
         onClose={() => setMediaKind(null)}
         onInsertImage={insertImage}
