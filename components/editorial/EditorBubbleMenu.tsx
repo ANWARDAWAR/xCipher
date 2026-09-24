@@ -16,7 +16,9 @@ import {
   X,
   Subscript as SubscriptIcon,
   Superscript as SuperscriptIcon,
+  ImagePlus
 } from "lucide-react";
+import { InsertMediaDialog } from "./InsertMediaDialog";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Selection formatting menu
@@ -91,6 +93,23 @@ export function EditorBubbleMenu({ editor }: Props) {
   const [isTouch, setIsTouch] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [mediaSession, setMediaSession] = useState(0);
+  const [mediaKind, setMediaKind] = useState<"image" | "video" | null>(null);
+  const [initialMedia, setInitialMedia] = useState<any>(null);
+
+  const openMedia = useCallback((kind: "image", currentAttrs?: any) => {
+    setMediaSession((n) => n + 1);
+    setMediaKind(kind);
+    setInitialMedia(currentAttrs || null);
+  }, []);
+
+  const insertImage = useCallback(
+    (v: { src: string; alt: string; caption: string; credit: string }) => {
+      (editor?.chain().focus() as any).setFigure(v).run();
+    },
+    [editor]
+  );
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       setIsTouch("ontouchstart" in window || navigator.maxTouchPoints > 0);
@@ -142,21 +161,29 @@ export function EditorBubbleMenu({ editor }: Props) {
   if (!editor || isTouch) return null;
 
   return (
+    <>
     <BubbleMenu
       editor={editor}
       options={{ placement: "top", offset: 8 }}
       shouldShow={({ editor: ed, from, to }) => {
-        // Never over an atom such as a video: the marks would not apply and the
-        // menu would float over the block with nothing useful on it.
-        if (ed.isActive("youtubeEmbed") || ed.isActive("figure")) return false;
-        // Inside a code block the marks are meaningless too.
+        if (ed.isActive("youtubeEmbed")) return false;
         if (ed.isActive("codeBlock")) return false;
+        if (ed.isActive("figure")) return true;
         if (linkMode) return true;
         return from !== to;
       }}
       className="eb-menu"
     >
-      {linkMode ? (
+      {editor.isActive("figure") ? (
+        <div className="eb-row" role="toolbar" aria-label="Image options">
+          <MarkButton
+            icon={ImagePlus}
+            label="Edit Image Attributes"
+            active={false}
+            onClick={() => openMedia('image', editor.getAttributes('figure'))}
+          />
+        </div>
+      ) : linkMode ? (
         <div className="eb-link">
           <input
             ref={inputRef}
@@ -267,5 +294,15 @@ export function EditorBubbleMenu({ editor }: Props) {
         </div>
       )}
     </BubbleMenu>
+      <InsertMediaDialog
+        key={mediaSession}
+        kind={mediaKind ?? 'image'}
+        open={mediaKind !== null}
+        onClose={() => setMediaKind(null)}
+        onInsertImage={insertImage}
+        onInsertVideo={() => {}}
+        initialImage={initialMedia}
+      />
+    </>
   );
 }

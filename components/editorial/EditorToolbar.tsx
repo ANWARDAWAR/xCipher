@@ -82,7 +82,7 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
     }
     
     if (editor.state.selection.empty) {
-      editor.chain().focus().insertContent(`[${url}](${url}) `).run();
+      editor.chain().focus().insertContent('[' + url + '](' + url + ')').run();
     } else {
       editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
     }
@@ -123,7 +123,7 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
 
   return (
     <div 
-      className="sticky top-0 z-50 bg-[var(--surface)] border-b border-[var(--line)] py-2 md:mb-8 flex md:flex-wrap items-center gap-1 mx-auto w-full overflow-x-auto overflow-y-hidden md:max-w-3xl px-2 md:px-0 shadow-md md:shadow-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+      className="sticky top-0 z-40 bg-[var(--surface)] border-b border-[var(--line)] py-2 md:mb-8 flex md:flex-wrap items-center gap-1 mx-auto w-full overflow-x-auto overflow-y-hidden md:max-w-3xl px-2 md:px-0 shadow-md md:shadow-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
       role="toolbar" 
       aria-label="Formatting"
     >

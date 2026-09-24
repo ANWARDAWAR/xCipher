@@ -7276,3 +7276,5 @@ div.toast {
   font-size: 1em !important;
   line-height: 1.7 !important;
 }
+
+.tableWrapper, .table-wrapper { padding-right: 1px; }
