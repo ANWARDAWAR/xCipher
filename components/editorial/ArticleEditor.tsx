@@ -898,7 +898,7 @@ export default function ArticleEditor({
             const words = editor.storage.characterCount.words();
             const isBelowMin = words < 50;
             return (
-              <span className={`text-xs ml-2 font-medium flex items-center gap-1 ${isBelowMin ? 'text-[var(--warn)]' : 'text-[var(--muted)] hidden md:flex'}`}>
+              <span className={`text-xs ml-2 font-medium flex items-center gap-1 ${isBelowMin ? 'text-[var(--warn)] hidden sm:flex' : 'text-[var(--muted)] hidden md:flex'}`}>
                 Word count: {words}
                 {isBelowMin && <span className="hidden sm:inline">(Min 50)</span>}
               </span>
@@ -961,10 +961,10 @@ export default function ArticleEditor({
                   setActiveAction(null);
                 }
               })}
-              className="px-3.5 py-1.5 text-sm font-medium rounded-md text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-50 flex items-center gap-2 border border-transparent hover:border-[var(--line)]"
+              className="px-2 sm:px-3.5 py-1.5 text-sm font-medium rounded-md text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-50 flex items-center gap-2 border border-transparent hover:border-[var(--line)]"
             >
               {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-              <span>{busy ? "Saving\u2026" : "Save Draft"}</span>
+              <span className="hidden sm:inline">{busy ? "Saving\u2026" : "Save Draft"}</span>
             </button>
           )}
 
@@ -985,7 +985,7 @@ export default function ArticleEditor({
                   setActiveAction(null);
                 }
               })}
-              className="btn-premium py-1.5 px-4 text-sm font-semibold rounded-md flex items-center justify-center gap-2 min-w-[140px] transition-all duration-300 disabled:opacity-70"
+              className="btn-premium py-1.5 px-4 text-sm font-semibold rounded-md flex items-center justify-center gap-2 min-w-[90px] sm:min-w-[140px] transition-all duration-300 disabled:opacity-70"
             >
               {activeAction === "success" ? (
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -1019,7 +1019,7 @@ export default function ArticleEditor({
                     setActiveAction(null);
                   }
                 })}
-                className="btn-premium py-1.5 px-4 text-sm font-semibold rounded-md flex items-center justify-center gap-2 min-w-[140px] transition-all duration-300 disabled:opacity-70"
+                className="btn-premium py-1.5 px-4 text-sm font-semibold rounded-md flex items-center justify-center gap-2 min-w-[90px] sm:min-w-[140px] transition-all duration-300 disabled:opacity-70"
               >
                 {activeAction === "success" ? (
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>

@@ -33,15 +33,7 @@ export function showToast(msg: string, type?: 'default' | 'success' | 'error' | 
 
   const resolved = type ?? inferToastType(msg);
   
-  let container = document.getElementById("toast-container");
-  if (!container) {
-    container = document.createElement("div");
-    container.id = "toast-container";
-    container.className = "fixed inset-0 z-[99999] pointer-events-none flex flex-col justify-end items-center sm:items-end p-4 pb-4 sm:pb-4";
-    document.body.appendChild(container);
-  }
-
-  const existing = document.getElementById("toast");
+const existing = document.getElementById("toast");
   if (existing && existing.parentNode) {
     existing.parentNode.removeChild(existing);
   }
@@ -69,8 +61,12 @@ export function showToast(msg: string, type?: 'default' | 'success' | 'error' | 
   if (resolved === 'success') bgClass = "bg-green-950 border-green-500/50";
 
   const classes = [
-    "toast", "show", "pointer-events-auto", "w-full", "max-w-sm", "sm:w-auto",
-    "flex", "items-center", "gap-3", "text-white", "shadow-2xl", "rounded-2xl", "px-6", "py-4", "border"
+    "toast", "show", "fixed", "z-[9999]", 
+    "left-1/2", "-translate-x-1/2", // Center horizontally globally
+    "bottom-6", "w-[calc(100%-32px)]", "max-w-sm", // Mobile positioning
+    "sm:bottom-auto", "sm:top-6", "sm:w-auto", "sm:min-w-[300px]", "sm:max-w-md", // Desktop positioning
+    "flex", "items-center", "gap-3", "text-white", "shadow-2xl", "rounded-2xl", "px-6", "py-4", "border",
+    "transform", "transition-all", "duration-300"
   ];
   if (variant === "premium") classes.push("toast-premium");
   
@@ -84,7 +80,7 @@ export function showToast(msg: string, type?: 'default' | 'success' | 'error' | 
   message.textContent = msg;
   t.append(icon, message);
 
-  container.appendChild(t);
+  document.body.appendChild(t);
 
   toastTimer = setTimeout(() => {
     if (t.parentNode) {

@@ -224,12 +224,13 @@ export default function ArticleIndex({
       {/* Table from md up. Below that the same data renders as stacked rows:
           a five-column table on a 375px screen forces horizontal scrolling,
           which hides the actions column exactly where it is hardest to find. */}
-      <table className="w-full border-collapse text-left text-sm admin-table" aria-label="Articles">
+      <div className="overflow-x-auto w-full">
+<table className="w-full border-collapse text-left text-sm admin-table" aria-label="Articles">
         <caption className="sr-only">Article list</caption>
         <thead>
           <tr className="border-b border-line bg-surface-2/60">
             {anyBulk && (
-              <th className="py-3 pl-4 pr-0 w-10">
+              <th className="whitespace-nowrap min-w-[120px] py-3 pl-4 pr-0 w-10 ">
                 <input
                   type="checkbox"
                   checked={allOnPageSelected}
@@ -243,19 +244,19 @@ export default function ArticleIndex({
                 />
               </th>
             )}
-            <th className="py-3 px-4 font-semibold text-[11px] tracking-wider uppercase text-muted w-24">
+            <th className="whitespace-nowrap min-w-[120px] py-3 px-4 font-semibold text-[11px] tracking-wider uppercase text-muted w-24 ">
               <span className="sr-only">Thumbnail</span>
             </th>
-            <th className="py-3 px-4 font-semibold text-[11px] tracking-wider uppercase text-muted">
+            <th className="whitespace-nowrap min-w-[120px] py-3 px-4 font-semibold text-[11px] tracking-wider uppercase text-muted ">
               Article
             </th>
-            <th className="py-3 px-4 font-semibold text-[11px] tracking-wider uppercase text-muted w-36 hidden md:table-cell">
+            <th className="whitespace-nowrap min-w-[120px] py-3 px-4 font-semibold text-[11px] tracking-wider uppercase text-muted w-36 hidden md:table-cell ">
               Status
             </th>
-            <th className="py-3 px-4 font-semibold text-[11px] tracking-wider uppercase text-muted w-28 text-right hidden lg:table-cell">
+            <th className="whitespace-nowrap min-w-[120px] py-3 px-4 font-semibold text-[11px] tracking-wider uppercase text-muted w-28 text-right hidden lg:table-cell ">
               Views
             </th>
-            <th className="py-3 px-4 font-semibold text-[11px] tracking-wider uppercase text-muted w-28 text-right">
+            <th className="whitespace-nowrap min-w-[120px] py-3 px-4 font-semibold text-[11px] tracking-wider uppercase text-muted w-28 text-right ">
               Actions
             </th>
           </tr>
@@ -273,7 +274,7 @@ export default function ArticleIndex({
                 }`}
               >
                 {anyBulk && (
-                  <td className="py-3.5 pl-4 pr-0 align-middle w-10" data-label="Select">
+                  <td className="whitespace-nowrap py-3.5 pl-4 pr-0 align-middle w-10 " data-label="Select">
                     <input
                       type="checkbox"
                       checked={selected.has(a.id)}
@@ -284,7 +285,7 @@ export default function ArticleIndex({
                   </td>
                 )}
                 {/* Thumbnail */}
-                <td className="p-3.5 align-middle w-24" data-label="Thumbnail">
+                <td className="whitespace-nowrap p-3.5 align-middle w-24 " data-label="Thumbnail">
                   {a.img ? (
                     <div className="w-20 h-12 rounded-lg overflow-hidden border border-line bg-surface-2 shrink-0 relative">
                       <Image
@@ -303,7 +304,7 @@ export default function ArticleIndex({
                 </td>
 
                 {/* Primary — title + metadata */}
-                <td className="p-3.5 align-middle" data-label="Article">
+                <td className="whitespace-nowrap p-3.5 align-middle " data-label="Article">
                   <div className="min-w-0 max-w-xl">
                     {/* The headline opens the read-only detail hub, not the
                         editor. Clicking a title to inspect something should not
@@ -349,12 +350,12 @@ export default function ArticleIndex({
                 </td>
 
                 {/* Status — dedicated column on tablet and desktop */}
-                <td className="p-3.5 align-middle md:table-cell w-36" data-label="Status">
+                <td className="whitespace-nowrap p-3.5 align-middle md:table-cell w-36 " data-label="Status">
                   <StatusChip status={a.status} />
                 </td>
 
                 {/* Views metric */}
-                <td className="p-3.5 align-middle text-right lg:table-cell w-28" data-label="Views">
+                <td className="whitespace-nowrap p-3.5 align-middle text-right lg:table-cell w-28 " data-label="Views">
                   {a.status === "PUBLISHED" ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-2 border border-line text-xs font-semibold text-ink tabular-nums">
                       <Eye className="w-3.5 h-3.5 text-muted" />
@@ -366,7 +367,7 @@ export default function ArticleIndex({
                 </td>
 
                 {/* Actions */}
-                <td className="p-3.5 align-middle text-right w-28" data-label="Actions">
+                <td className="whitespace-nowrap p-3.5 align-middle text-right w-28 " data-label="Actions">
                   <div className="flex items-center justify-end gap-1.5">
                     {a.status === "PUBLISHED" && (
                       <Link
@@ -402,6 +403,7 @@ export default function ArticleIndex({
           })}
         </tbody>
       </table>
+</div>
 
 
     </div>

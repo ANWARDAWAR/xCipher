@@ -507,15 +507,15 @@ export default function TaxonomyManager({
               <table className="w-full text-left border-collapse min-w-[380px]">
                 <thead>
                   <tr className="border-b border-line bg-surface-2/60 text-xs font-semibold tracking-wider text-muted uppercase font-[var(--f-ui)]">
-                    <th className="px-4 py-3 w-[50%]">Name & Description</th>
-                    <th className="px-4 py-3 w-[25%] text-center">Articles</th>
-                    <th className="px-4 py-3 w-[25%] text-right">Actions</th>
+                    <th className="whitespace-nowrap min-w-[120px] px-4 py-3 w-[50%] ">Name & Description</th>
+                    <th className="whitespace-nowrap min-w-[120px] px-4 py-3 w-[25%] text-center ">Articles</th>
+                    <th className="whitespace-nowrap min-w-[120px] px-4 py-3 w-[25%] text-right ">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
                   {filteredCategories.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="px-4 py-8 text-center text-sm text-muted">
+                      <td colSpan={3} className="whitespace-nowrap px-4 py-8 text-center text-sm text-muted">
                         {catSearch ? "No matching categories found." : "No categories created yet."}
                       </td>
                     </tr>
@@ -528,7 +528,7 @@ export default function TaxonomyManager({
                           className="hover:bg-surface-2/40 transition-colors duration-150"
                         >
                           {/* Name & Details */}
-                          <td className="px-4 py-3.5">
+                          <td className="whitespace-nowrap px-4 py-3.5 ">
                             <div className="space-y-1">
                               <div className="font-semibold text-sm text-ink leading-tight">
                                 {cat.name}
@@ -545,7 +545,7 @@ export default function TaxonomyManager({
                           </td>
 
                           {/* Article Count */}
-                          <td className="px-4 py-3.5 text-center">
+                          <td className="whitespace-nowrap px-4 py-3.5 text-center ">
                             <span
                               className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                                 articleCount > 0
@@ -559,7 +559,7 @@ export default function TaxonomyManager({
                           </td>
 
                           {/* Actions */}
-                          <td className="px-4 py-3.5 text-right">
+                          <td className="whitespace-nowrap px-4 py-3.5 text-right ">
                             <div className="inline-flex items-center gap-1.5">
                               <button
                                 type="button"
@@ -717,15 +717,15 @@ export default function TaxonomyManager({
               <table className="w-full text-left border-collapse min-w-[380px]">
                 <thead>
                   <tr className="border-b border-line bg-surface-2/60 text-xs font-semibold tracking-wider text-muted uppercase font-[var(--f-ui)]">
-                    <th className="px-4 py-3 w-[50%]">Name & Description</th>
-                    <th className="px-4 py-3 w-[25%] text-center">Articles</th>
-                    <th className="px-4 py-3 w-[25%] text-right">Actions</th>
+                    <th className="whitespace-nowrap min-w-[120px] px-4 py-3 w-[50%] ">Name & Description</th>
+                    <th className="whitespace-nowrap min-w-[120px] px-4 py-3 w-[25%] text-center ">Articles</th>
+                    <th className="whitespace-nowrap min-w-[120px] px-4 py-3 w-[25%] text-right ">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
                   {filteredTags.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="px-4 py-8 text-center text-sm text-muted">
+                      <td colSpan={3} className="whitespace-nowrap px-4 py-8 text-center text-sm text-muted">
                         {tagSearch ? "No matching tags found." : "No tags created yet."}
                       </td>
                     </tr>
@@ -738,7 +738,7 @@ export default function TaxonomyManager({
                           className="hover:bg-surface-2/40 transition-colors duration-150"
                         >
                           {/* Name & Details */}
-                          <td className="px-4 py-3.5">
+                          <td className="whitespace-nowrap px-4 py-3.5 ">
                             <div className="space-y-1">
                               <div className="flex items-center gap-1.5">
                                 <Hash className="w-3 h-3 text-muted" />
@@ -758,7 +758,7 @@ export default function TaxonomyManager({
                           </td>
 
                           {/* Article Count */}
-                          <td className="px-4 py-3.5 text-center">
+                          <td className="whitespace-nowrap px-4 py-3.5 text-center ">
                             <span
                               className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                                 articleCount > 0
@@ -772,7 +772,7 @@ export default function TaxonomyManager({
                           </td>
 
                           {/* Actions */}
-                          <td className="px-4 py-3.5 text-right">
+                          <td className="whitespace-nowrap px-4 py-3.5 text-right ">
                             <div className="inline-flex items-center gap-1.5">
                               <button
                                 type="button"

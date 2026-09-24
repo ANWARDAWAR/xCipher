@@ -186,7 +186,7 @@ export default function SubscribersClient({
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+      <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
         <form onSubmit={handleSearch} className="relative w-full md:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-faint" />
           <input
@@ -198,7 +198,7 @@ export default function SubscribersClient({
           />
         </form>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto">
           <button className="flex items-center justify-center flex-1 md:flex-none h-[38px] px-3 gap-2 text-sm font-medium border border-line bg-surface text-ink-2 hover:bg-surface-2 rounded-md transition-colors whitespace-nowrap">
             <Download className="w-4 h-4" />
             Export CSV
@@ -222,17 +222,17 @@ export default function SubscribersClient({
           <table className="w-full text-left border-collapse min-w-[700px]">
             <thead>
               <tr className="border-b border-line bg-paper/50 dark:bg-surface/[0.02]">
-                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[40%]">Subscriber</th>
-                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[20%]">Status</th>
-                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[20%]">Date Joined</th>
-                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[20%] text-right">Actions</th>
+                <th className="whitespace-nowrap min-w-[120px] py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[40%] ">Subscriber</th>
+                <th className="whitespace-nowrap min-w-[120px] py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[20%] ">Status</th>
+                <th className="whitespace-nowrap min-w-[120px] py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[20%] ">Date Joined</th>
+                <th className="whitespace-nowrap min-w-[120px] py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[20%] text-right ">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
               {initialSubscribers.length > 0 ? (
                 initialSubscribers.map((s) => (
                   <tr key={s.id} className="hover:bg-paper/80 dark:hover:bg-surface/5 transition-colors group">
-                    <td className="py-4 px-4 align-middle w-[40%]">
+                    <td className="whitespace-nowrap py-4 px-4 align-middle w-[40%] ">
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-ink font-mono">
                           {s.email}
@@ -242,15 +242,15 @@ export default function SubscribersClient({
                         </span>
                       </div>
                     </td>
-                    <td className="py-4 px-4 align-middle w-[20%]">
+                    <td className="whitespace-nowrap py-4 px-4 align-middle w-[20%] ">
                       {getStatusBadge(s.status)}
                     </td>
-                    <td className="py-4 px-4 align-middle w-[20%]">
+                    <td className="whitespace-nowrap py-4 px-4 align-middle w-[20%] ">
                       <div className="text-sm text-ink-2">
                         {new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                       </div>
                     </td>
-                    <td className="py-4 px-4 align-middle text-right w-[20%] relative">
+                    <td className="whitespace-nowrap py-4 px-4 align-middle text-right w-[20%] relative ">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -292,7 +292,7 @@ export default function SubscribersClient({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center">
+                  <td colSpan={4} className="whitespace-nowrap py-12 text-center">
                     <p className="text-muted font-medium">No subscribers found matching your search.</p>
                   </td>
                 </tr>

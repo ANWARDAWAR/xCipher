@@ -155,18 +155,18 @@ export default function AuditLogsClient({
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="border-b border-line bg-paper/50 dark:bg-surface/[0.02]">
-                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[18%]">Timestamp</th>
-                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[22%]">Actor</th>
-                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[22%]">Action / Event</th>
-                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[26%]">Resource / Target</th>
-                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[12%] text-right">Details</th>
+                <th className="whitespace-nowrap min-w-[120px] py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[18%] ">Timestamp</th>
+                <th className="whitespace-nowrap min-w-[120px] py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[22%] ">Actor</th>
+                <th className="whitespace-nowrap min-w-[120px] py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[22%] ">Action / Event</th>
+                <th className="whitespace-nowrap min-w-[120px] py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[26%] ">Resource / Target</th>
+                <th className="whitespace-nowrap min-w-[120px] py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[12%] text-right ">Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
               {logs.length > 0 ? (
                 logs.map((log) => (
                   <tr key={log.id} className="hover:bg-paper/80 dark:hover:bg-surface/5 transition-colors group">
-                    <td className="py-3 px-4 align-top">
+                    <td className="whitespace-nowrap py-3 px-4 align-top ">
                       <div className="text-sm font-medium text-ink">
                         {getRelativeTime(log.createdAt)}
                       </div>
@@ -174,7 +174,7 @@ export default function AuditLogsClient({
                         {formatExactDate(log.createdAt)}
                       </div>
                     </td>
-                    <td className="py-3 px-4 align-top">
+                    <td className="whitespace-nowrap py-3 px-4 align-top ">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-surface-3 flex items-center justify-center text-[10px] font-bold text-muted uppercase flex-shrink-0">
                           {log.user?.name ? log.user.name.slice(0, 2) : (log.user?.email ? log.user.email.slice(0, 2) : "SY")}
@@ -186,12 +186,12 @@ export default function AuditLogsClient({
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 px-4 align-top">
+                    <td className="whitespace-nowrap py-3 px-4 align-top ">
                       <span className={`inline-flex items-center px-2 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wide border ${getActionBadgeStyle(log.action)}`}>
                         {log.action}
                       </span>
                     </td>
-                    <td className="py-3 px-4 align-top">
+                    <td className="whitespace-nowrap py-3 px-4 align-top ">
                       <div className="text-sm text-ink-2">
                         {log.entityType}
                       </div>
@@ -201,7 +201,7 @@ export default function AuditLogsClient({
                         </div>
                       )}
                     </td>
-                    <td className="py-3 px-4 align-top text-right">
+                    <td className="whitespace-nowrap py-3 px-4 align-top text-right ">
                       <button
                         onClick={() => setSelectedLog(log)}
                         className="inline-flex items-center justify-center p-1.5 rounded-md text-muted hover:text-ink dark:hover:text-ink hover:bg-surface-2 transition-colors"
@@ -215,7 +215,7 @@ export default function AuditLogsClient({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center">
+                  <td colSpan={5} className="whitespace-nowrap py-12 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <Search className="w-8 h-8 text-faint mb-3" />
                       <p className="text-muted font-medium">No audit logs found matching your criteria.</p>

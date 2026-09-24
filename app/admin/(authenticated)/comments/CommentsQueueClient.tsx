@@ -132,11 +132,11 @@ export default function CommentsQueueClient({
           <table className="w-full text-left border-collapse min-w-[900px]">
             <thead>
               <tr className="border-b border-line bg-paper/50 dark:bg-surface/[0.02]">
-                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[20%]">Commenter</th>
-                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[45%]">Comment Content</th>
-                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[15%]">Date & Time</th>
-                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[10%]">Status</th>
-                <th className="py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[10%] text-right">Actions</th>
+                <th className="whitespace-nowrap min-w-[120px] py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[20%] ">Commenter</th>
+                <th className="whitespace-nowrap min-w-[120px] py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[45%] ">Comment Content</th>
+                <th className="whitespace-nowrap min-w-[120px] py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[15%] ">Date & Time</th>
+                <th className="whitespace-nowrap min-w-[120px] py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[10%] ">Status</th>
+                <th className="whitespace-nowrap min-w-[120px] py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[10%] text-right ">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -146,7 +146,7 @@ export default function CommentsQueueClient({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center">
+                  <td colSpan={5} className="whitespace-nowrap py-12 text-center">
                     <p className="text-muted font-medium">No comments awaiting moderation.</p>
                   </td>
                 </tr>

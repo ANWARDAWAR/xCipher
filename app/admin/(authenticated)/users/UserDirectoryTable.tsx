@@ -263,15 +263,15 @@ export default function UserDirectoryTable({
             <table className="w-full text-left border-collapse min-w-[640px] admin-table">
               <thead>
                 <tr className="border-b border-line bg-surface-2/60 text-xs font-semibold tracking-wider text-muted uppercase font-[var(--f-ui)]">
-                  <th className="px-5 py-3.5 w-[42%]">Team Member</th>
-                  <th className="px-5 py-3.5 w-[23%]">Role</th>
-                  <th className="px-5 py-3.5 w-[35%] text-right">Access & Actions</th>
+                  <th className="whitespace-nowrap min-w-[120px] px-5 py-3.5 w-[42%] ">Team Member</th>
+                  <th className="whitespace-nowrap min-w-[120px] px-5 py-3.5 w-[23%] ">Role</th>
+                  <th className="whitespace-nowrap min-w-[120px] px-5 py-3.5 w-[35%] text-right ">Access & Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {users.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-5 py-8 text-center text-sm text-muted">
+                    <td colSpan={3} className="whitespace-nowrap px-5 py-8 text-center text-sm text-muted">
                       No active users found.
                     </td>
                   </tr>
@@ -290,7 +290,7 @@ export default function UserDirectoryTable({
                         className="hover:bg-surface-2/40 transition-colors duration-150"
                       >
                         {/* Member Column */}
-                        <td className="px-5 py-4" data-label="Member">
+                        <td className="whitespace-nowrap px-5 py-4 " data-label="Member">
                           <div className="flex items-center gap-3.5">
                             <UserAvatar user={user} />
                             <div className="min-w-0">
@@ -325,12 +325,12 @@ export default function UserDirectoryTable({
                         </td>
 
                         {/* Role Column */}
-                        <td className="px-5 py-4" data-label="Role">
+                        <td className="whitespace-nowrap px-5 py-4 " data-label="Role">
                           <RoleBadge role={user.role} />
                         </td>
 
                         {/* Actions Column */}
-                        <td className="px-5 py-4 text-right" data-label="Access & Actions">
+                        <td className="whitespace-nowrap px-5 py-4 text-right " data-label="Access & Actions">
                           {isManageable ? (
                             <div className="inline-flex items-center gap-2">
                               {/* Role Selector */}
@@ -437,10 +437,10 @@ export default function UserDirectoryTable({
               <table className="w-full text-left border-collapse min-w-[640px] admin-table">
                 <thead>
                   <tr className="border-b border-line bg-surface-2/60 text-xs font-semibold tracking-wider text-muted uppercase font-[var(--f-ui)]">
-                    <th className="px-5 py-3.5 w-[42%]">Recipient Email</th>
-                    <th className="px-5 py-3.5 w-[23%]">Assigned Role</th>
-                    <th className="px-5 py-3.5 w-[20%]">Expiration</th>
-                    <th className="px-5 py-3.5 w-[15%] text-right">Actions</th>
+                    <th className="whitespace-nowrap min-w-[120px] px-5 py-3.5 w-[42%] ">Recipient Email</th>
+                    <th className="whitespace-nowrap min-w-[120px] px-5 py-3.5 w-[23%] ">Assigned Role</th>
+                    <th className="whitespace-nowrap min-w-[120px] px-5 py-3.5 w-[20%] ">Expiration</th>
+                    <th className="whitespace-nowrap min-w-[120px] px-5 py-3.5 w-[15%] text-right ">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -454,7 +454,7 @@ export default function UserDirectoryTable({
                         key={inv.id}
                         className="hover:bg-surface-2/40 transition-colors duration-150"
                       >
-                        <td className="px-5 py-3.5" data-label="Recipient Email">
+                        <td className="whitespace-nowrap px-5 py-3.5 " data-label="Recipient Email">
                           <div className="flex items-center gap-2.5">
                             <div className="w-8 h-8 rounded-full bg-surface-2 border border-line flex items-center justify-center text-muted shrink-0">
                               <Mail className="w-4 h-4" />
@@ -464,10 +464,10 @@ export default function UserDirectoryTable({
                             </span>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5" data-label="Assigned Role">
+                        <td className="whitespace-nowrap px-5 py-3.5 " data-label="Assigned Role">
                           <RoleBadge role={inv.role} />
                         </td>
-                        <td className="px-5 py-3.5" data-label="Expiration">
+                        <td className="whitespace-nowrap px-5 py-3.5 " data-label="Expiration">
                           <span
                             className={`text-xs ${
                               isExpired ? "text-bad font-semibold" : "text-muted"
@@ -482,7 +482,7 @@ export default function UserDirectoryTable({
                                 })}`}
                           </span>
                         </td>
-                        <td className="px-5 py-3.5 text-right" data-label="Actions">
+                        <td className="whitespace-nowrap px-5 py-3.5 text-right " data-label="Actions">
                           <button
                             type="button"
                             onClick={() => handleRevokeInvite(inv.id, inv.email)}
