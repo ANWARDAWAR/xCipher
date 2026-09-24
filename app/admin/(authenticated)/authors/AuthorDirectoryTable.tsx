@@ -214,8 +214,8 @@ function AuthorRowItem({ a, currentUser }: { a: AuthorRow; currentUser: { id: st
                       Edit
                     </Link>
                   )}
-                  <Link
-                    href={`/author/${a.slug}`}
+                  <a
+                    href={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/author/${a.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-1.5 text-muted hover:text-ink border border-line rounded-md transition-colors"
@@ -223,7 +223,7 @@ function AuthorRowItem({ a, currentUser }: { a: AuthorRow; currentUser: { id: st
                     aria-label={`View public profile for ${a.name}`}
                   >
                     <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
-                  </Link>
+                  </a>
                 </div>
     </div>
   );

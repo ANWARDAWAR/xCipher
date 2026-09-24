@@ -119,9 +119,9 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
                 <h2 style={{ fontSize: "16px" }}>Profile Preview</h2>
                 <div style={{ display: "flex", gap: "12px" }}>
                   {author.slug ? (
-                    <Link href={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/author/${author.slug}`} target="_blank" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
+                    <a href={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/author/${author.slug}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
                       View Live
-                    </Link>
+                    </a>
                   ) : (
                     <span className="btn btn-ghost opacity-50 cursor-not-allowed" style={{ padding: "6px 12px", borderRadius: "6px" }} title="Save your profile first to view it live.">
                       View Live (Save Profile First)
@@ -159,9 +159,9 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
                       View Live (Save Profile First)
                     </span>
                   ) : (
-                    <Link href={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/author/${author.slug}`} target="_blank" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
+                    <a href={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/author/${author.slug}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
                       View Live
-                    </Link>
+                    </a>
                   )}
                   {author && (
                     <Link href="/admin/settings?tab=profile" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>

@@ -309,15 +309,15 @@ export default function UserDirectoryTable({
                                   {user.email || "No email assigned"}
                                 </span>
                                 {user.authorProfile && (
-                                  <Link
-                                    href={`/author/${user.authorProfile.slug}`}
+                                  <a
+                                      href={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/author/${user.authorProfile.slug}`}
                                     target="_blank"
                                     className="hidden sm:inline-flex items-center gap-1 text-[11px] text-muted hover:text-ink transition-colors"
                                     title="View Public Author Profile"
-                                  >
+                                  rel="noopener noreferrer">
                                     <ExternalLink className="w-2.5 h-2.5" />
                                     <span>Profile</span>
-                                  </Link>
+                                  </a>
                                 )}
                               </div>
                             </div>
