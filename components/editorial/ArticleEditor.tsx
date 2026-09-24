@@ -869,150 +869,115 @@ export default function ArticleEditor({
            </div>
         </div>
       )}
-      {/* ── Sticky Top Editorial Command Header ── */}
-      {/* sticky top-0 as well as flex-shrink-0: the form is a flex column with
-          its own scroll containers, but the header still needs to pin when a
-          narrow viewport lets the whole form scroll. */}
-      <header className="h-14 flex-shrink-0 sticky top-0 z-40 bg-[var(--surface)]/90 backdrop-blur border-b border-[var(--line)] px-4 sm:px-6 flex items-center justify-between gap-3 shadow-sm">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <button
-            type="button"
-            onClick={() => router.push('/admin/articles')}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--muted)] hover:text-[var(--ink)] transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-[var(--surface-2)]"
-            title="Back to articles"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back</span>
-          </button>
-
-          <div className="w-px h-4 bg-[var(--line)] hidden sm:block mx-1"></div>
-
-          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${currentFormStatus === 'PUBLISHED' ? 'bg-[var(--ok)]/10 text-[var(--ok)] border border-[var(--ok)]/20' :
-              currentFormStatus === 'SUBMITTED' ? 'bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20' :
-                'bg-[var(--surface-3)] text-[var(--muted)] border border-[var(--line-2)]'
-            }`}>
-            {currentFormStatus === 'SUBMITTED' ? 'In Review' : currentFormStatus}
-          </span>
-
-          {(() => {
-            const words = editor.storage.characterCount.words();
-            const isBelowMin = words < 50;
-            return (
-              <span className={`text-xs ml-2 font-medium flex items-center gap-1 ${isBelowMin ? 'text-[var(--warn)] hidden sm:flex' : 'text-[var(--muted)] hidden md:flex'}`}>
-                Word count: {words}
-                {isBelowMin && <span className="hidden sm:inline">(Min 50)</span>}
-              </span>
-            );
-          })()}
-
-          <span
-            role="status"
-            aria-live="polite"
-            className={`text-xs hidden sm:inline-flex items-center gap-1.5 ml-2 transition-colors ${syncStatus.tone === "offline"
-                ? "text-[var(--warn)]"
-                : syncStatus.tone === "saved"
-                  ? "text-[var(--ok)]"
-                  : "text-[var(--muted)]"
-              }`}
-          >
-            {syncStatus.tone === "saving" && (
-              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-            )}
-            {syncStatus.tone === "offline" && (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M1 1l22 22" /><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" /><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" /><path d="M10.71 5.05A16 16 0 0 1 22.58 9" /><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" /><path d="M8.53 16.11a6 6 0 0 1 6.95 0" /><line x1="12" y1="20" x2="12.01" y2="20" /></svg>
-            )}
-            {syncStatus.label}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={() => setIsInspectorOpen(true)}
-            className="p-2 text-[var(--muted)] hover:text-[var(--ink)] rounded-lg hover:bg-[var(--surface-2)] transition-colors lg:hidden"
-            title="Settings"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-
-          <button
-            type="button"
-            disabled={busy}
-            onClick={handlePreview}
-            className="p-2 text-[var(--muted)] hover:text-[var(--ink)] rounded-lg hover:bg-[var(--surface-2)] transition-colors"
-            title="Preview"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-
-          {(currentFormStatus === "DRAFT" || currentFormStatus === "REVISION_REQUESTED") && (
+      {/* ── Unified Sticky Header: Action Bar + Formatting Toolbar ── */}
+      <div className="sticky top-0 z-40 bg-[var(--surface)] border-b border-[var(--line)] shadow-sm">
+        {/* Action Bar Row */}
+        <header className="h-14 flex-shrink-0 px-4 sm:px-6 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               type="button"
-              disabled={busy}
-              onClick={() => startTransition(async () => {
-                setActiveAction("save");
-                showToast("Saving Draft...", "info", "premium");
-                try {
-                  await handleSave(currentFormStatus);
-                  showToast("Draft saved successfully.", "success", "premium");
-                } catch (err: any) {
-                  showToast(err.message, "error", "premium");
-                } finally {
-                  setActiveAction(null);
-                }
-              })}
-              className="px-2 sm:px-3.5 py-1.5 text-sm font-medium rounded-md text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-50 flex items-center gap-2 border border-transparent hover:border-[var(--line)]"
+              onClick={() => router.push('/admin/articles')}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--muted)] hover:text-[var(--ink)] transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-[var(--surface-2)]"
+              title="Back to articles"
             >
-              {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-              <span className="hidden sm:inline">{busy ? "Saving\u2026" : "Save Draft"}</span>
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Back</span>
             </button>
-          )}
 
-          {currentFormStatus === "PUBLISHED" && canPublish ? (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => startTransition(async () => {
-                setActiveAction("update");
-                showToast("Updating Live...", "info", "premium");
-                try {
-                  await handleSave("PUBLISHED");
-                  setActiveAction("success");
-                  showToast("Live story updated successfully.", "success", "premium");
-                  setTimeout(() => setActiveAction(null), 2000);
-                } catch (err: any) {
-                  showToast(err.message, "error", "premium");
-                  setActiveAction(null);
-                }
-              })}
-              className="btn-premium py-1.5 px-4 text-sm font-semibold rounded-md flex items-center justify-center gap-2 min-w-[90px] sm:min-w-[140px] transition-all duration-300 disabled:opacity-70"
+            <div className="w-px h-4 bg-[var(--line)] hidden sm:block mx-1"></div>
+
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${currentFormStatus === 'PUBLISHED' ? 'bg-[var(--ok)]/10 text-[var(--ok)] border border-[var(--ok)]/20' :
+                currentFormStatus === 'SUBMITTED' ? 'bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20' :
+                  'bg-[var(--surface-3)] text-[var(--muted)] border border-[var(--line-2)]'
+              }`}>
+              {currentFormStatus === 'SUBMITTED' ? 'In Review' : currentFormStatus}
+            </span>
+
+            {(() => {
+              const words = editor.storage.characterCount.words();
+              const isBelowMin = words < 50;
+              return (
+                <span className={`text-xs ml-2 font-medium flex items-center gap-1 ${isBelowMin ? 'text-[var(--warn)] hidden sm:flex' : 'text-[var(--muted)] hidden md:flex'}`}>
+                  Word count: {words}
+                  {isBelowMin && <span className="hidden sm:inline">(Min 50)</span>}
+                </span>
+              );
+            })()}
+
+            <span
+              role="status"
+              aria-live="polite"
+              className={`text-xs hidden sm:inline-flex items-center gap-1.5 ml-2 transition-colors ${syncStatus.tone === "offline"
+                  ? "text-[var(--warn)]"
+                  : syncStatus.tone === "saved"
+                    ? "text-[var(--ok)]"
+                    : "text-[var(--muted)]"
+                }`}
             >
-              {activeAction === "success" ? (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              ) : busy ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                  <span>Updating...</span>
-                </>
-              ) : (
-                <>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>
-                  <span>Update Live</span>
-                </>
+              {syncStatus.tone === "saving" && (
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
               )}
+              {syncStatus.tone === "offline" && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M1 1l22 22" /><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" /><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" /><path d="M10.71 5.05A16 16 0 0 1 22.58 9" /><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" /><path d="M8.53 16.11a6 6 0 0 1 6.95 0" /><line x1="12" y1="20" x2="12.01" y2="20" /></svg>
+              )}
+              {syncStatus.label}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsInspectorOpen(true)}
+              className="p-2 text-[var(--muted)] hover:text-[var(--ink)] rounded-lg hover:bg-[var(--surface-2)] transition-colors lg:hidden"
+              title="Settings"
+            >
+              <Settings className="w-4 h-4" />
             </button>
-          ) : (
-            (currentFormStatus === "DRAFT" || currentFormStatus === "REVISION_REQUESTED") && (
+
+            <button
+              type="button"
+              disabled={busy}
+              onClick={handlePreview}
+              className="p-2 text-[var(--muted)] hover:text-[var(--ink)] rounded-lg hover:bg-[var(--surface-2)] transition-colors"
+              title="Preview"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+
+            {(currentFormStatus === "DRAFT" || currentFormStatus === "REVISION_REQUESTED") && (
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => startTransition(async () => {
-                  setActiveAction(canPublish ? "publish" : "submit");
-                  showToast(canPublish ? "Publishing..." : "Submitting...", "info", "premium");
+                  setActiveAction("save");
+                  showToast("Saving Draft...", "info", "premium");
                   try {
-                    await handleSave(canPublish ? "PUBLISHED" : "SUBMITTED");
+                    await handleSave(currentFormStatus);
+                    showToast("Draft saved successfully.", "success", "premium");
+                  } catch (err: any) {
+                    showToast(err.message, "error", "premium");
+                  } finally {
+                    setActiveAction(null);
+                  }
+                })}
+                className="px-2 sm:px-3.5 py-1.5 text-sm font-medium rounded-md text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors disabled:opacity-50 flex items-center gap-2 border border-transparent hover:border-[var(--line)]"
+              >
+                {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+                <span className="hidden sm:inline">{busy ? "Saving\u2026" : "Save Draft"}</span>
+              </button>
+            )}
+
+            {currentFormStatus === "PUBLISHED" && canPublish ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => startTransition(async () => {
+                  setActiveAction("update");
+                  showToast("Updating Live...", "info", "premium");
+                  try {
+                    await handleSave("PUBLISHED");
                     setActiveAction("success");
-                    showToast(canPublish ? "Published successfully!" : "Submitted for review!", "success", "premium");
+                    showToast("Live story updated successfully.", "success", "premium");
                     setTimeout(() => setActiveAction(null), 2000);
                   } catch (err: any) {
                     showToast(err.message, "error", "premium");
@@ -1026,21 +991,67 @@ export default function ArticleEditor({
                 ) : busy ? (
                   <>
                     <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    <span>{canPublish ? "Publishing..." : "Submitting..."}</span>
+                    <span>Updating...</span>
                   </>
                 ) : (
                   <>
-                    {canPublish
-                      ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
-                      : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>}
-                    <span>{canPublish ? "Publish Story" : "Submit for Review"}</span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>
+                    <span>Update Live</span>
                   </>
                 )}
               </button>
-            )
-          )}
-        </div>
-      </header>
+            ) : (
+              (currentFormStatus === "DRAFT" || currentFormStatus === "REVISION_REQUESTED") && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => startTransition(async () => {
+                    setActiveAction(canPublish ? "publish" : "submit");
+                    showToast(canPublish ? "Publishing..." : "Submitting...", "info", "premium");
+                    try {
+                      await handleSave(canPublish ? "PUBLISHED" : "SUBMITTED");
+                      setActiveAction("success");
+                      showToast(canPublish ? "Published successfully!" : "Submitted for review!", "success", "premium");
+                      setTimeout(() => setActiveAction(null), 2000);
+                    } catch (err: any) {
+                      showToast(err.message, "error", "premium");
+                      setActiveAction(null);
+                    }
+                  })}
+                  className="btn-premium py-1.5 px-4 text-sm font-semibold rounded-md flex items-center justify-center gap-2 min-w-[90px] sm:min-w-[140px] transition-all duration-300 disabled:opacity-70"
+                >
+                  {activeAction === "success" ? (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  ) : busy ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                      <span>{canPublish ? "Publishing..." : "Submitting..."}</span>
+                    </>
+                  ) : (
+                    <>
+                      {canPublish
+                        ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+                        : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>}
+                      <span>{canPublish ? "Publish Story" : "Submit for Review"}</span>
+                    </>
+                  )}
+                </button>
+              )
+            )}
+          </div>
+        </header>
+
+        {/* Formatting Toolbar Row — directly below action bar, inside same sticky container */}
+        {!isFullscreen && editor && (
+          <div className="border-t border-[var(--line-2)]/50 px-4 sm:px-10">
+            <EditorToolbar
+              editor={editor}
+              isFullscreen={isFullscreen}
+              toggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+            />
+          </div>
+        )}
+      </div>
 
       {recoveredDraft && (
         <div
@@ -1173,11 +1184,14 @@ export default function ArticleEditor({
             {/* Tiptap Editor Canvas */}
             <div className={isFullscreen ? "ed-editor-shell is-fullscreen fixed inset-0 z-[9999] bg-[var(--bg)] flex flex-col p-4 overflow-y-auto" : "ed-editor-shell border-none shadow-none bg-transparent"}>
               <div className={isFullscreen ? "ed-editor-inner w-full mx-auto max-w-3xl" : "w-full"}>
-                <EditorToolbar
-                  editor={editor}
-                  isFullscreen={isFullscreen}
-                  toggleFullscreen={() => setIsFullscreen(!isFullscreen)}
-                />
+                {/* In fullscreen mode, render toolbar inside the shell */}
+                {isFullscreen && (
+                  <EditorToolbar
+                    editor={editor}
+                    isFullscreen={isFullscreen}
+                    toggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+                  />
+                )}
 
                 <div
                   className="ed-body mt-2 prose min-h-[500px]"
@@ -1204,7 +1218,7 @@ export default function ArticleEditor({
         )}
 
         {/* ── Document Inspector Rail (Right Sidebar) ── */}
-        <aside className={`fixed inset-y-0 right-0 z-50 w-full max-w-[360px] lg:w-80 xl:w-96 shrink-0 border-l border-[var(--line)] bg-[var(--surface)] p-6 sm:p-8 transform transition-transform duration-300 ease-in-out lg:static lg:transform-none lg:translate-x-0 lg:block lg:sticky lg:top-14 overflow-y-auto h-full ${isInspectorOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <aside className={`fixed inset-y-0 right-0 z-50 w-full max-w-[360px] lg:w-80 xl:w-96 shrink-0 border-l border-[var(--line)] bg-[var(--surface)] p-6 sm:p-8 transform transition-transform duration-300 ease-in-out lg:static lg:transform-none lg:translate-x-0 lg:block lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto ${isInspectorOpen ? 'translate-x-0' : 'translate-x-full'}`}>
           <div className="ed-rail-head flex items-center justify-between lg:hidden mb-6">
             <h2 className="text-lg font-bold text-[var(--ink)]">Settings</h2>
             <button

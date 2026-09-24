@@ -4160,32 +4160,63 @@ select.ed-input {
 }
 
 /* ============ TOAST / FOOTER / MISC ============ */
-/* #toast positioning is fully controlled by the bulletproof CSS at the end of the file */
-#toast {
+/* Visual styling only — positioning is handled by the bulletproof block at EOF */
+#toast, .toast {
     font: 600 14px/1.4 var(--f-ui);
-    box-shadow: var(--shadow-2);
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 14px 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.18), 0 1.5px 6px rgba(0,0,0,.08);
     opacity: 0;
     pointer-events: none;
-    transition: opacity .25s, transform .25s;
+    transition: opacity .25s ease, transform .25s ease;
 }
 
-#toast.show {
+#toast.show, .toast.show {
     opacity: 1;
     pointer-events: auto;
 }
 
-#toast svg {
+/* Icon container */
+.toast-icon {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+.toast-icon svg {
+    width: 22px;
+    height: 22px;
     color: var(--accent);
 }
 
-#toast.success svg {
-    color: var(--ok);
+/* Toast message text */
+#toast span, .toast span {
+    font: 600 14px/1.4 var(--f-ui);
+    color: var(--ink);
 }
 
-#toast.error svg {
-    color: var(--bad);
+/* Type-specific accent borders + icon colours */
+#toast.success, .toast.success {
+    border-color: var(--ok);
 }
+#toast.success .toast-icon svg { color: var(--ok); }
+
+#toast.error, .toast.error {
+    border-color: var(--bad);
+}
+#toast.error .toast-icon svg { color: var(--bad); }
+
+#toast.warning, .toast.warning {
+    border-color: var(--warn);
+}
+#toast.warning .toast-icon svg { color: var(--warn); }
+
+#toast.info, .toast.info {
+    border-color: var(--accent);
+}
+#toast.info .toast-icon svg { color: var(--accent); }
 
 .site-foot {
     margin-top: var(--sp-8);
@@ -5474,16 +5505,7 @@ pre:hover .code-copy-btn {
    header controls. Below 640px it spans the width instead and is anchored to
    the bottom, out of the way of the header and within thumb reach. */
 
-#toast.warning svg {
-    color: var(--warn);
-}
-
-#toast.info svg {
-    color: var(--accent);
-}
-
-/* Mobile #toast overrides removed — Tailwind responsive classes
-   (sm:!bottom-auto sm:!top-6 etc.) in lib/utils.ts handle this. */
+/* Toast type-specific icon colours consolidated into the main toast block above. */
 
 /* ---- Avatars: guarantee a circle ------------------------------------------
    The avatar rules already set border-radius:50% and object-fit:cover, which
@@ -7232,7 +7254,7 @@ body.is-article .prose pre {
 }
 
 /* Prevent right border clipping when table overflows its container */
-.table-wrapper, .overflow-x-auto { padding-right: 1px; padding-left: 1px; }
+.tableWrapper, .table-wrapper, .overflow-x-auto { padding-right: 2px; padding-left: 2px; }
 
 /* Fix Interline Spacing */
 .tiptap p:empty {
@@ -7302,10 +7324,14 @@ body.is-article .prose pre {
 .tiptap pre code.language-sh::before, .prose pre code.language-sh::before { content: "Shell"; }
 .tiptap pre code.language-json::before, .prose pre code.language-json::before { content: "JSON"; }
 
+/* ============ BULLETPROOF TOAST POSITIONING (single source of truth) ============
+   Mobile: centred horizontally, pinned to bottom.
+   Desktop (≥640px): centred horizontally, pinned to top. */
 #toast, .toast {
   position: fixed !important;
   z-index: 99999 !important;
   left: 50% !important;
+  right: auto !important;
   transform: translateX(-50%) !important;
   bottom: 24px !important;
   top: auto !important;
@@ -7313,6 +7339,8 @@ body.is-article .prose pre {
   max-width: 400px !important;
   margin: 0 !important;
   display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
 }
 @media (min-width: 640px) {
   #toast, .toast {

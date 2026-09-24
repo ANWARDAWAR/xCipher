@@ -123,7 +123,7 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
 
   return (
     <div 
-      className="sticky top-0 z-50 bg-[var(--surface)] border-b border-[var(--line)] py-2 md:mb-8 mx-auto w-full md:max-w-3xl px-2 md:px-0 shadow-md md:shadow-none"
+      className="py-2 mx-auto w-full md:max-w-3xl px-2 md:px-0"
       role="toolbar" 
       aria-label="Formatting"
     >
