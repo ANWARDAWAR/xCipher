@@ -106,7 +106,7 @@ export async function sendNewsletterBroadcast(subject: string, htmlContent: stri
 
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) {
-    return { success: false, error: "Brevo API key is not configured." };
+    throw new Error("Brevo API key is missing. Please add it to your .env file.");
   }
 
   try {
@@ -144,9 +144,9 @@ export async function sendNewsletterBroadcast(subject: string, htmlContent: stri
       const res = await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",
         headers: {
+          "accept": "application/json",
           "api-key": apiKey,
-          "Content-Type": "application/json",
-          "Accept": "application/json"
+          "content-type": "application/json"
         },
         body: JSON.stringify({
           sender: { name: "xSypher", email: NEWSLETTER_FROM },
