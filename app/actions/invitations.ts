@@ -127,9 +127,37 @@ export async function acceptInvitation(token: string, formData: FormData) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const existingAuthor = await db.author.findFirst({
+    let existingAuthor = await db.author.findFirst({
       where: { email: invitation.email }
     });
+
+    if (!existingAuthor) {
+      existingAuthor = await db.author.findFirst({
+        where: { name, user: null }
+      });
+    }
+
+    let authorId = existingAuthor?.id;
+
+    if (!authorId) {
+      const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || `user-${crypto.randomBytes(3).toString("hex")}`;
+      let slug = baseSlug;
+      let counter = 1;
+      while (await db.author.findUnique({ where: { slug } })) {
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+      }
+
+      const newAuthor = await db.author.create({
+        data: {
+          slug,
+          name,
+          email: invitation.email,
+          role: invitation.role,
+        }
+      });
+      authorId = newAuthor.id;
+    }
 
     const user = await db.user.create({
       data: {
@@ -137,7 +165,7 @@ export async function acceptInvitation(token: string, formData: FormData) {
         name,
         password: hashedPassword,
         role: invitation.role,
-        ...(existingAuthor ? { authorId: existingAuthor.id } : {})
+        authorId
       }
     });
 
