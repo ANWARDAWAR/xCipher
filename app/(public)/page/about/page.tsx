@@ -419,7 +419,7 @@ export default function AboutPage() {
                       alt="Anwar Iqbal Dawar"
                       width={360}
                       height={450}
-                      className="w-full h-full object-cover object-top lg:object-center origin-bottom lg:origin-center scale-[0.92] lg:scale-100 -translate-x-2.5 lg:translate-x-0 translate-y-1 lg:translate-y-0 rounded-2xl"
+                      className="w-full h-full object-cover object-top lg:object-center origin-bottom lg:origin-center scale-[0.97] lg:scale-100 -translate-x-2.5 lg:translate-x-0 rounded-2xl"
                       priority
                     />
                     {/* Desktop Bottom Fade Overlay */}
