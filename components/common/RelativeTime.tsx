@@ -68,7 +68,7 @@ export default function RelativeTime({ dateTime, className }: Props) {
     <time dateTime={valid ? absolute.toISOString() : undefined} className={className}>
       {label ??
         (valid
-          ? absolute.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+          ? absolute.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
           : "")}
     </time>
   );

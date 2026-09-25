@@ -74,7 +74,7 @@
      "Cabinet Grotesk" is self-hosted (see the @font-face block below). If its
      files are not present the stack falls through to Space Grotesk, the closest
      geometric grotesk available from Google Fonts. */
-    --f-display: "Cabinet Grotesk", var(--font-space-grotesk), "Segoe UI", system-ui, sans-serif;
+    --f-display: var(--font-space-grotesk), "Segoe UI", system-ui, sans-serif;
     --f-ui: var(--font-plus-jakarta), system-ui, -apple-system, "Segoe UI", sans-serif;
     --f-body: var(--font-plus-jakarta), system-ui, -apple-system, "Segoe UI", sans-serif;
     --f-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -87,38 +87,7 @@
     --track-display-sm: -0.02em;
 }
 
-/* ───────────────────────────────────────────────────────────────────────────
-   Cabinet Grotesk — self-hosted display face
-   ───────────────────────────────────────────────────────────────────────────
-   Cabinet Grotesk is published by Fontshare (Indian Type Foundry), not Google,
-   so it cannot be loaded through next/font/google. To activate it, download the
-   family from https://www.fontshare.com/fonts/cabinet-grotesk and place the
-   variable files here:
 
-       public/fonts/CabinetGrotesk-Variable.woff2
-       public/fonts/CabinetGrotesk-Variable.ttf     (optional fallback)
-
-   Nothing else needs to change — --f-display already lists it first.
-
-   Until those files exist every headline quietly renders in Space Grotesk:
-   a src that 404s makes the browser skip this @font-face and move to the next
-   family in the stack. That is why this is a plain @font-face rather than
-   next/font/local, which resolves paths at build time and fails the build when
-   a file is missing.
-
-   font-display: swap so a slow or failed download never blocks the headline.
-   size-adjust nudges Cabinet Grotesk's slightly smaller x-height toward Space
-   Grotesk's, so swapping between the two barely moves the line.
-   ─────────────────────────────────────────────────────────────────────────── */
-@font-face {
-    font-family: "Cabinet Grotesk";
-    src: url("/fonts/CabinetGrotesk-Variable.woff2") format("woff2-variations"),
-        url("/fonts/CabinetGrotesk-Variable.ttf") format("truetype-variations");
-    font-weight: 100 900;
-    font-style: normal;
-    font-display: swap;
-    size-adjust: 102%;
-}
 
 [data-theme="dark"] {
     --paper: #121212;

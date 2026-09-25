@@ -73,7 +73,6 @@ export default function MobileDrawer() {
         role="dialog" 
         aria-modal="true" 
         aria-label="Menu"
-        aria-hidden={!isOpen}
         {...(!isOpen ? { inert: true } : {})}
       >
         <div className="drawer-head sticky top-0 z-50 bg-[var(--surface)] border-b border-[var(--line)]">
