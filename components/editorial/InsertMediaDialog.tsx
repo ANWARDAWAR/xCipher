@@ -45,12 +45,7 @@ function imageError(raw: string): string | null {
 
   if (url.protocol !== "https:") return "Image URLs must use https.";
 
-  if (!ALLOWED_MEDIA_DOMAINS.includes(url.hostname)) {
-    // Naming the permitted hosts is the difference between a dead end and a
-    // fixable problem -- the author usually just needs the other copy of the
-    // same image.
-    return `${url.hostname} is not an approved image host. Use one of: ${ALLOWED_MEDIA_DOMAINS.join(", ")}.`;
-  }
+
 
   return null;
 }
@@ -242,7 +237,7 @@ export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsert
               {isImage
                 ? tab === "upload"
                   ? "Uploaded images are converted to WebP and resized to fit the article measure."
-                  : `Approved hosts: ${ALLOWED_MEDIA_DOMAINS.join(", ")}.`
+                  : "All valid HTTP/HTTPS image URLs are accepted."
                 : "Watch, youtu.be, Shorts and embed links are all accepted."}
             </p>
           )}

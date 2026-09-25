@@ -114,20 +114,8 @@ const nextConfig: any = {
   },
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "images.pexels.com" },
-      { protocol: "https", hostname: "images.unsplash.com" },
-      { protocol: "https", hostname: "plus.unsplash.com" },
-      { protocol: "https", hostname: "avatars.githubusercontent.com" },
-      { protocol: "https", hostname: "lh3.googleusercontent.com" },
-      { protocol: "https", hostname: "upload.wikimedia.org" },
-      // Cloudinary, for avatars. One host for every account.
-      { protocol: "https", hostname: "res.cloudinary.com" },
-      // Cloudflare R2, for article images. The public base is per-deployment,
-      // so the host is read from the environment rather than hardcoded. Without
-      // an entry here next/image refuses the URL with "hostname is not
-      // configured" -- an upload that succeeded and then will not render.
-      { protocol: "https", hostname: "*.r2.dev" },
-      ...r2RemotePattern(),
+      { protocol: 'https', hostname: '**' },
+      { protocol: 'http', hostname: '**' },
     ],
   },
   serverActions: {
