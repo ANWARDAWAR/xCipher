@@ -60,10 +60,12 @@ export default function ArticleBody({ html }: Props) {
     // Make tables fully responsive on mobile
     const tables = container.querySelectorAll("table");
     tables.forEach((table) => {
-      // 1. Prevent Column Squeezing
-      table.classList.add('min-w-full', 'min-w-[600px]');
+      // 1. Prevent Column Squeezing (ensure table expands)
+      table.classList.add('min-w-full', 'table-auto');
       
-      // 2. Typography Adjustments
+      // 2. Typography & Cell Adjustments
+      const cells = table.querySelectorAll('th, td');
+      cells.forEach(cell => cell.classList.add('min-w-[150px]'));
       const ths = table.querySelectorAll('th');
       ths.forEach(th => th.classList.add('whitespace-nowrap'));
 

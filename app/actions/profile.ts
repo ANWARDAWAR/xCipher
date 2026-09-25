@@ -152,7 +152,13 @@ export async function updateProfile(data: any) {
       });
     }
 
-    revalidatePath('/');
+    // Cascade update to denormalized author name on all articles
+    await db.article.updateMany({
+      where: { authorId: author.id },
+      data: { author: name },
+    });
+
+    revalidatePath('/', 'layout');
     revalidatePath('/admin/settings');
     revalidatePath('/admin');
     revalidatePath(`/author/${author.slug}`);
