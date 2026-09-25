@@ -26,7 +26,7 @@ import tippy from 'tippy.js';
 
 import { upsertArticle } from "@/app/actions/article";
 import { submitArticle, publishArticle } from "@/app/actions/workflow";
-import { uploadArticleImage } from "@/app/actions/upload-article-image";
+import { uploadArticleImage, processExternalImage } from "@/app/actions/upload-article-image";
 import { useDraftCache, clearDraftCache } from "@/lib/use-draft-cache";
 import { Loader2, ArrowLeft, Settings, Eye } from "lucide-react";
 import { Role, ArticleStatus } from "@prisma/client";
@@ -197,6 +197,33 @@ export default function ArticleEditor({
   const [articleId, setArticleId] = useState<string | null>(
     initialData?.id ? String(initialData.id) : null
   );
+  const [isProcessingThumb, setIsProcessingThumb] = useState(false);
+
+  const handleExternalImage = async (url: string) => {
+    if (!url) return;
+    const finalUrl = url.trim();
+    if (finalUrl.includes("pub-") || finalUrl.includes("xsypher")) {
+      setValue("img", finalUrl, { shouldDirty: true });
+      return;
+    }
+    
+    setIsProcessingThumb(true);
+    showToast("Processing external image...", "info");
+    
+    try {
+      const res = await processExternalImage(finalUrl);
+      if (!res.ok || !res.url) {
+        showToast(res.error || "Failed to import image from this URL. The host may be blocking downloads.", "error");
+      } else {
+        setValue("img", res.url, { shouldDirty: true });
+        showToast("Image imported successfully.", "success");
+      }
+    } catch (err) {
+      showToast("Failed to import image from this URL. The host may be blocking downloads.", "error");
+    } finally {
+      setIsProcessingThumb(false);
+    }
+  };
 
   const {
     recovered: recoveredDraft,
@@ -1339,11 +1366,14 @@ export default function ArticleEditor({
                           type="url" 
                           placeholder="Paste external image URL..." 
                           className="ed-rail-input flex-1" 
-                          onBlur={(e) => { 
-                            if(e.target.value) {
-                              setValue("img", e.target.value, { shouldDirty: true });
+                          disabled={isProcessingThumb}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleExternalImage(e.currentTarget.value);
                             }
-                          }} 
+                          }}
+                          onBlur={(e) => handleExternalImage(e.target.value)} 
                         />
                       </div>
                     </div>

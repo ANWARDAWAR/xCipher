@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { X, ImagePlus, MonitorPlay, AlertCircle, UploadCloud, Link2 } from "lucide-react";
 import ImageDropzone from "./ImageDropzone";
-import { uploadArticleImage } from "@/app/actions/upload-article-image";
+import { uploadArticleImage, processExternalImage } from "@/app/actions/upload-article-image";
 import { ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
 import { parseYouTubeId, youTubeThumbnail } from "@/lib/embeds";
 
@@ -57,6 +57,7 @@ export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsert
   const [credit, setCredit] = useState(initialImage?.credit || "");
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Upload leads for images: it is the path most authors want, and the URL tab
   // remains for stock photography and anything already hosted elsewhere. A
@@ -123,13 +124,28 @@ export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsert
   const videoId = kind === "video" ? parseYouTubeId(src) : null;
   const imageProblem = kind === "image" && touched ? imageError(src) : null;
 
-  const submit = useCallback(() => {
+  const submit = useCallback(async () => {
     setTouched(true);
 
     if (kind === "image") {
       const problem = imageError(src);
       if (problem) { setError(problem); return; }
-      onInsertImage({ src: src.trim(), alt: alt.trim(), caption: caption.trim(), credit: credit.trim() });
+      
+      let finalSrc = src.trim();
+      
+      // If it's an external URL (not already uploaded to R2)
+      if (tab === "url" && !finalSrc.includes("pub-") && !finalSrc.includes("xsypher")) {
+        setIsProcessing(true);
+        const res = await processExternalImage(finalSrc);
+        setIsProcessing(false);
+        if (!res.ok || !res.url) {
+          setError(res.error || "Failed to import image from this URL. The host may be blocking downloads.");
+          return;
+        }
+        finalSrc = res.url;
+      }
+      
+      onInsertImage({ src: finalSrc, alt: alt.trim(), caption: caption.trim(), credit: credit.trim() });
       onClose();
       return;
     }
@@ -141,7 +157,7 @@ export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsert
     }
     onInsertVideo({ src: src.trim() });
     onClose();
-  }, [kind, src, alt, caption, credit, onInsertImage, onInsertVideo, onClose]);
+  }, [kind, src, alt, caption, credit, onInsertImage, onInsertVideo, onClose, tab]);
 
   if (!open) return null;
 
@@ -303,8 +319,8 @@ export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsert
 
         <div className="imd-foot">
           <button type="button" onClick={onClose} className="imd-btn">Cancel</button>
-          <button type="button" onClick={submit} className="imd-btn imd-btn-primary">
-            {isImage ? (initialImage ? "Update Image" : "Insert image") : "Insert video"}
+          <button type="button" onClick={submit} className="imd-btn imd-btn-primary" disabled={isProcessing}>
+            {isProcessing ? "Processing..." : isImage ? (initialImage ? "Update Image" : "Insert image") : "Insert video"}
           </button>
         </div>
       </div>

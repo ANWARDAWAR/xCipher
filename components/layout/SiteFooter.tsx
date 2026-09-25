@@ -57,7 +57,7 @@ export default function SiteFooter() {
             <Link href="/series">Editorial Collections</Link>
           </div>
           <div>
-            <h4 className="text-xs font-bold tracking-widest uppercase !text-red-500 mb-4 block">The Newsroom</h4>
+            <p className="text-xs font-bold tracking-widest uppercase !text-red-500 mb-4 block">The Newsroom</p>
             <Link href="/page/about">About xSypher</Link>
             <Link href="/page/contact">Contact Desk</Link>
             <Link href="/page/advertising">Advertising & Partnerships</Link>
@@ -67,7 +67,7 @@ export default function SiteFooter() {
             <Link href="/feed.xml">RSS Feed</Link>
           </div>
           <div>
-            <h4 className="text-xs font-bold tracking-widest uppercase !text-red-500 mb-4 block">Standards & Legal</h4>
+            <p className="text-xs font-bold tracking-widest uppercase !text-red-500 mb-4 block">Standards & Legal</p>
             <Link href="/page/editorial-standards">Editorial Standards</Link>
             <Link href="/page/corrections">Corrections Policy</Link>
             <Link href="/page/transparency">Transparency Report</Link>

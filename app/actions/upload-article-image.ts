@@ -93,3 +93,72 @@ export async function uploadArticleImage(formData: FormData): Promise<UploadResu
     return { ok: false, error: "The image could not be uploaded. Please try again." };
   }
 }
+
+export async function processExternalImage(url: string): Promise<UploadResult> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { ok: false, error: "Sign in to process images." };
+  }
+
+  const dbUser = await db.user.findUnique({
+    where: { id: user.id },
+    select: { role: true, isActive: true },
+  });
+
+  if (!dbUser?.isActive) {
+    return { ok: false, error: "This account is not active." };
+  }
+
+  if (!authorize(dbUser.role, "article.create")) {
+    return { ok: false, error: "You do not have permission to upload images." };
+  }
+
+  if (!url || typeof url !== "string") {
+    return { ok: false, error: "Invalid URL provided." };
+  }
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "xSypher-Bot/1.0",
+        "Accept": "image/jpeg, image/png, image/webp, image/gif"
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!response.ok) {
+      return { ok: false, error: `Failed to fetch external image: ${response.statusText}` };
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const input = Buffer.from(arrayBuffer);
+
+    if (input.byteLength > MAX_UPLOAD_BYTES) {
+      return { ok: false, error: `That image exceeds ${formatBytes(MAX_UPLOAD_BYTES)}.` };
+    }
+
+    const config = getR2Config();
+    if ("error" in config) {
+      return { ok: false, error: config.error };
+    }
+
+    const processedBuffer = await sharp(input)
+      .resize(MAX_IMAGE_WIDTH, null, { withoutEnlargement: true, fit: 'inside' })
+      .webp({ quality: WEBP_QUALITY })
+      .toBuffer();
+
+    const key = buildObjectKey("xsypher/articles/external", "webp");
+    const blobToUpload = new Blob([processedBuffer], { type: "image/webp" });
+    const finalUrl = await uploadFileToR2(blobToUpload, config.bucket, key);
+    
+    return {
+      ok: true,
+      url: finalUrl
+    };
+  } catch (e) {
+    console.error("[processExternalImage] Image processing or R2 upload failed:", e);
+    return { ok: false, error: "Failed to import image from this URL. The host may be blocking downloads." };
+  }
+}
+
