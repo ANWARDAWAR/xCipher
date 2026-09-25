@@ -57,12 +57,26 @@ export default async function Home() {
     pick: a.homepagePlacement === "picks",
   }));
 
-  const dbHeroArticle = await db.article.findFirst({
-    where: { status: "PUBLISHED", featured: true },
+  let dbHeroArticle = await db.article.findFirst({
+    where: { 
+      status: "PUBLISHED", 
+      OR: [
+        { featured: true },
+        { homepagePlacement: "featured" }
+      ]
+    },
     orderBy: { publishedAt: "desc" },
     select: ARTICLE_CARD_SELECT,
   });
   
+  if (!dbHeroArticle) {
+    dbHeroArticle = await db.article.findFirst({
+      where: { status: "PUBLISHED" },
+      orderBy: { publishedAt: "desc" },
+      select: ARTICLE_CARD_SELECT,
+    });
+  }
+
   const heroArticle = dbHeroArticle || dbArticles[0];
 
   const dbBriefingRaw = await db.article.findMany({
@@ -104,7 +118,7 @@ export default async function Home() {
   const mainCategoryCounts = new Map<string, { slug: string, name: string, count: number }>();
   for (const a of mappedArticles) {
     const mainCat = a.category?.parent || a.category;
-    if (mainCat) {
+    if (mainCat && !['gadgets', 'gaming'].includes(mainCat.slug)) {
       const existing = mainCategoryCounts.get(mainCat.slug) || { slug: mainCat.slug, name: mainCat.name, count: 0 };
       existing.count += 1;
       mainCategoryCounts.set(mainCat.slug, existing);
@@ -116,17 +130,8 @@ export default async function Home() {
   
   const mostRead = [...mappedArticles].sort((a, b) => b.views - a.views).slice(0, 5).map((a, i) => ({ ...a, most: i + 1 }));
   const trending = mostRead.map((a, i) => ({ ...a, trend: i + 1 }));
-  // Same top-up rule as the featured strip: placement first, recency to fill.
   const placedPicks = mappedArticles.filter((a) => a.pick);
-  const picks =
-    placedPicks.length >= 4
-      ? placedPicks
-      : [
-          ...placedPicks,
-          ...mappedArticles.filter(
-            (a) => a.slug !== lead.slug && !placedPicks.some((p) => p.slug === a.slug)
-          ),
-        ].slice(0, 4);
+  const picks = placedPicks.slice(0, 4);
   const pickFeat = picks[0];
   const pickRest = picks.slice(1, 4);
 
