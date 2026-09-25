@@ -108,7 +108,7 @@ export default async function Home() {
   }));
   const briefingIds = briefing.map(a => a.id);
   const excludedIds = [lead.id, ...briefingIds];
-  const latest = mappedArticles.filter((a) => !excludedIds.includes(a.id)).slice(0, 7);
+  const latest = mappedArticles.filter((a) => !excludedIds.includes(a.id)).slice(0, 15);
   
   const byCat = (slug: string) => mappedArticles.filter(a => {
     const mainCat = a.category?.parent || a.category;

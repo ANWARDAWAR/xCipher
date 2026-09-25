@@ -152,6 +152,16 @@ export async function upsertArticle(data: any) {
           : {}),
     };
 
+    if (payload.featured || payload.homepagePlacement === "featured" || payload.homepagePlacement === "HERO") {
+      await db.article.updateMany({
+        where: { 
+          OR: [{ featured: true }, { homepagePlacement: "featured" }, { homepagePlacement: "HERO" }],
+          ...(existingArticle?.id ? { id: { not: existingArticle.id } } : {})
+        },
+        data: { featured: false, homepagePlacement: null }
+      });
+    }
+
     let article;
     let actionType = "";
     let existingArticleStatus = "NEW";
