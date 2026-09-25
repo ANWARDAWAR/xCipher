@@ -11,8 +11,8 @@
     --bg-elevated: var(--surface);
     --ink: #000000;
     --ink-2: #1a1a1a;
-    --muted: #595959;
-    --faint: #8c8c8c;
+    --muted: #4a4a4a;
+    --faint: #595959;
     --line: #e6e6e6;
     --line-2: #cccccc;
     --accent: #e60000;
@@ -129,8 +129,8 @@
     --bg-elevated: var(--surface);
     --ink: #ffffff;
     --ink-2: #e6e6e6;
-    --muted: #a6a6a6;
-    --faint: #737373;
+    --muted: #c4c4c4;
+    --faint: #a1a1aa;
     --line: #2d2d2d;
     --line-2: #333333;
     --accent: #ff1a1a;
@@ -1071,7 +1071,7 @@ body.scrolled .masthead {
     flex: none;
     font: 700 10px/1 var(--f-ui);
     letter-spacing: .14em;
-    color: var(--accent);
+    color: #ff5c5c;
     text-transform: uppercase
 }
 
@@ -1515,7 +1515,7 @@ a.ph:hover img {
     letter-spacing: var(--track-display-sm);
     font-size: 26px;
     font-weight: 700;
-    color: var(--line-2);
+    color: var(--muted);
     min-width: 30px;
     line-height: 1;
     transition: color .2s

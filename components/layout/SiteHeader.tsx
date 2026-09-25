@@ -141,17 +141,17 @@ export default function SiteHeader() {
             {/* Right: 3 Social Icons + Elegant Separator + Dark Mode Toggle */}
             <div className="flex-1 flex justify-end items-center gap-1 sm:gap-2.5">
               <div className="util-social flex items-center gap-1 sm:gap-2.5">
-                <Link href="https://facebook.com/xSypher" target="_blank" rel="noopener noreferrer" aria-label="xSypher on Facebook">
+                <Link href="https://facebook.com/xSypher" target="_blank" rel="noopener noreferrer" aria-label="xSypher on Facebook" className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center">
                   <svg className="ic-s" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                   </svg>
                 </Link>
-                <Link href="https://twitter.com/xSypher" target="_blank" rel="noopener noreferrer" aria-label="xSypher on X">
+                <Link href="https://twitter.com/xSypher" target="_blank" rel="noopener noreferrer" aria-label="xSypher on X" className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center">
                   <svg className="ic-s" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M18.9 2H22l-6.8 7.8L23.3 22h-6.3l-4.9-6.4L6.4 22H3.3l7.3-8.3L1 2h6.5l4.4 5.9L18.9 2zm-1.1 18h1.7L7.1 3.9H5.3L17.8 20z" />
                   </svg>
                 </Link>
-                <Link href="https://linkedin.com/company/xSypher" target="_blank" rel="noopener noreferrer" aria-label="xSypher on LinkedIn">
+                <Link href="https://linkedin.com/company/xSypher" target="_blank" rel="noopener noreferrer" aria-label="xSypher on LinkedIn" className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center">
                   <svg className="ic-s" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM.5 8h4V24h-4V8zm7.5 0h3.8v2.2h.1c.5-1 1.8-2.2 3.8-2.2 4 0 4.8 2.7 4.8 6.1V24h-4v-8.5c0-2-.4-3.5-2.1-3.5-1.7 0-2.4 1.2-2.4 3.4V24h-4V8z" />
                   </svg>
@@ -216,7 +216,7 @@ export default function SiteHeader() {
               R
               <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 bg-[var(--accent)] transition-all duration-150 ease-out group-hover:w-full rounded-full" />
             </Link>
-            <Link href="/category/howto" className="group relative inline-flex flex-col items-center justify-center py-1 text-[var(--ink)] hover:text-[var(--accent)] transition-colors" aria-label="How-To">
+            <Link href="/category/how-to" className="group relative inline-flex flex-col items-center justify-center py-1 text-[var(--ink)] hover:text-[var(--accent)] transition-colors" aria-label="How-To">
               H
               <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 bg-[var(--accent)] transition-all duration-150 ease-out group-hover:w-full rounded-full" />
             </Link>

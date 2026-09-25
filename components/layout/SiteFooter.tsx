@@ -17,17 +17,17 @@ export default function SiteFooter() {
               modern life — with original reporting, hands-on reviews and analysis that respects your time.
             </p>
             <div className="foot-social">
-              <Link href="/page/about" aria-label="X" target="_blank" rel="noopener noreferrer">
+              <Link href="/page/about" aria-label="X" target="_blank" rel="noopener noreferrer" className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center">
                 <svg className="ic-s" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M18.9 2H22l-6.8 7.8L23.3 22h-6.3l-4.9-6.4L6.4 22H3.3l7.3-8.3L1 2h6.5l4.4 5.9L18.9 2zm-1.1 18h1.7L7.1 3.9H5.3L17.8 20z" />
                 </svg>
               </Link>
-              <Link href="/page/about" aria-label="Facebook" target="_blank" rel="noopener noreferrer">
+              <Link href="/page/about" aria-label="Facebook" target="_blank" rel="noopener noreferrer" className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center">
                 <svg className="ic-s" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M13.5 22v-8h2.7l.4-3.2h-3.1V8.7c0-.9.3-1.6 1.6-1.6h1.6V4.2c-.3 0-1.3-.1-2.4-.1-2.4 0-4 1.4-4 4.1v2.6H7.5V14h2.8v8h3.2z" />
                 </svg>
               </Link>
-              <Link href="/page/about" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
+              <Link href="/page/about" aria-label="Instagram" target="_blank" rel="noopener noreferrer" className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center">
                 <svg className="ic-s" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                   <rect x="3" y="3" width="18" height="18" rx="5" />
                   <circle cx="12" cy="12" r="4" />
@@ -47,7 +47,7 @@ export default function SiteFooter() {
             </div>
           </div>
           <div>
-            <h4 className="text-xs font-bold tracking-widest uppercase !text-red-500 mb-4 block">Coverage</h4>
+            <p className="text-xs font-bold tracking-widest uppercase !text-red-500 mb-4 block">Coverage</p>
             <Link href="/latest">Latest Intelligence</Link>
             <Link href="/category/ai">AI & Machine Learning</Link>
             <Link href="/category/cybersecurity">Cybersecurity</Link>

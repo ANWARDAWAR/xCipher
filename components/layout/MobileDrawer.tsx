@@ -67,13 +67,14 @@ export default function MobileDrawer() {
         onClick={() => setIsOpen(false)}
       ></div>
 
-      <aside 
+      <div 
         className={`drawer ${isOpen ? "open" : ""}`} 
         id="drawer" 
         role="dialog" 
         aria-modal="true" 
         aria-label="Menu"
         aria-hidden={!isOpen}
+        {...(!isOpen ? { inert: true } : {})}
       >
         <div className="drawer-head sticky top-0 z-50 bg-[var(--surface)] border-b border-[var(--line)]">
           <Link className="logo" href="/" aria-label="xSypher — home" onClick={() => setIsOpen(false)}>
@@ -103,7 +104,7 @@ export default function MobileDrawer() {
           <Link href="/category/business" className={pathname.startsWith("/category/business") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Startups & Business</Link>
           <Link href="/category/gaming" className={pathname.startsWith("/category/gaming") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Gaming</Link>
           <Link href="/category/reviews" className={pathname.startsWith("/category/reviews") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Reviews</Link>
-          <Link href="/category/howto" className={pathname.startsWith("/category/howto") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>How-To</Link>
+          <Link href="/category/how-to" className={pathname.startsWith("/category/how-to") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>How-To</Link>
           <Link href="/category/opinion" className={pathname.startsWith("/category/opinion") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Opinion</Link>
           <Link href="/category/science" className={pathname.startsWith("/category/science") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Science</Link>
           
@@ -153,7 +154,7 @@ export default function MobileDrawer() {
             <span>Toggle dark mode</span>
           </button>
         </div>
-      </aside>
+      </div>
     </>
   );
 }
