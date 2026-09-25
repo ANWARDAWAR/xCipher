@@ -5,7 +5,7 @@ import {
   Strikethrough, Code, List, ListOrdered, Quote, ImagePlus, Link2,
   FileCode, Minus, Maximize2, RemoveFormatting, MonitorPlay, Table as TableIcon,
   AlignLeft, AlignCenter, AlignRight, Subscript as SubscriptIcon, Superscript as SuperscriptIcon,
-  Lightbulb
+  Lightbulb, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, ScatterChart as ScatterChartIcon
 } from 'lucide-react';
 import { InsertMediaDialog, type MediaKind } from './InsertMediaDialog';
 
@@ -57,6 +57,29 @@ function ToolbarButton({ isActive = false, onClick, disabled = false, icon: Icon
 
 function Divider() {
   return <div className="h-4 w-[1px] bg-[var(--line)] mx-1" aria-hidden="true" />;
+}
+
+function ChartDropdown({ editor }: { editor: Editor }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <ToolbarButton
+        icon={BarChart3}
+        onClick={() => setIsOpen(!isOpen)}
+        title="Insert Chart"
+      />
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-1 bg-[var(--surface)] border border-[var(--line)] shadow-lg rounded-md p-1 flex flex-col z-[100] w-[180px]">
+          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().convertSelectionToChart('bar').run(); setIsOpen(false); }}><BarChart3 className="w-4 h-4"/> Bar Chart</button>
+          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().convertSelectionToChart('horizontal-bar').run(); setIsOpen(false); }}><AlignLeft className="w-4 h-4"/> Horizontal Bar</button>
+          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().convertSelectionToChart('line').run(); setIsOpen(false); }}><LineChartIcon className="w-4 h-4"/> Line Chart</button>
+          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().convertSelectionToChart('pie').run(); setIsOpen(false); }}><PieChartIcon className="w-4 h-4"/> Pie Chart</button>
+          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().convertSelectionToChart('scatter').run(); setIsOpen(false); }}><ScatterChartIcon className="w-4 h-4"/> Scatter Chart</button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: EditorToolbarProps) {
@@ -127,7 +150,7 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
       role="toolbar" 
       aria-label="Formatting"
     >
-      <div className="flex md:flex-wrap items-center gap-1 w-full overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="flex md:flex-wrap items-center gap-1 w-full overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       {/* Group 1: History */}
       <ToolbarButton
         icon={Undo}
@@ -311,6 +334,7 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
         isActive={editor.isActive('table')}
         title="Insert table"
       />
+      <ChartDropdown editor={editor} />
       <ToolbarButton
         icon={Link2}
         onClick={setLink}

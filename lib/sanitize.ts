@@ -53,7 +53,7 @@ function transformLink(tagName: string, attribs: Record<string, string>) {
 }
 
 const COMMON_ALLOWED_ATTRIBUTES = {
-  '*': ['class', 'style', 'data-type', 'data-callout-type', 'data-credit', 'data-youtube-video', 'data-youtube-id'],
+  '*': ['class', 'style', 'data-type', 'data-callout-type', 'data-credit', 'data-youtube-video', 'data-youtube-id', 'data-config', 'data-chart-type'],
   'a': ['href', 'target', 'rel', 'title'],
   'img': ['src', 'alt', 'title', 'width', 'height'],
   'th': ['colspan', 'rowspan', 'colwidth'],

@@ -4,6 +4,8 @@ import { useEffect, useRef } from "react";
 import { sanitizeArticleHtml } from "@/lib/sanitize";
 import hljs from 'highlight.js/lib/common';
 import CodeBlockEnhancer from "./CodeBlockEnhancer";
+import parse, { DOMNode, Element } from 'html-react-parser';
+import DynamicChart from './DynamicChart';
 
 interface Props {
   html?: string | null;
@@ -49,12 +51,6 @@ export default function ArticleBody({ html }: Props) {
         }
       }
 
-      if (language && language !== 'plaintext') {
-        const badge = document.createElement('span');
-        badge.className = 'code-lang-badge';
-        badge.textContent = language;
-        pre.appendChild(badge);
-      }
     });
 
     // Make tables fully responsive on mobile
@@ -81,13 +77,29 @@ export default function ArticleBody({ html }: Props) {
     });
   }, [safeHtml]);
 
+  const options = {
+    replace: (domNode: DOMNode) => {
+      if (domNode instanceof Element && domNode.attribs && domNode.attribs['data-type'] === 'interactive-chart') {
+        const configAttr = domNode.attribs['data-config'];
+        const chartTypeAttr = domNode.attribs['data-chart-type'];
+        
+        if (configAttr) {
+          try {
+            const config = JSON.parse(configAttr);
+            return <DynamicChart config={config} chartType={chartTypeAttr || 'bar'} animateOnce={true} />;
+          } catch (e) {
+            console.error("Failed to parse chart config", e);
+          }
+        }
+      }
+    }
+  };
+
   return (
     <>
-      <div
-        ref={containerRef}
-        className="tiptap-content"
-        dangerouslySetInnerHTML={{ __html: safeHtml }}
-      />
+      <div ref={containerRef} className="tiptap-content overflow-x-hidden break-words [overflow-wrap:anywhere]">
+        {parse(safeHtml, options)}
+      </div>
       <CodeBlockEnhancer />
     </>
   );

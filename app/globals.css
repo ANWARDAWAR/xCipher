@@ -2287,6 +2287,15 @@ figcaption .credit::before {
 .tiptap-content pre code {
     overflow-wrap: normal;
     white-space: pre;
+    font-size: 0.875rem !important;
+    line-height: 1.6 !important;
+}
+
+.prose pre code span,
+.ed-body pre code span,
+.tiptap-content pre code span {
+    font-size: 0.875rem !important;
+    line-height: 1.6 !important;
 }
 
 /* Media and tables cannot be broken at all, so they are capped instead.

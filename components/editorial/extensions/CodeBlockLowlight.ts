@@ -1,4 +1,4 @@
-import { Node, mergeAttributes, textblockTypeInputRule } from '@tiptap/core'
+import { Node, mergeAttributes, textblockTypeInputRule, nodePasteRule } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { common, createLowlight } from 'lowlight'

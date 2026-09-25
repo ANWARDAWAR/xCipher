@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { getPublicationSettings } from "@/lib/settings";
 import { siteConfig } from "@/lib/seo";
 import { Space_Grotesk, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
@@ -120,7 +121,9 @@ export default function RootLayout({
             still parsed and executed before the provider below mounts, which is
             all the ordering this needs -- it only has to beat next-themes to
             the storage key, not the first paint. */}
-        <script
+        <Script
+          id="theme-migration"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var k="xsypher-theme";if(localStorage.getItem(k))return;var old=["xcipher-theme","gridx-theme"];for(var i=0;i<old.length;i++){var v=localStorage.getItem(old[i]);if(v){localStorage.setItem(k,v);return;}}}catch(e){}})();`,
           }}

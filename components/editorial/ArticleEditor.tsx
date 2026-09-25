@@ -35,8 +35,10 @@ import SeoPreview from "./SeoPreview";
 import ReviewWorkspace from "./ReviewWorkspace";
 import TableOfContents from "../article/TableOfContents";
 import { EditorToolbar } from "./EditorToolbar";
+import { Markdown } from "tiptap-markdown";
 import { Figure } from "./extensions/AdvancedImage";
 import { Callout } from "./extensions/Callout";
+import { DataChart } from "./extensions/DataChart";
 import { SlashMenu } from "./extensions/SlashMenu";
 import { CodeBlockLowlight } from "./extensions/CodeBlockLowlight";
 import { YouTubeEmbed } from "./extensions/YouTubeEmbed";
@@ -314,6 +316,7 @@ export default function ArticleEditor({
 
   const editor = useEditor({
     extensions: [
+      Markdown,
       StarterKit.configure({
         codeBlock: false, // Replaced by CodeBlockLowlight for syntax highlighting
         heading: false,
@@ -333,6 +336,7 @@ export default function ArticleEditor({
       Superscript,
       Figure,
       Callout,
+      DataChart,
       Link.configure({
         openOnClick: false,
         // Autolink turns a typed URL into a link as you go. Off for pasted
@@ -674,6 +678,14 @@ export default function ArticleEditor({
         clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = null;
       }
+
+      // Guard against race conditions: if an autosave is currently on the wire,
+      // wait for it to finish. Otherwise, it updates the database and we
+      // immediately submit a stale lastUpdatedAt, triggering a false conflict.
+      while (saveInFlightRef.current) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
       setIsPending(true);
       setValue("status", targetStatus as any);
     }
