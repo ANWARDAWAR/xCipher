@@ -91,21 +91,21 @@ export default function MobileDrawer() {
         </div>
         <nav id="drawerNav" aria-label="Sections">
           <div className="dr-group">BROWSE</div>
-          <Link href="/" className={pathname === "/" ? "on" : ""}>Home</Link>
-          <Link href="/latest" className={pathname === "/latest" ? "on" : ""}>Latest</Link>
+          <Link href="/" className={pathname === "/" ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Home</Link>
+          <Link href="/latest" className={pathname === "/latest" ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Latest</Link>
           
           <div className="dr-group">SECTIONS</div>
-          <Link href="/category/ai" className={pathname.startsWith("/category/ai") ? "on" : ""}>AI & Machine Learning</Link>
-          <Link href="/category/cybersecurity" className={pathname.startsWith("/category/cybersecurity") ? "on" : ""}>Cybersecurity</Link>
-          <Link href="/category/gadgets" className={pathname.startsWith("/category/gadgets") ? "on" : ""}>Gadgets</Link>
-          <Link href="/category/software" className={pathname.startsWith("/category/software") ? "on" : ""}>Software</Link>
-          <Link href="/category/programming" className={pathname.startsWith("/category/programming") ? "on" : ""}>Programming</Link>
-          <Link href="/category/business" className={pathname.startsWith("/category/business") ? "on" : ""}>Startups & Business</Link>
-          <Link href="/category/gaming" className={pathname.startsWith("/category/gaming") ? "on" : ""}>Gaming</Link>
-          <Link href="/category/reviews" className={pathname.startsWith("/category/reviews") ? "on" : ""}>Reviews</Link>
-          <Link href="/category/howto" className={pathname.startsWith("/category/howto") ? "on" : ""}>How-To</Link>
-          <Link href="/category/opinion" className={pathname.startsWith("/category/opinion") ? "on" : ""}>Opinion</Link>
-          <Link href="/category/science" className={pathname.startsWith("/category/science") ? "on" : ""}>Science</Link>
+          <Link href="/category/ai" className={pathname.startsWith("/category/ai") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>AI & Machine Learning</Link>
+          <Link href="/category/cybersecurity" className={pathname.startsWith("/category/cybersecurity") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Cybersecurity</Link>
+          <Link href="/category/gadgets" className={pathname.startsWith("/category/gadgets") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Gadgets</Link>
+          <Link href="/category/software" className={pathname.startsWith("/category/software") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Software</Link>
+          <Link href="/category/programming" className={pathname.startsWith("/category/programming") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Programming</Link>
+          <Link href="/category/business" className={pathname.startsWith("/category/business") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Startups & Business</Link>
+          <Link href="/category/gaming" className={pathname.startsWith("/category/gaming") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Gaming</Link>
+          <Link href="/category/reviews" className={pathname.startsWith("/category/reviews") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Reviews</Link>
+          <Link href="/category/howto" className={pathname.startsWith("/category/howto") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>How-To</Link>
+          <Link href="/category/opinion" className={pathname.startsWith("/category/opinion") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Opinion</Link>
+          <Link href="/category/science" className={pathname.startsWith("/category/science") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Science</Link>
           
           <div className="dr-group">COMPANY / INFO</div>
           <Link href="/page/about">About</Link>

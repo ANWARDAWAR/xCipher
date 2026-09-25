@@ -76,7 +76,7 @@ export async function postComment(
   if (!bodyResult.success) {
     return {
       success: false,
-      error: bodyResult.error.issues[0]?.message?.includes("too_small")
+      error: bodyResult.error.issues[0]?.code === "too_small"
         ? "Comment must be at least 10 characters."
         : "Comment must be 1200 characters or fewer.",
     };
