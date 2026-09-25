@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import AvatarCropper from "@/components/editorial/AvatarCropper";
 import {
   Camera,
@@ -66,6 +67,7 @@ export default function ProfileForm({
   const [isPending, setIsPending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const router = useRouter();
+  const { update: updateSession } = useSession();
   const [isRefreshing, startRefresh] = useTransition();
   const busy = isPending || isRefreshing;
 
@@ -359,6 +361,8 @@ export default function ProfileForm({
 
       if (res.success) {
         showToast("Profile saved");
+        await updateSession({ name, image: finalAvatarUrl });
+        
         if (avatarPreview && avatarPreview.startsWith("blob:")) {
           URL.revokeObjectURL(avatarPreview);
         }

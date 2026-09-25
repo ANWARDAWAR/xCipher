@@ -144,10 +144,17 @@ export default async function ArticlePage({ params }: Props) {
     select: ARTICLE_CARD_SELECT,
   });
 
+  const mainCatId = mainCat ? mainCat.id : article.categoryId;
+
   if (relatedDb.length < 3) {
     const fallback = await db.article.findMany({
       where: {
-        categoryId: article.categoryId,
+        category: mainCatId ? {
+          OR: [
+            { id: mainCatId },
+            { parentId: mainCatId }
+          ]
+        } : undefined,
         id: { notIn: [article.id, ...relatedDb.map(r => r.id)] },
         status: "PUBLISHED"
       },
@@ -159,6 +166,32 @@ export default async function ArticlePage({ params }: Props) {
   }
   
   const related = relatedDb.map(a => ({
+    ...a,
+    mins: 5,
+    views: a.views,
+    img: a.img || "",
+    alt: a.title
+  }));
+
+  const discoverMoreDb = await db.article.findMany({
+    where: {
+      category: mainCatId ? {
+        NOT: {
+          OR: [
+            { id: mainCatId },
+            { parentId: mainCatId }
+          ]
+        }
+      } : undefined,
+      id: { notIn: [article.id, ...relatedDb.map(r => r.id)] },
+      status: "PUBLISHED"
+    },
+    orderBy: { publishedAt: "desc" },
+    take: 4,
+    select: ARTICLE_CARD_SELECT,
+  });
+
+  const discoverMore = discoverMoreDb.map(a => ({
     ...a,
     mins: 5,
     views: a.views,
@@ -392,6 +425,15 @@ export default async function ArticlePage({ params }: Props) {
           <h2 style={{ fontFamily: "var(--f-ui)", fontSize: "16px", fontWeight: 700, letterSpacing: ".02em", marginBottom: "20px" }}>Read Next</h2>
           <div className="grid4">
             {related.map(a => (
+              <StoryCard key={a.id} article={a} showDeck={false} />
+            ))}
+          </div>
+        </section>
+
+        <section aria-label="Discover More" style={{ marginTop: "48px", paddingTop: "40px", borderTop: "1px solid var(--line)" }}>
+          <h2 style={{ fontFamily: "var(--f-ui)", fontSize: "16px", fontWeight: 700, letterSpacing: ".02em", marginBottom: "20px" }}>Discover More</h2>
+          <div className="grid4">
+            {discoverMore.map(a => (
               <StoryCard key={a.id} article={a} showDeck={false} />
             ))}
           </div>

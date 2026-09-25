@@ -152,6 +152,7 @@ export async function updateProfile(data: any) {
       });
     }
 
+    revalidatePath('/');
     revalidatePath('/admin/settings');
     revalidatePath('/admin');
     revalidatePath(`/author/${author.slug}`);
