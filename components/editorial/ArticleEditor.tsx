@@ -271,7 +271,7 @@ export default function ArticleEditor({
     deck: initialData?.deck || initialData?.excerpt || "",
     img: initialData?.img ? String(initialData.img) : "",
     tags: Array.isArray(initialData?.tags)
-      ? initialData.tags.join(", ")
+      ? initialData.tags.map((t: any) => typeof t === "string" ? t : t.slug).filter(Boolean).join(", ")
       : initialData?.tags || "",
     seoTitle: initialData?.seoTitle || "",
     seoDesc: initialData?.seoDesc || "",
@@ -408,9 +408,10 @@ export default function ArticleEditor({
         status: (initialData.status?.toUpperCase() || "DRAFT") as any,
         deck: initialData.deck || initialData.excerpt || "",
         img: initialData.img ? String(initialData.img) : "",
-        tags: Array.isArray(initialData.tags) ? initialData.tags.join(", ") : initialData.tags || "",
+        tags: Array.isArray(initialData.tags) ? initialData.tags.map((t: any) => typeof t === "string" ? t : t.slug).filter(Boolean).join(", ") : initialData.tags || "",
         seoTitle: initialData.seoTitle || "",
         seoDesc: initialData.seoDesc || "",
+        homepagePlacement: initialData.homepagePlacement || "",
         bodyHtml: htmlContent,
       });
       if (initialData.slug) {
@@ -681,6 +682,7 @@ export default function ArticleEditor({
         isAutosave: Boolean(isAutosave),
         notes: notesOverride || null,
         scheduledFor: watch("scheduledFor") || getValues("scheduledFor") || null,
+        homepagePlacement: watch("homepagePlacement") || getValues("homepagePlacement") || null,
       };
 
       // Strip any accidental client proxies
