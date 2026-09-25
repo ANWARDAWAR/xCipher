@@ -94,15 +94,25 @@ export default async function Home() {
   }));
   const latest = mappedArticles.filter((a) => a.slug !== lead.slug).slice(0, 7);
   
-  const byCat = (slug: string) => mappedArticles.filter(a => a.category?.slug === slug);
+  const byCat = (slug: string) => mappedArticles.filter(a => {
+    const mainCat = a.category?.parent || a.category;
+    return mainCat?.slug === slug;
+  });
   const gd = byCat("gadgets");
   const gm = byCat("gaming");
   
-  const topCategories = await db.category.findMany({
-    where: { articles: { some: { status: 'PUBLISHED' } } },
-    orderBy: { articles: { _count: 'desc' } },
-    take: 4,
-  });
+  const mainCategoryCounts = new Map<string, { slug: string, name: string, count: number }>();
+  for (const a of mappedArticles) {
+    const mainCat = a.category?.parent || a.category;
+    if (mainCat) {
+      const existing = mainCategoryCounts.get(mainCat.slug) || { slug: mainCat.slug, name: mainCat.name, count: 0 };
+      existing.count += 1;
+      mainCategoryCounts.set(mainCat.slug, existing);
+    }
+  }
+  const topCategories = Array.from(mainCategoryCounts.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 4);
   
   const mostRead = [...mappedArticles].sort((a, b) => b.views - a.views).slice(0, 5).map((a, i) => ({ ...a, most: i + 1 }));
   const trending = mostRead.map((a, i) => ({ ...a, trend: i + 1 }));
@@ -372,7 +382,8 @@ export default async function Home() {
 function CatSplit({ cat, articles, reverse = false }: { cat: string, articles: any[], reverse?: boolean }) {
   const feat = articles[0];
   const rest = articles.slice(1, 4);
-  const c = { name: feat?.category?.name || cat };
+  const mainCat = feat?.category?.parent || feat?.category;
+  const c = { name: mainCat?.name || cat };
 
   if (!feat) return null;
 
@@ -407,8 +418,8 @@ function CatSplit({ cat, articles, reverse = false }: { cat: string, articles: a
               />
             </Link>
             <div>
-              <Link href={`/category/${cat}`} className="kicker plain">
-                {c.name}
+              <Link href={`/category/${feat.category?.slug || cat}`} className="kicker plain">
+                {feat.category?.name || c.name}
               </Link>
               <h3>
                 <Link href={`/article/${feat.slug}`}>
