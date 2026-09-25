@@ -106,7 +106,9 @@ export default async function Home() {
     breaking: a.homepagePlacement === "featured",
     pick: a.homepagePlacement === "picks",
   }));
-  const latest = mappedArticles.filter((a) => a.slug !== lead.slug).slice(0, 7);
+  const briefingIds = briefing.map(a => a.id);
+  const excludedIds = [lead.id, ...briefingIds];
+  const latest = mappedArticles.filter((a) => !excludedIds.includes(a.id)).slice(0, 7);
   
   const byCat = (slug: string) => mappedArticles.filter(a => {
     const mainCat = a.category?.parent || a.category;

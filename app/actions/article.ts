@@ -147,6 +147,9 @@ export async function upsertArticle(data: any) {
       categoryId: category.id,
       scheduledFor,
       readingTime: calculateReadTime(sanitizedBodyHtml || data.bodyHtml),
+      ...(data.status === "PUBLISHED" && (!existingArticle || existingArticle.status !== "PUBLISHED") 
+          ? { publishedAt: new Date() } 
+          : {}),
     };
 
     let article;

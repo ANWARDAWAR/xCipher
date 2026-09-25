@@ -42,10 +42,7 @@ export const getHomeArticles = unstable_cache(
   async () =>
     db.article.findMany({
       where: { status: "PUBLISHED" },
-      orderBy: [
-        { featured: "desc" },
-        { createdAt: "desc" }
-      ],
+      orderBy: { publishedAt: "desc" },
       take: HOME_ARTICLE_LIMIT,
       select: ARTICLE_CARD_SELECT,
     }),
@@ -61,7 +58,7 @@ export const getLatestArticles = unstable_cache(
   async () =>
     db.article.findMany({
       where: { status: "PUBLISHED" },
-      orderBy: { createdAt: "desc" },
+      orderBy: { publishedAt: "desc" },
       take: LATEST_ARTICLE_LIMIT,
       select: ARTICLE_CARD_SELECT,
     }),
@@ -91,7 +88,7 @@ export function getCategoryArticles(slug: string, subSlug?: string) {
                 ]
               }
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { publishedAt: "desc" },
         take: LISTING_ARTICLE_LIMIT,
         select: ARTICLE_CARD_SELECT,
       }),
@@ -106,7 +103,7 @@ export function getAuthorArticles(authorId: string, authorSlug: string) {
     async () =>
       db.article.findMany({
         where: { status: "PUBLISHED", authorId },
-        orderBy: { createdAt: "desc" },
+        orderBy: { publishedAt: "desc" },
         take: LISTING_ARTICLE_LIMIT,
         select: ARTICLE_CARD_SELECT,
       }),
