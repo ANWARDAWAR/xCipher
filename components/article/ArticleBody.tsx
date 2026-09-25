@@ -56,6 +56,27 @@ export default function ArticleBody({ html }: Props) {
         pre.appendChild(badge);
       }
     });
+
+    // Make tables fully responsive on mobile
+    const tables = container.querySelectorAll("table");
+    tables.forEach((table) => {
+      // 1. Prevent Column Squeezing
+      table.classList.add('min-w-full', 'min-w-[600px]');
+      
+      // 2. Typography Adjustments
+      const ths = table.querySelectorAll('th');
+      ths.forEach(th => th.classList.add('whitespace-nowrap'));
+
+      // 3. Implement Horizontal Scrolling Wrapper
+      if (table.parentElement && !table.parentElement.classList.contains('overflow-x-auto')) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'overflow-x-auto max-w-full';
+        wrapper.style.setProperty('-webkit-overflow-scrolling', 'touch');
+        
+        table.parentElement.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
+      }
+    });
   }, [safeHtml]);
 
   return (
