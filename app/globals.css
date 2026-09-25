@@ -985,11 +985,11 @@ body.scrolled .masthead {
     align-items: center;
     gap: 8px;
     flex: none;
-    font: 700 11px/1 var(--f-ui);
+    font-weight: 700;
+    font-family: var(--f-ui);
     letter-spacing: .18em;
     color: #fff;
     background: var(--accent);
-    padding: 7px 11px;
     border-radius: 2px
 }
 

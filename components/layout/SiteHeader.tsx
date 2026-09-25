@@ -155,9 +155,8 @@ export default function SiteHeader() {
           
           <nav className="primary-nav flex-1" id="primaryNav" aria-label="Primary"></nav>
 
-          {/* Desktop Centered Minimalist Navigation */}
-          {/* Desktop Centered Minimalist Navigation */}
-          <nav className="hidden lg:flex absolute left-1/2 -translate-x-1/2 items-center gap-3 font-bold text-[12px] tracking-tight" style={{ fontFamily: "var(--f-display)" }}>
+          {/* Desktop Centered Minimalist Navigation (Hidden as requested) */}
+          <nav className="hidden absolute left-1/2 -translate-x-1/2 items-center gap-3 font-bold text-[12px] tracking-tight" style={{ fontFamily: "var(--f-display)" }}>
             <Link href="/" className="group relative inline-flex flex-col items-center justify-center py-1 text-[var(--ink)] hover:text-[var(--accent)] transition-colors" aria-label="Home">
               H
               <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 bg-[var(--accent)] transition-all duration-150 ease-out group-hover:w-full rounded-full" />
@@ -214,13 +213,13 @@ export default function SiteHeader() {
           </div>
         </div>
         <div className="navrow" id="navrow">
-          <div className="wrap navrow-in md:justify-center h-8.5 lg:h-[44px]" id="navrowIn" role="navigation" aria-label="Sections">
+          <div className="wrap navrow-in md:justify-center items-center h-8.5 lg:h-[44px]" id="navrowIn" role="navigation" aria-label="Sections">
             {NAV_ROW.map((item) => {
               const active = isLinkActive(item.href);
               const classes = [
                 item.className, 
                 active ? "on" : "",
-                "py-1 lg:py-1.5 px-2.5 lg:px-3 text-[11px] lg:text-xs min-h-[44px] flex items-center"
+                "px-3 py-1.5 text-[11px] lg:text-xs rounded-md flex items-center justify-center transition-colors"
               ].filter(Boolean).join(" ");
               return (
                 <Link

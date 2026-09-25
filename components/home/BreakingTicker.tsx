@@ -62,7 +62,7 @@ export default function BreakingTicker({ articles }: Props) {
       onBlur={() => setIsPaused(false)}
     >
       <div className="wrap ticker-in flex items-center">
-        <span className="tick-label text-[9px] px-2 py-0.5 tracking-wider md:text-xs shrink-0">
+        <span className="tick-label text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 tracking-wider shrink-0">
           <span className="tick-dot" aria-hidden="true"></span>LATEST
         </span>
         <div className="tick-stage flex-1 min-w-0 flex items-center" aria-live="polite">
