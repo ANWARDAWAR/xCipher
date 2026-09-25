@@ -11,19 +11,32 @@ export default async function Sidebar() {
       where: { status: "PUBLISHED" },
       orderBy: { views: "desc" },
       take: 5,
-      include: { category: true },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        contentHtml: true,
+        category: {
+          select: { name: true }
+        }
+      }
     });
 
     if (dbMostRead && dbMostRead.length > 0) {
-      mostRead = dbMostRead.map((a, idx) => ({
-        id: a.id,
-        rank: idx + 1,
-        slug: a.slug,
-        title: a.title,
-        catName: a.category?.name || "News",
-        views: a.views || 0,
-        mins: (a as any).mins || 5, // fallback if schema doesn't have it explicitly typed
-      }));
+      mostRead = dbMostRead.map((a, idx) => {
+        const text = (a.contentHtml || "").replace(/<[^>]*>?/gm, '');
+        const wordCount = text.split(/\s+/).filter(Boolean).length;
+        const calculatedTime = Math.max(1, Math.ceil(wordCount / 200));
+        
+        return {
+          id: a.id,
+          rank: idx + 1,
+          slug: a.slug,
+          title: a.title,
+          catName: a.category?.name || "News",
+          calculatedTime
+        };
+      });
     }
   } catch (error) {
     console.error("Failed to fetch most read articles for sidebar:", error);
@@ -45,7 +58,7 @@ export default async function Sidebar() {
                       <span className="hlink">{a.title}</span>
                     </Link>
                   </h3>
-                  <span className="mr-cat">{a.catName} · {a.readingTime || a.mins || 1} min read</span>
+                  <span className="mr-cat">{a.catName} · {a.calculatedTime} MIN READ</span>
                 </div>
               </li>
             ))}
