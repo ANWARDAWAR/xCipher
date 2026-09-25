@@ -7347,3 +7347,21 @@ body.is-article .prose pre {
     min-width: 300px !important;
   }
 }
+
+/* Force Mobile Table Scrolling Overrides */
+.tiptap-content table,
+.prose table {
+  width: max-content !important;
+  min-width: 650px !important;
+  table-layout: auto !important;
+}
+
+.tiptap-content table th,
+.prose table th {
+  white-space: nowrap !important;
+}
+
+.overflow-x-auto {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
