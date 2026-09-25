@@ -1,6 +1,8 @@
 import Image from 'next/image';
 import { Download, Palette, Type, ShieldCheck, User } from 'lucide-react';
 import type { Metadata } from 'next';
+import CopyButton from './CopyButton';
+import DownloadAssetCard from './DownloadAssetCard';
 
 export const metadata: Metadata = {
   title: 'Media Kit & Brand Assets | xSypher',
@@ -40,7 +42,7 @@ export default function MediaKitPage() {
               <p className="text-[var(--muted)] font-[family:var(--f-body)] text-sm leading-relaxed mb-4">
                 xSypher is an independent technology and cybersecurity publication dedicated to high-fidelity intelligence, zero-day research, and deep-dive technical analysis. Designed for engineers and security professionals, xSypher rejects surveillance capitalism in favor of a 100% reader-funded, privacy-first infrastructure that respects technical authority.
               </p>
-              <button className="text-xs font-bold text-[var(--accent)] hover:underline uppercase tracking-wide">Copy Text</button>
+              <CopyButton text="xSypher is an independent technology and cybersecurity publication dedicated to high-fidelity intelligence, zero-day research, and deep-dive technical analysis. Designed for engineers and security professionals, xSypher rejects surveillance capitalism in favor of a 100% reader-funded, privacy-first infrastructure that respects technical authority." />
             </div>
             <div className="bg-[var(--surface-2)] border border-[var(--line)] rounded-sm p-6 shadow-sm">
               <h3 className="font-bold text-[var(--ink)] mb-3 text-sm uppercase tracking-wider">100-Word Expanded</h3>
@@ -48,7 +50,7 @@ export default function MediaKitPage() {
                 xSypher is an independent technology and cybersecurity publication dedicated to high-fidelity intelligence, zero-day research, and deep-dive technical analysis. Built by engineers for engineers, xSypher provides uncompromising coverage of the software, hardware, and threat actors shaping modern digital infrastructure. <br/><br/>
                 Operating under a strict mandate of editorial independence, the publication rejects surveillance capitalism, programmatic advertising, and venture capital influence. Instead, xSypher relies on a 100% privacy-first, reader-funded model, ensuring our loyalty remains exclusively with the technical professionals who rely on our reporting.
               </p>
-              <button className="text-xs font-bold text-[var(--accent)] hover:underline uppercase tracking-wide">Copy Text</button>
+              <CopyButton text="xSypher is an independent technology and cybersecurity publication dedicated to high-fidelity intelligence, zero-day research, and deep-dive technical analysis. Built by engineers for engineers, xSypher provides uncompromising coverage of the software, hardware, and threat actors shaping modern digital infrastructure. Operating under a strict mandate of editorial independence, the publication rejects surveillance capitalism, programmatic advertising, and venture capital influence. Instead, xSypher relies on a 100% privacy-first, reader-funded model, ensuring our loyalty remains exclusively with the technical professionals who rely on our reporting." />
             </div>
           </div>
         </section>
@@ -60,13 +62,13 @@ export default function MediaKitPage() {
             Executive Profiles
           </h2>
           <div className="bg-[var(--surface-2)] border border-[var(--line)] rounded-sm p-6 sm:p-8 flex flex-col md:flex-row gap-8 items-start shadow-sm">
-            <div className="w-32 h-32 shrink-0 border border-[var(--line)] rounded-full overflow-hidden">
+            <div className="w-32 h-32 shrink-0 border-2 border-[var(--accent)] rounded-full overflow-hidden mt-2 bg-white p-1">
               <Image
                 src="/anwar.webp"
                 alt="Anwar Iqbal Dawar"
                 width={128}
                 height={128}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-[50%_10%] scale-[1.15] translate-y-2 rounded-full"
                 priority
               />
             </div>
@@ -170,24 +172,16 @@ export default function MediaKitPage() {
             Downloadable Assets
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <a href="#" className="flex items-center justify-between p-6 bg-[var(--surface-2)] border border-[var(--line)] rounded-sm hover:border-[var(--accent)] transition-all group">
-              <div>
-                <h3 className="font-bold text-[var(--ink)] text-lg">xSypher Logo (SVG)</h3>
-                <p className="text-sm text-[var(--muted)]">Vector format, ideal for print and high-res web.</p>
-              </div>
-              <div className="p-3 bg-[var(--surface)] border border-[var(--line)] rounded-full text-[var(--muted)] group-hover:text-[var(--accent)] group-hover:border-[var(--accent)] transition-all">
-                <Download className="w-5 h-5" />
-              </div>
-            </a>
-            <a href="#" className="flex items-center justify-between p-6 bg-[var(--surface-2)] border border-[var(--line)] rounded-sm hover:border-[var(--accent)] transition-all group">
-              <div>
-                <h3 className="font-bold text-[var(--ink)] text-lg">xSypher Logo (PNG)</h3>
-                <p className="text-sm text-[var(--muted)]">Raster format with transparent background.</p>
-              </div>
-              <div className="p-3 bg-[var(--surface)] border border-[var(--line)] rounded-full text-[var(--muted)] group-hover:text-[var(--accent)] group-hover:border-[var(--accent)] transition-all">
-                <Download className="w-5 h-5" />
-              </div>
-            </a>
+            <DownloadAssetCard 
+              title="xSypher Logo (SVG)"
+              desc="Vector format, ideal for print and high-res web."
+              type="svg"
+            />
+            <DownloadAssetCard 
+              title="xSypher Logo (PNG)"
+              desc="Raster format with transparent background."
+              type="png"
+            />
           </div>
         </section>
 

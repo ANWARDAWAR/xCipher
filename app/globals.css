@@ -4214,12 +4214,10 @@ select.ed-input {
 }
 
 .foot-grid a {
-    display: flex;
-    align-items: center;
-    min-height: 44px;
-    font: 500 13.5px/1 var(--f-ui);
-    color: #b9c0c8;
-    padding: 8px 0;
+    display: block;
+    font: 500 13.5px/24px var(--f-ui);
+    color: var(--ink-2);
+    padding: 10px 0;
     transition: color .2s
 }
 
