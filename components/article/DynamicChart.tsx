@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -17,7 +17,8 @@ import {
   Line,
   ScatterChart,
   Scatter,
-  ZAxis
+  ZAxis,
+  LabelList
 } from 'recharts';
 import { motion } from 'framer-motion';
 
@@ -42,6 +43,14 @@ export default function DynamicChart({ config, chartType, animateOnce = true }: 
     return Object.keys(config[0]).filter(k => k !== 'name');
   }, [config]);
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   if (!config || config.length === 0) return null;
 
   const renderChart = () => {
@@ -53,20 +62,34 @@ export default function DynamicChart({ config, chartType, animateOnce = true }: 
 
       return (
         <ResponsiveContainer width="100%" height={350}>
-          <PieChart>
+          <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
             <Tooltip 
               contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--line)', color: 'var(--ink)', borderRadius: '8px' }}
               itemStyle={{ color: 'var(--ink)' }}
             />
-            <Legend wrapperStyle={{ color: 'var(--ink)' }} />
+            <Legend wrapperStyle={{ color: 'var(--ink)', fontSize: '12px', marginTop: '10px' }} />
             <Pie
               data={pieData}
               cx="50%"
               cy="50%"
               labelLine={false}
-              outerRadius={120}
+              outerRadius={isMobile ? 120 : "80%"}
               dataKey="value"
-              label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+              label={(props: any) => {
+                const { x, y, percent, textAnchor } = props;
+                return (
+                  <text 
+                    x={x} 
+                    y={y} 
+                    fill="var(--muted)" 
+                    fontSize={11} 
+                    textAnchor={textAnchor}
+                    dominantBaseline="central"
+                  >
+                    {`${((percent || 0) * 100).toFixed(0)}%`}
+                  </text>
+                );
+              }}
             >
               {pieData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -88,7 +111,7 @@ export default function DynamicChart({ config, chartType, animateOnce = true }: 
               contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--line)', color: 'var(--ink)', borderRadius: '8px' }}
               itemStyle={{ color: 'var(--ink)' }}
             />
-            <Legend verticalAlign="bottom" wrapperStyle={{ color: 'var(--ink)' }} />
+            <Legend verticalAlign="bottom" wrapperStyle={{ color: 'var(--ink)', fontSize: '12px' }} />
             {keys.map((key, index) => (
               <Line 
                 key={key} 
@@ -116,7 +139,7 @@ export default function DynamicChart({ config, chartType, animateOnce = true }: 
               contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--line)', color: 'var(--ink)', borderRadius: '8px' }}
               itemStyle={{ color: 'var(--ink)' }}
             />
-            <Legend verticalAlign="bottom" wrapperStyle={{ color: 'var(--ink)' }} />
+            <Legend verticalAlign="bottom" wrapperStyle={{ color: 'var(--ink)', fontSize: '12px' }} />
             {keys.map((key, index) => (
               <Scatter 
                 key={key} 
@@ -158,6 +181,7 @@ export default function DynamicChart({ config, chartType, animateOnce = true }: 
             stroke="var(--muted)" 
             tick={{ fill: 'var(--muted)', fontSize: 12 }} 
             width={isHorizontal ? 130 : 40}
+            hide={isHorizontal && isMobile}
             tickFormatter={(value) => {
               if (typeof value === 'string' && value.length > 15) {
                 return value.substring(0, 15) + '...';
@@ -170,7 +194,7 @@ export default function DynamicChart({ config, chartType, animateOnce = true }: 
             itemStyle={{ color: 'var(--ink)' }}
             cursor={{ fill: 'var(--surface-2)' }}
           />
-          <Legend verticalAlign="bottom" wrapperStyle={{ color: 'var(--ink)' }} />
+          <Legend verticalAlign="bottom" wrapperStyle={{ color: 'var(--ink)', fontSize: '12px' }} />
           {keys.map((key, index) => (
             <Bar 
               key={key} 
@@ -178,7 +202,20 @@ export default function DynamicChart({ config, chartType, animateOnce = true }: 
               stackId={isStacked ? "a" : undefined}
               fill={COLORS[index % COLORS.length]} 
               radius={isStacked ? [0, 0, 0, 0] : (isHorizontal ? [0, 4, 4, 0] : [4, 4, 0, 0])} 
-            />
+              maxBarSize={50}
+            >
+              {isHorizontal && keys.length === 1 && (
+                <LabelList 
+                  className="md:hidden" 
+                  dataKey="name" 
+                  fill="var(--ink)" 
+                  offset={10} 
+                  position="insideLeft" 
+                  fontSize={11}
+                  formatter={(v: any) => typeof v === 'string' && v.length > 15 ? v.substring(0, 15) + '...' : v}
+                />
+              )}
+            </Bar>
           ))}
         </BarChart>
       </ResponsiveContainer>
@@ -191,13 +228,13 @@ export default function DynamicChart({ config, chartType, animateOnce = true }: 
       whileInView={animateOnce ? { opacity: 1, y: 0 } : undefined}
       viewport={animateOnce ? { once: true, margin: "-50px" } : undefined}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="w-full my-8 bg-[var(--surface-2)] p-4 sm:p-6 rounded-xl border border-[var(--line)] shadow-sm"
+      className="w-full my-8"
     >
       <div 
-        className="w-full overflow-x-auto overflow-y-hidden snap-x" 
-        style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}
+        className={chartType !== 'pie' && chartType !== 'horizontal-bar' ? "w-full overflow-x-auto overflow-y-hidden snap-x" : "w-full"} 
+        style={chartType !== 'pie' && chartType !== 'horizontal-bar' ? { WebkitOverflowScrolling: "touch", scrollbarWidth: "none" } : undefined}
       >
-        <div style={{ minWidth: 700 }}>
+        <div style={{ minWidth: (chartType !== 'pie' && chartType !== 'horizontal-bar') ? 700 : '100%' }}>
           {renderChart()}
         </div>
       </div>
