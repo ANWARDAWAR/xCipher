@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Script from "next/script";
+
 import { getPublicationSettings } from "@/lib/settings";
 import { siteConfig } from "@/lib/seo";
 import { Space_Grotesk, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
@@ -94,7 +94,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`scroll-pt-28 lg:scroll-pt-32 ${spaceGrotesk.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} ${kremlin.variable}`}>
-      <body suppressHydrationWarning>
+      <head>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -111,23 +111,18 @@ export default function RootLayout({
             })
           }}
         />
-        {/* Carry a theme chosen under a previous brand over to the current
-            storage key. next-themes reads a single key, so without this a
-            rename silently resets every reader to "system".
-            
-            First element in <body> rather than inside an explicit <head>: Next
-            owns the head, and a raw <script> there logs "Encountered a script
-            tag while rendering React component" on every render. Here it is
-            still parsed and executed before the provider below mounts, which is
-            all the ordering this needs -- it only has to beat next-themes to
-            the storage key, not the first paint. */}
-        <Script
+        {/* Carry a theme chosen under a previous brand over to the current storage key.
+            In Next.js 15+ / React 19, inline scripts should be placed inside <head> 
+            as native <script> tags to avoid "Encountered a script tag" errors on the client. */}
+        <script
           id="theme-migration"
-          strategy="beforeInteractive"
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var k="xsypher-theme";if(localStorage.getItem(k))return;var old=["xcipher-theme","gridx-theme"];for(var i=0;i<old.length;i++){var v=localStorage.getItem(old[i]);if(v){localStorage.setItem(k,v);return;}}}catch(e){}})();`,
           }}
         />
+      </head>
+      <body suppressHydrationWarning>
         <ThemeProvider attribute="data-theme" defaultTheme="system" storageKey="xsypher-theme" disableTransitionOnChange enableSystem>
           {children}
           <div id="toast-root" className="pointer-events-none fixed inset-0 z-[9999]" aria-live="assertive"></div>

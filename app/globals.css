@@ -4849,17 +4849,17 @@ h1.ap-name {
            SYNTAX HIGHLIGHTING — Lowlight / highlight.js compatible
            ══════════════════════════════════════════════════════════════ */
 
-/* ── Base token colors (dark background, used in both editor and public) ── */
+/* ── Base token colors (GitHub Light default) ── */
 .hljs-comment,
 .hljs-quote {
-    color: #7d8b99;
+    color: #6a737d;
     font-style: italic
 }
 
 .hljs-keyword,
 .hljs-selector-tag,
 .hljs-addition {
-    color: #c792ea
+    color: #d73a49
 }
 
 .hljs-number,
@@ -4868,7 +4868,7 @@ h1.ap-name {
 .hljs-literal,
 .hljs-doctag,
 .hljs-regexp {
-    color: #c3e88d
+    color: #032f62
 }
 
 .hljs-title,
@@ -4876,7 +4876,7 @@ h1.ap-name {
 .hljs-name,
 .hljs-selector-id,
 .hljs-selector-class {
-    color: #82aaff
+    color: #6f42c1
 }
 
 .hljs-attribute,
@@ -4885,7 +4885,7 @@ h1.ap-name {
 .hljs-template-variable,
 .hljs-class .hljs-title,
 .hljs-type {
-    color: #ffcb6b
+    color: #e36209
 }
 
 .hljs-symbol,
@@ -4896,12 +4896,66 @@ h1.ap-name {
 .hljs-selector-attr,
 .hljs-selector-pseudo,
 .hljs-link {
-    color: #89ddff
+    color: #005cc5
 }
 
 .hljs-built_in,
 .hljs-deletion {
-    color: #f07178
+    color: #b31d28
+}
+
+/* ── GitHub Dark overrides ── */
+[data-theme="dark"] .hljs-comment,
+[data-theme="dark"] .hljs-quote {
+    color: #8b949e
+}
+
+[data-theme="dark"] .hljs-keyword,
+[data-theme="dark"] .hljs-selector-tag,
+[data-theme="dark"] .hljs-addition {
+    color: #ff7b72
+}
+
+[data-theme="dark"] .hljs-number,
+[data-theme="dark"] .hljs-string,
+[data-theme="dark"] .hljs-meta .hljs-meta-string,
+[data-theme="dark"] .hljs-literal,
+[data-theme="dark"] .hljs-doctag,
+[data-theme="dark"] .hljs-regexp {
+    color: #a5d6ff
+}
+
+[data-theme="dark"] .hljs-title,
+[data-theme="dark"] .hljs-section,
+[data-theme="dark"] .hljs-name,
+[data-theme="dark"] .hljs-selector-id,
+[data-theme="dark"] .hljs-selector-class {
+    color: #d2a8ff
+}
+
+[data-theme="dark"] .hljs-attribute,
+[data-theme="dark"] .hljs-attr,
+[data-theme="dark"] .hljs-variable,
+[data-theme="dark"] .hljs-template-variable,
+[data-theme="dark"] .hljs-class .hljs-title,
+[data-theme="dark"] .hljs-type {
+    color: #ffa657
+}
+
+[data-theme="dark"] .hljs-symbol,
+[data-theme="dark"] .hljs-bullet,
+[data-theme="dark"] .hljs-subst,
+[data-theme="dark"] .hljs-meta,
+[data-theme="dark"] .hljs-meta .hljs-keyword,
+[data-theme="dark"] .hljs-selector-attr,
+[data-theme="dark"] .hljs-selector-pseudo,
+[data-theme="dark"] .hljs-link {
+    color: #79c0ff
+}
+
+[data-theme="dark"] .hljs-built_in,
+[data-theme="dark"] .hljs-deletion {
+    color: #ffa198
 }
 
 .hljs-formula {
@@ -7342,4 +7396,19 @@ body.is-article .prose pre {
 .overflow-x-auto {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Fix Mermaid text clipping & prose conflicts */
+.mermaid-svg-container foreignObject {
+    overflow: visible !important;
+}
+.mermaid-svg-container .edgeLabel {
+    background-color: transparent !important;
+}
+.mermaid-svg-container div {
+    font-family: var(--f-ui) !important;
+}
+.mermaid-svg-container svg {
+    width: 100% !important;
+    height: auto !important;
 }

@@ -6,6 +6,7 @@ import hljs from 'highlight.js/lib/common';
 import CodeBlockEnhancer from "./CodeBlockEnhancer";
 import parse, { DOMNode, Element } from 'html-react-parser';
 import DynamicChart from './DynamicChart';
+import FrontendMermaidViewer from './FrontendMermaidViewer';
 
 interface Props {
   html?: string | null;
@@ -79,16 +80,26 @@ export default function ArticleBody({ html }: Props) {
 
   const options = {
     replace: (domNode: DOMNode) => {
-      if (domNode instanceof Element && domNode.attribs && domNode.attribs['data-type'] === 'interactive-chart') {
-        const configAttr = domNode.attribs['data-config'];
-        const chartTypeAttr = domNode.attribs['data-chart-type'];
+      if (domNode instanceof Element && domNode.attribs) {
+        if (domNode.attribs['data-type'] === 'interactive-chart') {
+          const configAttr = domNode.attribs['data-config'];
+          const chartTypeAttr = domNode.attribs['data-chart-type'];
+          
+          if (configAttr) {
+            try {
+              const config = JSON.parse(configAttr);
+              return <DynamicChart config={config} chartType={chartTypeAttr || 'bar'} animateOnce={true} />;
+            } catch (e) {
+              console.error("Failed to parse chart config", e);
+            }
+          }
+        }
         
-        if (configAttr) {
-          try {
-            const config = JSON.parse(configAttr);
-            return <DynamicChart config={config} chartType={chartTypeAttr || 'bar'} animateOnce={true} />;
-          } catch (e) {
-            console.error("Failed to parse chart config", e);
+        if (domNode.attribs['data-type'] === 'mermaid-block') {
+          const graphDef = domNode.attribs['data-graph-definition'];
+          const containerWidth = domNode.attribs['data-container-width'] || '100%';
+          if (graphDef) {
+            return <FrontendMermaidViewer graphDefinition={graphDef} containerWidth={containerWidth} />;
           }
         }
       }

@@ -168,6 +168,7 @@ export function EditorBubbleMenu({ editor }: Props) {
       shouldShow={({ editor: ed, from, to }) => {
         if (ed.isActive("youtubeEmbed")) return false;
         if (ed.isActive("codeBlock")) return false;
+        if (ed.isActive("mermaidBlock")) return false;
         if (ed.isActive("figure")) return true;
         if (linkMode) return true;
         return from !== to;

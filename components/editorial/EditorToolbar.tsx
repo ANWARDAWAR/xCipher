@@ -5,7 +5,7 @@ import {
   Strikethrough, Code, List, ListOrdered, Quote, ImagePlus, Link2,
   FileCode, Minus, Maximize2, RemoveFormatting, MonitorPlay, Table as TableIcon,
   AlignLeft, AlignCenter, AlignRight, Subscript as SubscriptIcon, Superscript as SuperscriptIcon,
-  Lightbulb, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, ScatterChart as ScatterChartIcon
+  Lightbulb, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, ScatterChart as ScatterChartIcon, Workflow
 } from 'lucide-react';
 import { InsertMediaDialog, type MediaKind } from './InsertMediaDialog';
 
@@ -346,6 +346,12 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
         isActive={editor.isActive('codeBlock')}
         title="Code Block"
+      />
+      <ToolbarButton
+        icon={Workflow}
+        onClick={() => editor.chain().focus().convertSelectionToMermaid().run()}
+        isActive={editor.isActive('mermaidBlock')}
+        title="Mermaid Diagram"
       />
       <ToolbarButton
         icon={Minus}

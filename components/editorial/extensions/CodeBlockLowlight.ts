@@ -139,6 +139,7 @@ export const CodeBlockLowlight = Node.create<CodeBlockLowlightOptions>({
   content: 'text*',
   marks: '',
   code: true,
+  isolating: true,
   defining: true,
 
   addOptions() {

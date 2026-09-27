@@ -40,7 +40,7 @@ declare module '@tiptap/core' {
 /** Matches a YouTube URL occupying a paste on its own. Anchored so a link
  *  inside a sentence stays a link -- turning that into a block-level embed
  *  mid-paragraph would destroy the paragraph. */
-const PASTE_RE = /^\s*(https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com|youtu\.be|youtube-nocookie\.com)\/\S+)\s*$/
+const PASTE_RE = /^\s*(https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com|youtu\.be|youtube-nocookie\.com)\/\S+)\s*$/g
 
 export const YouTubeEmbed = Node.create({
   name: 'youtubeEmbed',

@@ -67,6 +67,7 @@ export default async function EditDraftPage({ params }: EditDraftPageProps) {
     status: draft.status,
     bodyHtml: draft.contentHtml || "",
     body: draft.contentHtml || "",
+    contentJson: draft.contentJson || null,
   };
 
   const [categories, tags] = await Promise.all([

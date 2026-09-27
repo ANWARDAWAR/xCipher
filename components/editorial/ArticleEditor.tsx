@@ -41,6 +41,7 @@ import { Callout } from "./extensions/Callout";
 import { DataChart } from "./extensions/DataChart";
 import { SlashMenu } from "./extensions/SlashMenu";
 import { CodeBlockLowlight } from "./extensions/CodeBlockLowlight";
+import { MermaidBlock } from "./extensions/MermaidBlock";
 import { YouTubeEmbed } from "./extensions/YouTubeEmbed";
 import { SlashCommandList, getSuggestionItems } from "./SlashCommandList";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
@@ -329,6 +330,7 @@ export default function ArticleEditor({
           return [`h${level}`, { ...HTMLAttributes, id }, 0];
         },
       }).configure({ levels: [1, 2, 3, 4, 5, 6] }),
+      MermaidBlock,
       CodeBlockLowlight,
       Underline,
       Highlight.configure({ multicolor: false }),
@@ -448,7 +450,13 @@ export default function ArticleEditor({
       if (initialData.slug) {
         setSlugManuallyEdited(true);
       }
-      editor.commands.setContent(htmlContent);
+      // Prefer JSON rehydration (lossless) over HTML (lossy due to sanitizer encoding).
+      // contentJson preserves exact Tiptap node types and attributes without corruption.
+      if (initialData.contentJson) {
+        editor.commands.setContent(initialData.contentJson);
+      } else {
+        editor.commands.setContent(htmlContent);
+      }
     }
   }, [initialData, editor, reset]);
 
