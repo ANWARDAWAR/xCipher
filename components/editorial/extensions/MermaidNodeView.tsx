@@ -68,8 +68,8 @@ export const MermaidNodeView = (props: any) => {
       themeVariables: {
         primaryColor: isDark ? '#1a1a1a' : '#f2f2f2', // var(--surface-2)
         primaryBorderColor: isDark ? '#2d2d2d' : '#e6e6e6', // var(--line)
-        primaryTextColor: isDark ? '#ffffff' : '#000000', // var(--ink)
-        lineColor: isDark ? '#c4c4c4' : '#4a4a4a', // var(--muted)
+        primaryTextColor: isDark ? '#ffffff' : '#111111',
+        lineColor: isDark ? '#e0e0e0' : '#333333',
         edgeLabelBackground: 'transparent',
       },
       themeCSS: `
@@ -78,7 +78,14 @@ export const MermaidNodeView = (props: any) => {
           box-shadow: none !important; 
         }
         .edgeLabel rect {
-          fill: var(--bg) !important;
+          fill: transparent !important;
+        }
+        .edgeLabel text {
+          fill: var(--ink, #111111) !important;
+          font-weight: 500 !important;
+        }
+        .edgePath path, .flowchart-link {
+          stroke: var(--ink, #333333) !important;
         }
       `,
       fontFamily: 'inherit',

@@ -7405,6 +7405,14 @@ body.is-article .prose pre {
 .mermaid-svg-container .edgeLabel {
     background-color: transparent !important;
 }
+.mermaid-svg-container .edgeLabel text {
+    fill: var(--ink, #111111) !important;
+    font-weight: 500 !important;
+}
+.mermaid-svg-container .edgePath path,
+.mermaid-svg-container .flowchart-link {
+    stroke: var(--ink, #333333) !important;
+}
 .mermaid-svg-container div {
     font-family: var(--f-ui) !important;
 }
