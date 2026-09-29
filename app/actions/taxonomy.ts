@@ -2,9 +2,12 @@
 
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate";
 import { authorize } from "@/lib/capabilities";
-import type { Role, Prisma } from "@prisma/client";
+import { eq, ne, and, sql, inArray } from "drizzle-orm";
+import { category as categoryTable, tag as tagTable, article as articleTable, _articleToTag, auditLog } from "@/lib/db/schema";
+
+import { Role } from "@/lib/types";
 
 // Derived from the capability map rather than a hardcoded list, so it cannot
 // drift from the page guard or the sidebar link that gate the same feature.
@@ -24,25 +27,38 @@ function slugify(text: string) {
 }
 
 export async function getCategories() {
-  return db.category.findMany({
-    orderBy: { name: "asc" },
-    include: {
-      _count: {
-        select: { articles: true },
-      },
-    },
+  const categories = await db.query.category.findMany({
+    orderBy: (c, { asc }) => [asc(c.name)],
+    with: {
+      articles: {
+        columns: { id: true }
+      }
+    }
   });
+
+  return categories.map(c => ({
+    ...c,
+    _count: { articles: c.articles.length }
+  }));
 }
 
 export async function getTags() {
-  return db.tag.findMany({
-    orderBy: { name: "asc" },
-    include: {
-      _count: {
-        select: { articles: true },
-      },
-    },
+  const tags = await db.query.tag.findMany({
+    orderBy: (t, { asc }) => [asc(t.name)]
   });
+  
+  // Tag uses many to many table _articleToTag
+  const counts = await db.select({
+    tagId: _articleToTag.B,
+    count: sql<number>`count(*)::int`
+  }).from(_articleToTag).groupBy(_articleToTag.B);
+  
+  const countMap = Object.fromEntries(counts.map(c => [c.tagId, c.count]));
+
+  return tags.map(t => ({
+    ...t,
+    _count: { articles: countMap[t.id] || 0 }
+  }));
 }
 
 export async function createCategory(data: { name: string; description?: string; parentId?: string }) {
@@ -53,17 +69,16 @@ export async function createCategory(data: { name: string; description?: string;
   const slug = slugify(data.name);
 
   try {
-    const existing = await db.category.findUnique({ where: { slug } });
+    const [existing] = await db.select().from(categoryTable).where(eq(categoryTable.slug, slug)).limit(1);
     if (existing) return { success: false, error: "Category already exists" };
 
-    const category = await db.category.create({
-      data: {
-        name: data.name.trim(),
-        slug,
-        description: data.description?.trim() || null,
-        parentId: data.parentId || null,
-      },
-    });
+    const [category] = await db.insert(categoryTable).values({
+      id: crypto.randomUUID(),
+      name: data.name.trim(),
+      slug,
+      description: data.description?.trim() || null,
+      parentId: data.parentId || null,
+    }).returning();
     revalidatePath("/admin/taxonomy");
     return { success: true, category };
   } catch (error: unknown) {
@@ -74,14 +89,12 @@ export async function createCategory(data: { name: string; description?: string;
 
 export async function getSubcategories(parentSlug: string) {
   try {
-    const parent = await db.category.findUnique({
-      where: { slug: parentSlug },
-    });
+    const [parent] = await db.select().from(categoryTable).where(eq(categoryTable.slug, parentSlug)).limit(1);
     if (!parent) return [];
     
-    return db.category.findMany({
-      where: { parentId: parent.id },
-      orderBy: { name: "asc" },
+    return db.query.category.findMany({
+      where: eq(categoryTable.parentId, parent.id),
+      orderBy: (c, { asc }) => [asc(c.name)],
     });
   } catch (e) {
     console.error(e);
@@ -100,14 +113,18 @@ export async function createSubcategory(name: string, parentSlug: string) {
   try {
     // Upsert the parent category just in case it doesn't exist yet (for hardcoded frontend categories)
     const parentName = parentSlug.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-    const parent = await db.category.upsert({
-      where: { slug: parentSlug },
-      update: {},
-      create: { slug: parentSlug, name: parentName }
-    });
+    
+    const [parent] = await db.insert(categoryTable).values({
+      id: crypto.randomUUID(),
+      slug: parentSlug,
+      name: parentName,
+    }).onConflictDoUpdate({
+      target: categoryTable.slug,
+      set: { slug: parentSlug } // no-op basically
+    }).returning();
 
     // Check if subcategory already exists
-    const existing = await db.category.findUnique({ where: { slug } });
+    const [existing] = await db.select().from(categoryTable).where(eq(categoryTable.slug, slug)).limit(1);
     if (existing) {
       if (existing.parentId !== parent.id) {
         // If it exists but under a different parent, we just update it or return an error?
@@ -117,13 +134,12 @@ export async function createSubcategory(name: string, parentSlug: string) {
       return { success: true, category: existing };
     }
 
-    const category = await db.category.create({
-      data: {
-        name: trimmedName,
-        slug,
-        parentId: parent.id,
-      },
-    });
+    const [category] = await db.insert(categoryTable).values({
+      id: crypto.randomUUID(),
+      name: trimmedName,
+      slug,
+      parentId: parent.id,
+    }).returning();
     
     revalidatePath("/admin/taxonomy");
     return { success: true, category };
@@ -141,19 +157,14 @@ export async function updateCategory(id: string, data: { name: string; descripti
   const slug = slugify(data.name);
 
   try {
-    const existing = await db.category.findFirst({
-      where: { slug, NOT: { id } },
-    });
+    const [existing] = await db.select().from(categoryTable).where(and(eq(categoryTable.slug, slug), ne(categoryTable.id, id))).limit(1);
     if (existing) return { success: false, error: "Another category with this slug already exists" };
 
-    const category = await db.category.update({
-      where: { id },
-      data: {
-        name: data.name.trim(),
-        slug,
-        description: data.description?.trim() || null,
-      },
-    });
+    const [category] = await db.update(categoryTable).set({
+      name: data.name.trim(),
+      slug,
+      description: data.description?.trim() || null,
+    }).where(eq(categoryTable.id, id)).returning();
     revalidatePath("/admin/taxonomy");
     return { success: true, category };
   } catch (error: unknown) {
@@ -167,29 +178,24 @@ export async function deleteCategory(id: string) {
   if (!canManageTaxonomy(user?.role)) return { success: false, error: "Unauthorized" };
 
   try {
-    const category = await db.category.findUnique({
-      where: { id },
-      include: {
-        _count: {
-          select: { articles: true },
-        },
-      },
-    });
+    const [category] = await db.select().from(categoryTable).where(eq(categoryTable.id, id)).limit(1);
 
     if (!category) return { success: false, error: "Category not found" };
+
+    const [{ count: articleCount }] = await db.select({ count: sql<number>`count(*)::int` }).from(articleTable).where(eq(articleTable.categoryId, id));
 
     if (category.parentId && user?.role !== "OWNER" && user?.role !== "ADMIN") {
       return { success: false, error: "Only Admins and Owners can delete subcategories." };
     }
 
-    if (category._count.articles > 0) {
+    if (articleCount > 0) {
       return {
         success: false,
-        error: `Cannot delete category "${category.name}" because it is assigned to ${category._count.articles} article(s). Reassign them first.`,
+        error: `Cannot delete category "${category.name}" because it is assigned to ${articleCount} article(s). Reassign them first.`,
       };
     }
 
-    await db.category.delete({ where: { id } });
+    await db.delete(categoryTable).where(eq(categoryTable.id, id));
     revalidatePath("/admin/taxonomy");
     return { success: true };
   } catch (error: unknown) {
@@ -206,16 +212,15 @@ export async function createTag(data: { name: string; description?: string }) {
   const slug = slugify(data.name);
 
   try {
-    const existing = await db.tag.findUnique({ where: { slug } });
+    const [existing] = await db.select().from(tagTable).where(eq(tagTable.slug, slug)).limit(1);
     if (existing) return { success: false, error: "Tag already exists" };
 
-    const tag = await db.tag.create({
-      data: {
-        name: data.name.trim(),
-        slug,
-        description: data.description?.trim() || null,
-      },
-    });
+    const [tag] = await db.insert(tagTable).values({
+      id: crypto.randomUUID(),
+      name: data.name.trim(),
+      slug,
+      description: data.description?.trim() || null,
+    }).returning();
     revalidatePath("/admin/taxonomy");
     return { success: true, tag };
   } catch (error: unknown) {
@@ -232,19 +237,14 @@ export async function updateTag(id: string, data: { name: string; description?: 
   const slug = slugify(data.name);
 
   try {
-    const existing = await db.tag.findFirst({
-      where: { slug, NOT: { id } },
-    });
+    const [existing] = await db.select().from(tagTable).where(and(eq(tagTable.slug, slug), ne(tagTable.id, id))).limit(1);
     if (existing) return { success: false, error: "Another tag with this slug already exists" };
 
-    const tag = await db.tag.update({
-      where: { id },
-      data: {
-        name: data.name.trim(),
-        slug,
-        description: data.description?.trim() || null,
-      },
-    });
+    const [tag] = await db.update(tagTable).set({
+      name: data.name.trim(),
+      slug,
+      description: data.description?.trim() || null,
+    }).where(eq(tagTable.id, id)).returning();
     revalidatePath("/admin/taxonomy");
     return { success: true, tag };
   } catch (error: unknown) {
@@ -258,18 +258,11 @@ export async function deleteTag(id: string) {
   if (!canManageTaxonomy(user?.role)) return { success: false, error: "Unauthorized" };
 
   try {
-    const tag = await db.tag.findUnique({
-      where: { id },
-      include: {
-        _count: {
-          select: { articles: true },
-        },
-      },
-    });
+    const [tag] = await db.select().from(tagTable).where(eq(tagTable.id, id)).limit(1);
 
     if (!tag) return { success: false, error: "Tag not found" };
 
-    await db.tag.delete({ where: { id } });
+    await db.delete(tagTable).where(eq(tagTable.id, id));
     revalidatePath("/admin/taxonomy");
     return { success: true };
   } catch (error: unknown) {
@@ -295,17 +288,13 @@ async function logTaxonomyAudit(
   action: string,
   entityType: string,
   entityId: string,
-  // Prisma.InputJsonValue rather than Record<string, unknown>: the column is
-  // Json, and Prisma will not accept a type whose values it cannot prove are
-  // serialisable -- `unknown` could hold a function or a Date. Using Prisma's
-  // own input type keeps the check instead of casting it away with `any`,
-  // which is what the other audit helpers in this codebase do.
-  details: Prisma.InputJsonValue
+  details: any
 ) {
   try {
     const user = await getCurrentUser();
-    await db.auditLog.create({
-      data: { userId: user?.id || null, action, entityType, entityId, details },
+    await db.insert(auditLog).values({
+      id: crypto.randomUUID(),
+      userId: user?.id || null, action, entityType, entityId, details
     });
   } catch (e) {
     // Never fail the merge because the audit write failed -- the merge is the
@@ -330,28 +319,20 @@ export async function mergeCategories(sourceId: string, targetId: string) {
   }
 
   try {
-    const [source, target] = await Promise.all([
-      db.category.findUnique({
-        where: { id: sourceId },
-        include: { _count: { select: { articles: true } } },
-      }),
-      db.category.findUnique({ where: { id: targetId } }),
-    ]);
+    const [source] = await db.select().from(categoryTable).where(eq(categoryTable.id, sourceId)).limit(1);
+    const [target] = await db.select().from(categoryTable).where(eq(categoryTable.id, targetId)).limit(1);
 
     if (!source) return { success: false, error: "Source category not found" };
     if (!target) return { success: false, error: "Target category not found" };
 
-    const moved = source._count.articles;
+    const [{ count: moved }] = await db.select({ count: sql<number>`count(*)::int` }).from(articleTable).where(eq(articleTable.categoryId, sourceId));
 
     // One transaction: a partial merge would leave articles split across a
     // category the editor believes no longer exists.
-    await db.$transaction([
-      db.article.updateMany({
-        where: { categoryId: sourceId },
-        data: { categoryId: targetId },
-      }),
-      db.category.delete({ where: { id: sourceId } }),
-    ]);
+    
+            await db.update(articleTable).set({ categoryId: targetId }).where(eq(articleTable.categoryId, sourceId));
+            await db.delete(categoryTable).where(eq(categoryTable.id, sourceId));
+          
 
     await logTaxonomyAudit("taxonomy.category.merge", "Category", targetId, {
       sourceId,
@@ -392,16 +373,17 @@ export async function mergeTags(sourceId: string, targetId: string) {
   }
 
   try {
-    const [source, target] = await Promise.all([
-      db.tag.findUnique({
-        where: { id: sourceId },
-        include: { articles: { select: { id: true } } },
-      }),
-      db.tag.findUnique({
-        where: { id: targetId },
-        include: { articles: { select: { id: true } } },
-      }),
-    ]);
+    const sourcePromise = db.query.tag.findFirst({
+      where: eq(tagTable.id, sourceId),
+      with: { articles: { columns: { A: true } } }
+    });
+    
+    const targetPromise = db.query.tag.findFirst({
+      where: eq(tagTable.id, targetId),
+      with: { articles: { columns: { A: true } } }
+    });
+    
+    const [source, target] = await Promise.all([sourcePromise, targetPromise]);
 
     if (!source) return { success: false, error: "Source tag not found" };
     if (!target) return { success: false, error: "Target tag not found" };
@@ -409,24 +391,17 @@ export async function mergeTags(sourceId: string, targetId: string) {
     // Tags are many-to-many, so unlike categories this is not a field update.
     // An article can already carry both tags; connecting it again would break
     // the join table's unique constraint, so only connect the difference.
-    const alreadyTagged = new Set(target.articles.map((a) => a.id));
+    const alreadyTagged = new Set(target.articles.map((a) => a.A));
     const toConnect = source.articles
-      .filter((a) => !alreadyTagged.has(a.id))
-      .map((a) => ({ id: a.id }));
+      .filter((a) => !alreadyTagged.has(a.A))
+      .map((a) => ({ A: a.A, B: targetId }));
 
-    await db.$transaction([
-      ...(toConnect.length > 0
-        ? [
-            db.tag.update({
-              where: { id: targetId },
-              data: { articles: { connect: toConnect } },
-            }),
-          ]
-        : []),
-      // Deleting the tag drops its join rows, which is what detaches the
-      // articles that were already on both.
-      db.tag.delete({ where: { id: sourceId } }),
-    ]);
+    
+            if (toConnect.length > 0) {
+              await db.insert(_articleToTag).values(toConnect).onConflictDoNothing();
+            }
+            await db.delete(tagTable).where(eq(tagTable.id, sourceId));
+          
 
     await logTaxonomyAudit("taxonomy.tag.merge", "Tag", targetId, {
       sourceId,

@@ -11,6 +11,9 @@
  */
 
 import { db } from "./db";
+import { eq, lt } from "drizzle-orm";
+import { rateLimit as rateLimitTable } from "./db/schema";
+
 
 interface RateLimitOptions {
   /** Maximum requests allowed in the window */
@@ -40,34 +43,33 @@ export async function checkRateLimit(
 
   // Stochastic prune: 1% chance to clean expired tokens to prevent table bloat
   if (Math.random() < 0.01) {
-    (db as any).rateLimit.deleteMany({
-      where: { resetAt: { lt: now } }
-    }).catch(console.error);
+    db.delete(rateLimitTable).where(lt(rateLimitTable.resetAt, now)).catch(console.error);
   }
 
-  return await db.$transaction(async (tx) => {
-    let entry = await (tx as any).rateLimit.findUnique({ where: { actionKey: mapKey } });
+  let [entry] = await db.select().from(rateLimitTable).where(eq(rateLimitTable.actionKey, mapKey)).limit(1);
 
-    if (!entry || entry.resetAt < now) {
-      entry = await (tx as any).rateLimit.upsert({
-        where: { actionKey: mapKey },
-        update: { count: 1, resetAt },
-        create: { actionKey: mapKey, count: 1, resetAt },
-      });
-      return { allowed: true, remaining: Math.max(0, options.limit - 1), resetAt: entry.resetAt.getTime() };
-    }
+  if (!entry || entry.resetAt < now) {
+    const [newEntry] = await db.insert(rateLimitTable).values({
+      id: crypto.randomUUID(),
+      actionKey: mapKey, count: 1, resetAt
+    }).onConflictDoUpdate({
+      target: rateLimitTable.actionKey,
+      set: { count: 1, resetAt }
+    }).returning();
+    entry = newEntry;
+    return { allowed: true, remaining: Math.max(0, options.limit - 1), resetAt: entry.resetAt.getTime() };
+  }
 
-    if (entry.count >= options.limit) {
-      return { allowed: false, remaining: 0, resetAt: entry.resetAt.getTime() };
-    }
+  if (entry.count >= options.limit) {
+    return { allowed: false, remaining: 0, resetAt: entry.resetAt.getTime() };
+  }
 
-    entry = await (tx as any).rateLimit.update({
-      where: { actionKey: mapKey },
-      data: { count: { increment: 1 } },
-    });
+  const [updatedEntry] = await db.update(rateLimitTable).set({
+    count: entry.count + 1
+  }).where(eq(rateLimitTable.actionKey, mapKey)).returning();
+  entry = updatedEntry;
 
-    return { allowed: true, remaining: Math.max(0, options.limit - entry.count), resetAt: entry.resetAt.getTime() };
-  });
+  return { allowed: true, remaining: Math.max(0, options.limit - entry.count), resetAt: entry.resetAt.getTime() };
 }
 
 /**

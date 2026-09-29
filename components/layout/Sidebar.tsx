@@ -1,29 +1,32 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { ARTICLE_CARD_SELECT } from "@/lib/queries";
+import { eq } from "drizzle-orm";
+import { article as articleTable } from "@/lib/db/schema";
 import AdUnit from "@/components/common/AdUnit";
 import NewsletterSignup from "@/components/newsletter/NewsletterSignup";
 
 export default async function Sidebar() {
   let mostRead: any[] = [];
   try {
-    const dbMostRead = await db.article.findMany({
-      where: { status: "PUBLISHED" },
-      orderBy: { views: "desc" },
-      take: 5,
-      select: {
+    const dbMostRead = await db.query.article.findMany({
+      where: eq(articleTable.status, "PUBLISHED"),
+      orderBy: (a, { desc }) => [desc(a.views)],
+      limit: 5,
+      columns: {
         id: true,
         slug: true,
         title: true,
-        contentHtml: true,
+        contentUrl: true,
+      },
+      with: {
         category: {
-          select: { name: true }
+          columns: { name: true }
         }
       }
     });
 
     if (dbMostRead && dbMostRead.length > 0) {
-      mostRead = dbMostRead.map((a, idx) => {
+      mostRead = dbMostRead.map((a: any, idx: number) => {
         const text = (a.contentHtml || "").replace(/<[^>]*>?/gm, '');
         const wordCount = text.split(/\s+/).filter(Boolean).length;
         const calculatedTime = Math.max(1, Math.ceil(wordCount / 200));

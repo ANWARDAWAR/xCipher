@@ -2,9 +2,9 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useState, useRef } from "react";
-import { ArticleStatus } from "@prisma/client";
 import { STATUS_META } from "@/lib/workflow";
 import { Search, X } from "lucide-react";
+import { ArticleStatus } from "@/lib/types";
 
 interface FilterOption {
   value: string;
@@ -31,12 +31,12 @@ export default function FilterBar({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Read current state from URL
-  const query = searchParams.get("q") || "";
-  const statusParam = searchParams.get("status") || "";
-  const authorParam = searchParams.get("author") || "";
-  const categoryParam = searchParams.get("category") || "";
-  const fromParam = searchParams.get("from") || "";
-  const toParam = searchParams.get("to") || "";
+  const query = searchParams?.get("q") || "";
+  const statusParam = searchParams?.get("status") || "";
+  const authorParam = searchParams?.get("author") || "";
+  const categoryParam = searchParams?.get("category") || "";
+  const fromParam = searchParams?.get("from") || "";
+  const toParam = searchParams?.get("to") || "";
 
   const [searchValue, setSearchValue] = useState(query);
   const [prevQuery, setPrevQuery] = useState(query);
@@ -48,7 +48,7 @@ export default function FilterBar({
 
   const updateParams = useCallback(
     (updates: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams((searchParams?.toString() || ""));
       for (const [key, value] of Object.entries(updates)) {
         if (value) {
           params.set(key, value);

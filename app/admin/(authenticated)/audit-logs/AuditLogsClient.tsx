@@ -37,13 +37,13 @@ export default function AuditLogsClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [searchQuery, setSearchQuery] = useState(searchParams.get("query") || "");
+  const [searchQuery, setSearchQuery] = useState(searchParams?.get("query") || "");
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
 
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams((searchParams?.toString() || ""));
     if (searchQuery) {
       params.set("query", searchQuery);
     } else {
@@ -54,7 +54,7 @@ export default function AuditLogsClient({
   };
 
   const handleFilterChange = (key: string, value: string) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams((searchParams?.toString() || ""));
     if (value && value !== "All") {
       params.set(key, value);
     } else {
@@ -119,7 +119,7 @@ export default function AuditLogsClient({
             <Filter className="w-4 h-4 text-faint mr-2" />
             <select
               className="bg-transparent text-sm focus:outline-none text-ink-2 min-w-[120px]"
-              value={searchParams.get("category") || "All"}
+              value={searchParams?.get("category") || "All"}
               onChange={(e) => handleFilterChange("category", e.target.value)}
             >
               <option value="All">All Events</option>
@@ -133,7 +133,7 @@ export default function AuditLogsClient({
           <div className="flex items-center bg-surface border border-line rounded-md px-3 py-1.5 h-[38px]">
             <select
               className="bg-transparent text-sm focus:outline-none text-ink-2 min-w-[100px]"
-              value={searchParams.get("dateRange") || "All Time"}
+              value={searchParams?.get("dateRange") || "All Time"}
               onChange={(e) => handleFilterChange("dateRange", e.target.value)}
             >
               <option value="All Time">All Time</option>
@@ -220,7 +220,7 @@ export default function AuditLogsClient({
                       <Search className="w-8 h-8 text-faint mb-3" />
                       <p className="text-muted font-medium">No audit logs found matching your criteria.</p>
                       <button 
-                        onClick={() => router.push(pathname)}
+                        onClick={() => router.push(pathname || "/admin/audit-logs")}
                         className="mt-2 text-sm text-accent hover:underline"
                       >
                         Clear filters

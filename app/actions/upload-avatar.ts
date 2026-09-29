@@ -3,7 +3,9 @@
 import { getCurrentUser } from "@/lib/auth";
 import { authorize } from "@/lib/capabilities";
 import { db } from "@/lib/db";
-import { uploadImageToCloudinary } from "@/lib/storage";
+import { eq } from "drizzle-orm";
+import { user as userTable } from "@/lib/db/schema";
+import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { MAX_UPLOAD_BYTES, formatBytes, sniffImageMime } from "@/lib/upload-constraints";
 
 export interface AvatarUploadResult {
@@ -18,10 +20,7 @@ export async function uploadAvatar(formData: FormData): Promise<AvatarUploadResu
     return { ok: false, error: "Sign in to upload an avatar." };
   }
 
-  const dbUser = await db.user.findUnique({
-    where: { id: user.id },
-    select: { role: true, isActive: true },
-  });
+  const [dbUser] = await db.select({ role: userTable.role, isActive: userTable.isActive }).from(userTable).where(eq(userTable.id, user.id)).limit(1);
 
   if (!dbUser?.isActive) {
     return { ok: false, error: "This account is not active." };
@@ -47,7 +46,8 @@ export async function uploadAvatar(formData: FormData): Promise<AvatarUploadResu
     };
   }
 
-  const input = Buffer.from(await blob.arrayBuffer());
+  const arrayBuffer = await blob.arrayBuffer();
+  const input = new Uint8Array(arrayBuffer);
 
   if (input.byteLength > MAX_UPLOAD_BYTES) {
     return { ok: false, error: `That image exceeds ${formatBytes(MAX_UPLOAD_BYTES)}.` };

@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Article, Category } from "@prisma/client";
 import { getImgSrc, timeAgo } from "@/lib/utils";
 import RelativeTime from "@/components/common/RelativeTime";
+import { Article, Category } from "@/lib/types";
 
 export type StoryCardArticle = Partial<Article> & {
   id: string;

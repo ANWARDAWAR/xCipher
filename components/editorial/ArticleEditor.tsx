@@ -24,13 +24,10 @@ import CategorySelector from "./CategorySelector";
 import TextAlign from "@tiptap/extension-text-align";
 import tippy from 'tippy.js';
 
-import { upsertArticle } from "@/app/actions/article";
-import { submitArticle, publishArticle } from "@/app/actions/workflow";
-import { uploadArticleImage, processExternalImage } from "@/app/actions/upload-article-image";
+
 import { useDraftCache, clearDraftCache } from "@/lib/use-draft-cache";
 import { Loader2, ArrowLeft, Settings, Eye } from "lucide-react";
-import { Role, ArticleStatus } from "@prisma/client";
-import { ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
+import { getAllowedMediaDomains } from "@/lib/sanitize";
 import SeoPreview from "./SeoPreview";
 import ReviewWorkspace from "./ReviewWorkspace";
 import TableOfContents from "../article/TableOfContents";
@@ -48,8 +45,7 @@ import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import ImageDropzone from "./ImageDropzone";
 import ThumbnailCropper from "./ThumbnailCropper";
 import ConfirmDialog from "../ui/ConfirmDialog";
-
-
+import { Role, ArticleStatus } from "@/lib/types";
 
 // Templates
 const ARTICLE_TEMPLATES: Record<string, { title: string, deck: string, html: string }> = {
@@ -97,7 +93,7 @@ const articleSchema = z.object({
     try {
       const parsed = new URL(url);
       if (!['http:', 'https:'].includes(parsed.protocol)) return false;
-      return ALLOWED_MEDIA_DOMAINS.includes(parsed.hostname);
+      return getAllowedMediaDomains().includes(parsed.hostname);
     } catch { return false; }
   }, { message: "Invalid image URL or unapproved domain (must be from Pexels, Unsplash, etc.)" }),
   tags: z.string().optional(),
@@ -214,7 +210,15 @@ export default function ArticleEditor({
     showToast("Processing external image...", "info");
     
     try {
-      const res = await processExternalImage(finalUrl);
+      let res;
+      try {
+        const fetchRes = await fetch("/api/upload/external", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: finalUrl }),
+        });
+        res = await fetchRes.json();
+      } catch (e) { res = { ok: false, error: "Network error." }; }
       if (!res.ok || !res.url) {
         showToast(res.error || "Failed to import image from this URL. The host may be blocking downloads.", "error");
       } else {
@@ -260,8 +264,17 @@ export default function ArticleEditor({
     formData.append("file", croppedFile);
     
     try {
-      const res = await uploadArticleImage(formData);
-      thumbCrop.resolve(res);
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        thumbCrop.resolve({ ok: false, error: data?.error || `Upload failed with status ${res.status}` });
+      } else {
+        const data = await res.json();
+        thumbCrop.resolve(data);
+      }
     } catch (err) {
       thumbCrop.resolve({ ok: false, error: "Upload failed." });
     } finally {
@@ -735,7 +748,18 @@ export default function ArticleEditor({
       // Strip any accidental client proxies
       const plainPayload = JSON.parse(JSON.stringify(payload));
 
-      const result = await upsertArticle(plainPayload);
+      let result;
+      try {
+        const res = await fetch("/api/article/upsert", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(plainPayload),
+        });
+        result = await res.json();
+      } catch (e) {
+        result = { success: false, error: "Network error occurred." };
+      }
+
 
       if (result.success && result.article) {
         const newSavedDate = new Date(result.article.updatedAt);
@@ -761,7 +785,16 @@ export default function ArticleEditor({
 
         // If a transition was requested, execute it now that the draft is saved
         if (targetStatus === "SUBMITTED" && currentFormStatus !== "SUBMITTED") {
-          const trans = await submitArticle(result.article.id);
+          let trans;
+          try {
+            const res = await fetch("/api/article/workflow", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "submit", articleId: result.article.id }),
+            });
+            trans = await res.json();
+          } catch (e) { trans = { ok: false, message: "Network error." }; }
+
           if (!trans.ok) {
             setValue("status", result.article.status as any);
             throw new Error(trans.message || "Failed to submit article");
@@ -771,7 +804,16 @@ export default function ArticleEditor({
             lastSavedRef.current = d;
           }
         } else if (targetStatus === "PUBLISHED" && currentFormStatus !== "PUBLISHED") {
-          const trans = await publishArticle(result.article.id);
+          let trans;
+          try {
+            const res = await fetch("/api/article/workflow", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "publish", articleId: result.article.id }),
+            });
+            trans = await res.json();
+          } catch (e) { trans = { ok: false, message: "Network error." }; }
+
           if (!trans.ok) {
             setValue("status", result.article.status as any);
             throw new Error(trans.message || "Failed to publish article");

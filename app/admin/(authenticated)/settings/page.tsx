@@ -1,6 +1,8 @@
+export const runtime = 'edge';
+import { SessionProvider } from "next-auth/react";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { ARTICLE_CARD_SELECT, LISTING_ARTICLE_LIMIT } from "@/lib/queries";
+import { LISTING_ARTICLE_LIMIT } from "@/lib/queries";
 import ProfileForm from "./ProfileForm";
 import AccountForm from "./AccountForm";
 import Link from "next/link";
@@ -9,7 +11,9 @@ import AuthorProfileView from "@/components/author/AuthorProfileView";
 import PublicationForm from "./PublicationForm";
 import { getPublicationSettings, SETTINGS_ID } from "@/lib/settings";
 import { authorize } from "@/lib/capabilities";
-import type { Role } from "@prisma/client";
+import { eq, or, and, sql, sum } from "drizzle-orm";
+import { user as userTable, author as authorTable, article as articleTable, publicationSettings as publicationSettingsTable } from "@/lib/db/schema";
+import { Role } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +41,7 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
   // unknown, so the page degrades to "your settings" instead of erroring.
   const targetUserId = isManagingOther ? requestedUserId! : user.id;
 
-  const dbUser = await db.user.findUnique({ where: { id: targetUserId } });
+  const [dbUser] = await db.query.user.findMany({ where: eq(userTable.id, targetUserId), limit: 1 });
 
   if (isManagingOther && !dbUser) {
     redirect("/admin/authors");
@@ -48,15 +52,13 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
   const canEditPublication = authorize(user.role as Role, "settings.publication");
   const publicationSettings = canEditPublication ? await getPublicationSettings() : null;
   const storedPublication = canEditPublication
-    ? await db.publicationSettings
-        .findUnique({ where: { id: SETTINGS_ID } })
-        // The table is created empty by the migration and the row may genuinely
-        // not exist yet, so a miss is normal rather than an error.
+    ? await db.query.publicationSettings.findMany({ where: eq(publicationSettingsTable.id, SETTINGS_ID), limit: 1 })
+        .then(res => res[0] || null)
         .catch(() => null)
     : null;
-  const author = dbUser?.authorId 
-    ? await db.author.findUnique({ where: { id: dbUser.authorId } }) 
-    : null;
+  const [author] = dbUser?.authorId 
+    ? await db.query.author.findMany({ where: eq(authorTable.id, dbUser.authorId), limit: 1 }) 
+    : [null];
 
   // Stats for preview
   let articles: any[] = [];
@@ -65,21 +67,39 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
     // This renders the same AuthorProfileView as the public author page, so it
     // takes the same shape: a bounded page of body-free rows, and an exact view
     // total from Postgres rather than a sum of whatever happened to be fetched.
-    const authorWhere = {
-      status: "PUBLISHED" as const,
-      OR: [{ authorId: author.id }, { author: author.name }]
-    };
+    const authorWhere = and(
+      eq(articleTable.status, "PUBLISHED"),
+      or(
+        eq(articleTable.authorId, author.id),
+        eq(articleTable.author, author.name)
+      )
+    );
     const [rows, viewsAggregate] = await Promise.all([
-      db.article.findMany({
+      db.query.article.findMany({
         where: authorWhere,
-        orderBy: { createdAt: "desc" },
-        take: LISTING_ARTICLE_LIMIT,
-        select: ARTICLE_CARD_SELECT,
+        orderBy: (a, { desc }) => [desc(a.createdAt)],
+        limit: LISTING_ARTICLE_LIMIT,
+        columns: {
+          id: true,
+          title: true,
+          slug: true,
+          img: true,
+          deck: true,
+          status: true,
+          publishedAt: true,
+          createdAt: true,
+          updatedAt: true,
+          author: true,
+        },
+        with: {
+          category: { columns: { name: true, slug: true } },
+          authorModel: { columns: { name: true, slug: true, avatar: true } }
+        }
       }),
-      db.article.aggregate({ where: authorWhere, _sum: { views: true } }),
+      db.select({ views: sum(articleTable.views).mapWith(Number) }).from(articleTable).where(authorWhere)
     ]);
     articles = rows;
-    totalViews = viewsAggregate._sum.views || 0;
+    totalViews = viewsAggregate[0]?.views || 0;
   }
 
   let socials: { platform: string; url: string }[] = [];
@@ -119,7 +139,7 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
                 <h2 style={{ fontSize: "16px" }}>Profile Preview</h2>
                 <div style={{ display: "flex", gap: "12px" }}>
                   {author.slug ? (
-                    <a href={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/author/${author.slug}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
+                    <a href={`/author/${author.slug}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
                       View Live
                     </a>
                   ) : (
@@ -159,7 +179,7 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
                       View Live (Save Profile First)
                     </span>
                   ) : (
-                    <a href={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/author/${author.slug}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
+                    <a href={`/author/${author.slug}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ padding: "6px 12px", borderRadius: "6px" }}>
                       View Live
                     </a>
                   )}
@@ -170,17 +190,15 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
                   )}
                 </div>
               </div>
-              <ProfileForm
-                user={dbUser || user}
-                author={author}
-                targetUserId={isManagingOther ? targetUserId : undefined}
-                // The ACTOR's role, not the edited user's. isAdmin was being
-                // derived from `user` -- which is the profile being edited --
-                // so an owner editing an author saw "Admin only" and a
-                // read-only Official Role field.
-                actorRole={user.role as string}
-                editingOtherName={isManagingOther ? (dbUser?.name || dbUser?.email || "this user") : undefined}
-              />
+              <SessionProvider>
+                <ProfileForm
+                  user={dbUser || user}
+                  author={author}
+                  targetUserId={isManagingOther ? targetUserId : undefined}
+                  actorRole={user.role as string}
+                  editingOtherName={isManagingOther ? (dbUser?.name || dbUser?.email || "this user") : undefined}
+                />
+              </SessionProvider>
             </>
           )}
         </>

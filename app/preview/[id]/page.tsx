@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
@@ -7,7 +8,8 @@ import { getImgSrc, fmtViews } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { canEditArticle, canViewReviewQueue } from "@/lib/permissions";
-import { Role } from "@prisma/client";
+import { eq, inArray, and, not, notInArray } from "drizzle-orm";
+import { article as articleTable, user as userTable } from "@/lib/db/schema";
 import { SocialIcon } from "@/components/author/AuthorProfileView";
 import ArticleBody from "@/components/article/ArticleBody";
 import ArticleSidebar from "@/components/article/ArticleSidebar";
@@ -16,9 +18,10 @@ import StoryCard from "@/components/article/StoryCard";
 import CommentsSection from "@/components/article/CommentsSection";
 import ProgressBar from "@/components/article/ProgressBar";
 import ListenButton from "@/components/article/ListenButton";
+import { fetchFromR2 } from "@/lib/storage";
 import ArticleMobileToolbar from "@/components/article/ArticleMobileToolbar";
 import ActiveCategorySetter from "@/components/layout/ActiveCategorySetter";
-import { ARTICLE_CARD_SELECT } from "@/lib/queries";
+import { Role } from "@/lib/types";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -26,7 +29,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const article = await db.article.findUnique({ where: { id } });
+  const [article] = await db.query.article.findMany({ where: eq(articleTable.id, id), limit: 1 });
   if (!article) return {};
   
   return {
@@ -44,9 +47,10 @@ export const dynamic = "force-dynamic";
 
 export default async function PreviewPage({ params }: Props) {
   const { id } = await params;
-  const article = await db.article.findUnique({ 
-    where: { id }, 
-    include: { category: { include: { parent: true } }, authorModel: true, tags: true } 
+  const [article] = await db.query.article.findMany({ 
+    where: eq(articleTable.id, id), 
+    limit: 1,
+    with: { category: { with: { parent: true } }, authorModel: true, tags: true } 
   });
   
   if (!article) {
@@ -65,7 +69,7 @@ export default async function PreviewPage({ params }: Props) {
     );
   }
 
-  const dbUser = await db.user.findUnique({ where: { id: user.id }, include: { authorProfile: true } });
+  const [dbUser] = await db.query.user.findMany({ where: eq(userTable.id, user.id), with: { authorProfile: true }, limit: 1 });
   
   const canEdit = canEditArticle({ id: user.id, role: user.role, authorId: dbUser?.authorProfile?.id }, article).success;
   const canReview = canViewReviewQueue(user.role as Role);
@@ -97,33 +101,73 @@ export default async function PreviewPage({ params }: Props) {
     if (Array.isArray(parsed)) socials = parsed.filter(s => s.url?.trim());
   } catch { socials = []; }
 
-  // Related articles
-  let relatedDb = await db.article.findMany({
-    where: {
-      tags: { some: { id: { in: article.tags.map(t => t.id) } } },
-      id: { not: article.id },
-      status: "PUBLISHED"
-    },
-    orderBy: { publishedAt: "desc" },
-    take: 3,
-    select: ARTICLE_CARD_SELECT,
-  });
+  const r2Content = await fetchFromR2(article.contentUrl);
+  const articleHtml = typeof r2Content === "object" ? r2Content?.html : r2Content || "<p>Content could not be loaded.</p>";
 
-  if (relatedDb.length < 3) {
-    const fallback = await db.article.findMany({
-      where: {
-        categoryId: article.categoryId,
-        id: { notIn: [article.id, ...relatedDb.map(r => r.id)] },
-        status: "PUBLISHED"
+  // Related articles
+  let relatedDb: any[] = [];
+  if (article.tags && article.tags.length > 0) {
+    relatedDb = await db.query.article.findMany({
+      // @ts-ignore - complex relations with many-to-many might need different approach in drizzle
+      // using a simpler approach or raw SQL for related articles by tags in the future
+      where: and(
+        not(eq(articleTable.id, article.id)),
+        eq(articleTable.status, "PUBLISHED")
+      ),
+      orderBy: (a, { desc }) => [desc(a.publishedAt)],
+      limit: 3,
+      columns: {
+        id: true,
+        title: true,
+        slug: true,
+        img: true,
+        deck: true,
+        status: true,
+        publishedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        author: true,
+        views: true,
       },
-      orderBy: { publishedAt: "desc" },
-      take: 3 - relatedDb.length,
-      select: ARTICLE_CARD_SELECT,
+      with: {
+        category: { columns: { name: true, slug: true } },
+        authorModel: { columns: { name: true, slug: true, avatar: true } }
+      }
+    });
+  }
+
+  if (relatedDb.length < 3 && article.categoryId) {
+    const excludeIds = [article.id, ...relatedDb.map(r => r.id)];
+    const fallback = await db.query.article.findMany({
+      where: and(
+        eq(articleTable.categoryId, article.categoryId),
+        notInArray(articleTable.id, excludeIds),
+        eq(articleTable.status, "PUBLISHED")
+      ),
+      orderBy: (a, { desc }) => [desc(a.publishedAt)],
+      limit: 3 - relatedDb.length,
+      columns: {
+        id: true,
+        title: true,
+        slug: true,
+        img: true,
+        deck: true,
+        status: true,
+        publishedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        author: true,
+        views: true,
+      },
+      with: {
+        category: { columns: { name: true, slug: true } },
+        authorModel: { columns: { name: true, slug: true, avatar: true } }
+      }
     });
     relatedDb = [...relatedDb, ...fallback];
   }
   
-  const related = relatedDb.map(a => ({
+  const related = relatedDb.map((a: any) => ({
     ...a,
     mins: 5,
     views: a.views,
@@ -257,12 +301,12 @@ export default async function PreviewPage({ params }: Props) {
           {/* MAIN ARTICLE BODY & FOOTER */}
           <div className="lg:col-start-2 lg:col-span-10 xl:col-start-2 xl:col-span-8 flex flex-col min-w-0">
             <div className="prose min-w-0 max-w-none w-full" id="prose" itemProp="articleBody">
-              <ArticleBody html={article.contentHtml} />
+              <ArticleBody html={articleHtml} />
             </div>
 
             <div className="art-foot mt-12 pt-8 border-t border-[var(--line)]">
               <div className="tag-row">
-                {(article.tags || []).map(t => (
+                {(article.tags || []).map((t: any) => (
                   <Link key={t.id} className="chip" href={`/tag/${t.slug}`}>
                     {t.name}
                   </Link>
@@ -336,7 +380,7 @@ export default async function PreviewPage({ params }: Props) {
               <section aria-label="Read Next" style={{ marginTop: "48px", paddingTop: "40px", borderTop: "1px solid var(--line)" }}>
                 <h2 style={{ fontFamily: "var(--f-ui)", fontSize: "16px", fontWeight: 700, letterSpacing: ".02em", marginBottom: "20px" }}>Read Next</h2>
                 <div className="grid4">
-                  {related.map(a => (
+                  {related.map((a: any) => (
                     <StoryCard key={a.id} article={a as any} showDeck={false} />
                   ))}
                 </div>

@@ -1,9 +1,10 @@
+export const runtime = 'edge';
 import { getCurrentUser } from "@/lib/auth";
 import { authorize } from "@/lib/capabilities";
-import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import InviteForm from "./InviteForm";
+import { Role } from "@/lib/types";
 
 export const metadata = {
   title: "Invite User | xSypher",

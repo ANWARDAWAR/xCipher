@@ -46,8 +46,8 @@ export default function CommentsQueueClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [searchQuery, setSearchQuery] = useState(searchParams.get("query") || "");
-  const currentTab = searchParams.get("tab") || "All";
+  const [searchQuery, setSearchQuery] = useState(searchParams?.get("query") || "");
+  const currentTab = searchParams?.get("tab") || "All";
 
   const handleUpdate = (id: string, newStatus: string) => {
     setComments((prev) => prev.map((c) => c.id === id ? { ...c, status: newStatus } : c));
@@ -55,7 +55,7 @@ export default function CommentsQueueClient({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams((searchParams?.toString() || ""));
     if (searchQuery) {
       params.set("query", searchQuery);
     } else {
@@ -66,7 +66,7 @@ export default function CommentsQueueClient({
   };
 
   const setTab = (tabName: string) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams((searchParams?.toString() || ""));
     if (tabName !== "All") {
       params.set("tab", tabName);
     } else {

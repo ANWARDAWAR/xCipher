@@ -1,10 +1,12 @@
+export const runtime = 'edge';
 import Link from "next/link";
 import { fmtViews } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { buildArticleScope, authorize } from "@/lib/capabilities";
 import { redirect } from "next/navigation";
-import { Role } from "@prisma/client";
+import { eq, inArray, and, isNull, sql, sum } from "drizzle-orm";
+import { user as userTable, article as articleTable, comment as commentTable, invitation as invitationTable, auditLog as auditLogTable } from "@/lib/db/schema";
 import StatusChip from "@/components/console/StatusChip";
 import AuthorStatusBoard, { type BoardArticle } from "@/components/console/AuthorStatusBoard";
 import TopStoriesList from "@/components/console/TopStoriesList";
@@ -20,6 +22,7 @@ import {
   Clock, 
   Folder
 } from "lucide-react";
+import { Role } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +90,11 @@ export default async function AdminDashboard() {
   const canWrite = authorize(actorRole, "article.create");
 
   try {
-    const dbUser = await db.user.findUnique({ where: { id: user.id }, include: { authorProfile: true } });
+    const [dbUser] = await db.query.user.findMany({
+      where: eq(userTable.id, user.id),
+      with: { authorProfile: true },
+      limit: 1,
+    });
     const authorId = dbUser?.authorProfile?.id;
     
     const actor = {
@@ -97,24 +104,23 @@ export default async function AdminDashboard() {
     };
 
     const scopeWhere = buildArticleScope(actor);
-    const statusCounts = await db.article.groupBy({
-      by: ['status'],
-      where: scopeWhere,
-      _count: { id: true },
-    });
+    const statusCounts = await db.select({ status: articleTable.status, _count: sql`count(*)`.mapWith(Number) })
+      .from(articleTable)
+      .where(scopeWhere)
+      .groupBy(articleTable.status);
 
     for (const group of statusCounts) {
-      if (group.status === 'PUBLISHED') publishedCount = group._count.id;
-      else if (group.status === 'DRAFT') draftsCount = group._count.id;
-      totalArticles += group._count.id;
+      if (group.status === 'PUBLISHED') publishedCount = group._count;
+      else if (group.status === 'DRAFT') draftsCount = group._count;
+      totalArticles += group._count;
     }
 
     // The status breakdown above is already scoped, so the attention counts can
     // be read straight out of it rather than issued as extra queries.
     for (const group of statusCounts) {
-      if (group.status === 'SUBMITTED') awaitingReview = group._count.id;
-      else if (group.status === 'REVISION_REQUESTED') changesRequested = group._count.id;
-      else if (group.status === 'SCHEDULED') scheduledCount = group._count.id;
+      if (group.status === 'SUBMITTED') awaitingReview = group._count;
+      else if (group.status === 'REVISION_REQUESTED') changesRequested = group._count;
+      else if (group.status === 'SCHEDULED') scheduledCount = group._count;
     }
 
     // Unclaimed submissions are the one figure the grouped query cannot give,
@@ -122,22 +128,23 @@ export default async function AdminDashboard() {
     // already claimed needs nobody, a queue of 3 with 0 claimed needs someone
     // now.
     if (canReview) {
-      unclaimedReview = await db.article.count({
-        where: { status: "SUBMITTED", reviewedById: null },
-      });
+      unclaimedReview = await db.select({ count: sql`count(*)`.mapWith(Number) })
+        .from(articleTable)
+        .where(and(eq(articleTable.status, "SUBMITTED"), isNull(articleTable.reviewedById)))
+        .then(res => res[0]?.count || 0);
     }
 
-    const wherePublished = { ...scopeWhere, status: "PUBLISHED" as const };
-    const whereDraft = { ...scopeWhere, status: "DRAFT" as const };
+    const wherePublished = scopeWhere ? and(scopeWhere, eq(articleTable.status, "PUBLISHED")) : eq(articleTable.status, "PUBLISHED");
+    const whereDraft = scopeWhere ? and(scopeWhere, eq(articleTable.status, "DRAFT")) : eq(articleTable.status, "DRAFT");
     
-    const viewsAggregation = await db.article.aggregate({ _sum: { views: true }, where: wherePublished });
-    totalViews = viewsAggregation._sum.views || 0;
+    const viewsAggregation = await db.select({ views: sum(articleTable.views).mapWith(Number) }).from(articleTable).where(wherePublished);
+    totalViews = viewsAggregation[0]?.views || 0;
 
-    topStories = await db.article.findMany({
+    topStories = await db.query.article.findMany({
       where: wherePublished,
-      orderBy: { views: "desc" },
-      take: 6,
-      select: {
+      orderBy: (a, { desc }) => [desc(a.views)],
+      limit: 6,
+      columns: {
         id: true,
         title: true,
         slug: true,
@@ -146,9 +153,11 @@ export default async function AdminDashboard() {
         publishedAt: true,
         createdAt: true,
         author: true,
-        authorModel: { select: { name: true } },
-        category: { select: { name: true, slug: true } },
       },
+      with: {
+        authorModel: { columns: { name: true } },
+        category: { columns: { name: true, slug: true } },
+      }
     });
 
     // Author board. Scoped by buildArticleScope like every other console
@@ -156,51 +165,43 @@ export default async function AdminDashboard() {
     // drafts -- the filter is derived from the actor, not from the UI.
     if (!canViewAll) {
       for (const group of statusCounts) {
-        boardCounts[group.status] = group._count.id;
+        boardCounts[group.status as string] = group._count;
       }
 
-      boardArticles = await db.article.findMany({
-        where: {
-          ...scopeWhere,
-          status: { in: ["REVISION_REQUESTED", "DRAFT", "SUBMITTED", "PUBLISHED"] },
-          // "All published" is part of an author's scope so they can read the
-          // site, but this board is about *their* desk. Without this the
-          // Published column would fill with other people's work.
-          ...(authorId ? { authorId } : {}),
-        },
-        orderBy: { updatedAt: "desc" },
-        // 5 per column at most; the column footer links to the full list.
-        take: 20,
-        select: {
+      boardArticles = await db.query.article.findMany({
+        where: and(
+          scopeWhere,
+          inArray(articleTable.status, ["REVISION_REQUESTED", "DRAFT", "SUBMITTED", "PUBLISHED"]),
+          authorId ? eq(articleTable.authorId, authorId) : undefined
+        ),
+        orderBy: (a, { desc }) => [desc(a.updatedAt)],
+        limit: 20,
+        columns: {
           id: true,
           title: true,
           status: true,
           updatedAt: true,
           publishedAt: true,
           views: true,
-          category: { select: { name: true } },
         },
-      });
+        with: { category: { columns: { name: true } } }
+      }) as unknown as BoardArticle[];
 
-      // Recount from the author's own articles: statusCounts includes every
-      // published article in the publication, which would overstate the
-      // Published column against the list beneath it.
       if (authorId) {
-        const ownCounts = await db.article.groupBy({
-          by: ["status"],
-          where: { authorId },
-          _count: { id: true },
-        });
+        const ownCounts = await db.select({ status: articleTable.status, _count: sql`count(*)`.mapWith(Number) })
+          .from(articleTable)
+          .where(eq(articleTable.authorId, authorId))
+          .groupBy(articleTable.status);
         for (const key of Object.keys(boardCounts)) delete boardCounts[key];
-        for (const group of ownCounts) boardCounts[group.status] = group._count.id;
+        for (const group of ownCounts) boardCounts[group.status as string] = group._count;
       }
     }
 
-    latestDrafts = await db.article.findMany({
+    latestDrafts = await db.query.article.findMany({
       where: whereDraft,
-      orderBy: { updatedAt: "desc" },
-      take: 6,
-      select: {
+      orderBy: (a, { desc }) => [desc(a.updatedAt)],
+      limit: 6,
+      columns: {
         id: true,
         title: true,
         slug: true,
@@ -208,17 +209,19 @@ export default async function AdminDashboard() {
         updatedAt: true,
         createdAt: true,
         author: true,
-        authorModel: { select: { name: true } },
-        category: { select: { name: true } },
       },
+      with: {
+        authorModel: { columns: { name: true } },
+        category: { columns: { name: true } },
+      }
     });
 
-    commentsFlagged = await db.comment.count({ where: { status: "PENDING" } });
-    authorApplications = await db.invitation.count({ where: { status: "PENDING", role: "AUTHOR" } });
-    recentLogs = await db.auditLog.findMany({
-      include: { user: true },
-      orderBy: { createdAt: "desc" },
-      take: 5,
+    commentsFlagged = await db.select({ count: sql`count(*)`.mapWith(Number) }).from(commentTable).where(eq(commentTable.status, "PENDING")).then(res => res[0]?.count || 0);
+    authorApplications = await db.select({ count: sql`count(*)`.mapWith(Number) }).from(invitationTable).where(and(eq(invitationTable.status, "PENDING"), eq(invitationTable.role, "AUTHOR"))).then(res => res[0]?.count || 0);
+    recentLogs = await db.query.auditLog.findMany({
+      with: { user: true },
+      orderBy: (l, { desc }) => [desc(l.createdAt)],
+      limit: 5,
     });
   } catch (error) {
     console.error("Dashboard DB fetch error:", error);

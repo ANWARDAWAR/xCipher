@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { RotateCcw } from "lucide-react";
-import { restoreRevision } from "@/app/actions/article";
+
 import { showToast } from "@/lib/utils";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
@@ -34,7 +34,12 @@ export default function RestoreRevisionButton({
   const handleRestore = async () => {
     setIsRestoring(true);
     try {
-      const res = await restoreRevision(revisionId);
+      const fetchRes = await fetch("/api/article/workflow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore", articleId: revisionId }),
+      });
+      const res = await fetchRes.json();
       if (res.success) {
         showToast("Version restored. The current draft now matches this revision.");
         setIsOpen(false);

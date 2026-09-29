@@ -1,8 +1,11 @@
 import { unstable_cache } from "next/cache";
 import { db } from "./db";
 import { CACHE_TAGS, categoryTag, authorTag } from "./cache-tags";
+import { eq, desc, and } from "drizzle-orm";
+import { article as articleTable } from "@/lib/db/schema";
 import {
-  ARTICLE_CARD_SELECT,
+  ARTICLE_CARD_COLUMNS,
+  ARTICLE_CARD_WITH,
   HOME_ARTICLE_LIMIT,
   LATEST_ARTICLE_LIMIT,
   LISTING_ARTICLE_LIMIT,
@@ -39,13 +42,20 @@ import {
 
 /** Articles for the homepage, newest first. */
 export const getHomeArticles = unstable_cache(
-  async () =>
-    db.article.findMany({
-      where: { status: "PUBLISHED" },
-      orderBy: { publishedAt: "desc" },
-      take: HOME_ARTICLE_LIMIT,
-      select: ARTICLE_CARD_SELECT,
-    }),
+  async () => {
+    try {
+      return await db.query.article.findMany({
+        where: eq(articleTable.status, "PUBLISHED"),
+        orderBy: (a, { desc }) => [desc(a.publishedAt)],
+        limit: HOME_ARTICLE_LIMIT,
+        columns: ARTICLE_CARD_COLUMNS,
+        with: ARTICLE_CARD_WITH,
+      });
+    } catch (error) {
+      console.warn("[cached-queries] Failed to fetch home articles:", error);
+      return [];
+    }
+  },
   // Key parts. These queries take no arguments, so a static key is correct --
   // but it must still be distinct per query or two different listings would
   // share one cache entry.
@@ -55,13 +65,20 @@ export const getHomeArticles = unstable_cache(
 
 /** The /latest wire, newest first. */
 export const getLatestArticles = unstable_cache(
-  async () =>
-    db.article.findMany({
-      where: { status: "PUBLISHED" },
-      orderBy: { publishedAt: "desc" },
-      take: LATEST_ARTICLE_LIMIT,
-      select: ARTICLE_CARD_SELECT,
-    }),
+  async () => {
+    try {
+      return await db.query.article.findMany({
+        where: eq(articleTable.status, "PUBLISHED"),
+        orderBy: (a, { desc }) => [desc(a.publishedAt)],
+        limit: LATEST_ARTICLE_LIMIT,
+        columns: ARTICLE_CARD_COLUMNS,
+        with: ARTICLE_CARD_WITH,
+      });
+    } catch (error) {
+      console.warn("[cached-queries] Failed to fetch latest articles:", error);
+      return [];
+    }
+  },
   ["latest-articles"],
   { tags: [CACHE_TAGS.articles], revalidate: 180 }
 );
@@ -75,23 +92,23 @@ export const getLatestArticles = unstable_cache(
  */
 export function getCategoryArticles(slug: string, subSlug?: string) {
   return unstable_cache(
-    async () =>
-      db.article.findMany({
-        where: { 
-          status: "PUBLISHED", 
-          category: subSlug 
-            ? { slug: subSlug, parent: { slug } } 
-            : {
-                OR: [
-                  { slug },
-                  { parent: { slug } }
-                ]
-              }
-        },
-        orderBy: { publishedAt: "desc" },
-        take: LISTING_ARTICLE_LIMIT,
-        select: ARTICLE_CARD_SELECT,
-      }),
+    async () => {
+      try {
+        return await db.query.article.findMany({
+          where: (a, { eq, and, or, sql }) => and(
+            eq(a.status, "PUBLISHED"),
+            sql`${a.categoryId} IN (SELECT id FROM "Category" WHERE slug = ${subSlug || slug} OR "parentId" IN (SELECT id FROM "Category" WHERE slug = ${slug}))`
+          ),
+          orderBy: (a, { desc }) => [desc(a.publishedAt)],
+          limit: LISTING_ARTICLE_LIMIT,
+          columns: ARTICLE_CARD_COLUMNS,
+          with: ARTICLE_CARD_WITH,
+        });
+      } catch (error) {
+        console.warn(`[cached-queries] Failed to fetch category articles for ${slug}:`, error);
+        return [];
+      }
+    },
     ["category-articles", slug, subSlug || "all"],
     { tags: [CACHE_TAGS.articles, categoryTag(slug), ...(subSlug ? [categoryTag(subSlug)] : [])], revalidate: 300 }
   )();
@@ -100,13 +117,20 @@ export function getCategoryArticles(slug: string, subSlug?: string) {
 /** Published articles by one author. */
 export function getAuthorArticles(authorId: string, authorSlug: string) {
   return unstable_cache(
-    async () =>
-      db.article.findMany({
-        where: { status: "PUBLISHED", authorId },
-        orderBy: { publishedAt: "desc" },
-        take: LISTING_ARTICLE_LIMIT,
-        select: ARTICLE_CARD_SELECT,
-      }),
+    async () => {
+      try {
+        return await db.query.article.findMany({
+          where: and(eq(articleTable.status, "PUBLISHED"), eq(articleTable.authorId, authorId)),
+          orderBy: (a, { desc }) => [desc(a.publishedAt)],
+          limit: LISTING_ARTICLE_LIMIT,
+          columns: ARTICLE_CARD_COLUMNS,
+          with: ARTICLE_CARD_WITH,
+        });
+      } catch (error) {
+        console.warn(`[cached-queries] Failed to fetch author articles for ${authorId}:`, error);
+        return [];
+      }
+    },
     ["author-articles", authorId],
     { tags: [CACHE_TAGS.articles, authorTag(authorSlug)], revalidate: 600 }
   )();
@@ -121,13 +145,19 @@ export function getAuthorArticles(authorId: string, authorSlug: string) {
  * from then on.
  */
 export const getRecentArticleSlugs = unstable_cache(
-  async (limit: number = 50) =>
-    db.article.findMany({
-      where: { status: "PUBLISHED" },
-      orderBy: { publishedAt: "desc" },
-      take: limit,
-      select: { slug: true },
-    }),
+  async (limit: number = 50) => {
+    try {
+      return await db.query.article.findMany({
+        where: eq(articleTable.status, "PUBLISHED"),
+        orderBy: (a, { desc }) => [desc(a.publishedAt)],
+        limit: limit,
+        columns: { slug: true },
+      });
+    } catch (error) {
+      console.warn("[cached-queries] Failed to fetch recent article slugs:", error);
+      return [];
+    }
+  },
   ["recent-article-slugs"],
   { tags: [CACHE_TAGS.articles], revalidate: 3600 }
 );

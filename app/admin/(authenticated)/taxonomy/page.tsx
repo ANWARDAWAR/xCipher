@@ -1,10 +1,11 @@
+export const runtime = 'edge';
 import { getCategories, getTags } from "@/app/actions/taxonomy";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { canViewTaxonomy } from "@/lib/permissions";
 import { authorize } from "@/lib/capabilities";
-import { Role } from "@prisma/client";
 import TaxonomyManager from "./TaxonomyManager";
+import { Role } from "@/lib/types";
 
 export const metadata = {
   title: "Taxonomy Management | xSypher",

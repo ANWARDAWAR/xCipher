@@ -1,5 +1,7 @@
 "use client";
 
+export const runtime = 'edge';
+
 import { useState, Suspense, useEffect, useRef } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -17,8 +19,8 @@ function LoginForm() {
   const emailInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("from") || "/admin";
-  const setupSuccess = searchParams.get("setup") === "success";
+  const callbackUrl = searchParams?.get("from") || "/admin";
+  const setupSuccess = searchParams?.get("setup") === "success";
 
   // Auto-focus email input on mount
   useEffect(() => {
@@ -103,7 +105,7 @@ function LoginForm() {
             Password
           </label>
           <Link 
-            href="/forgot-password" 
+            href="/admin/forgot-password" 
             className="text-xs font-medium text-neutral-400 hover:text-neutral-200 transition-colors focus:outline-none focus-visible:underline"
           >
             Forgot password?

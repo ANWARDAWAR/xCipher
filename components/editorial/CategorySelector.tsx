@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getSubcategories, createSubcategory } from "@/app/actions/taxonomy";
+
 import { CreatableCombobox, ComboboxOption } from "@/components/ui/CreatableCombobox";
 import { showToast } from "@/lib/utils";
 
@@ -42,12 +42,19 @@ export default function CategorySelector({ initialCategory, initialFallbackSlug 
     if (!parentSlug) return;
     let active = true;
     setLoading(true);
-    getSubcategories(parentSlug).then(res => {
-      if (active) {
-        setSubcategories(res.map(c => ({ value: c.slug, label: c.name })));
+    fetch("/api/taxonomy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "getSubcategories", parentId: parentSlug })
+    })
+    .then(r => r.json())
+    .then(res => {
+      if (active && Array.isArray(res)) {
+        setSubcategories(res.map((c: any) => ({ value: c.slug, label: c.name })));
         setLoading(false);
       }
-    });
+    })
+    .catch(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [parentSlug]);
 
@@ -64,14 +71,24 @@ export default function CategorySelector({ initialCategory, initialFallbackSlug 
   };
 
   const handleCreateSubcat = async (name: string) => {
-    const res = await createSubcategory(name, parentSlug);
-    if (res.success && res.category) {
-      setSubcategories(prev => [...prev, { value: res.category.slug, label: res.category.name }]);
-      showToast(`Subcategory "${res.category.name}" created!`, "success");
-      return res.category.slug;
-    } else {
-      console.error(res.error);
-      showToast(res.error || "Failed to create subcategory", "error");
+    try {
+      const fetchRes = await fetch("/api/taxonomy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "createSubcategory", name, parentId: parentSlug })
+      });
+      const res = await fetchRes.json();
+      if (res.success && res.category) {
+        setSubcategories(prev => [...prev, { value: res.category.slug, label: res.category.name }]);
+        showToast(`Subcategory "${res.category.name}" created!`, "success");
+        return res.category.slug;
+      } else {
+        console.error(res.error);
+        showToast(res.error || "Failed to create subcategory", "error");
+        return null;
+      }
+    } catch (e) {
+      showToast("Network error creating subcategory", "error");
       return null;
     }
   };

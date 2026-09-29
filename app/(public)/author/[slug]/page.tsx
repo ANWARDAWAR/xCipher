@@ -1,7 +1,10 @@
+export const runtime = 'edge';
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { ARTICLE_CARD_SELECT, LISTING_ARTICLE_LIMIT } from "@/lib/queries";
+import { eq, sum, and, or } from "drizzle-orm";
+import { author as authorTable, article as articleTable } from "@/lib/db/schema";
+import { ARTICLE_CARD_COLUMNS, ARTICLE_CARD_WITH, LISTING_ARTICLE_LIMIT } from "@/lib/queries";
 import { siteConfig } from "@/lib/seo";
 import AuthorProfileView from "@/components/author/AuthorProfileView";
 
@@ -11,7 +14,11 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const author = await db.author.findUnique({ where: { slug }, include: { user: true } });
+  const [author] = await db.query.author.findMany({ 
+    where: eq(authorTable.slug, slug), 
+    with: { user: true },
+    limit: 1
+  });
   if (!author) return { title: `Author — ${siteConfig.name}` };
   
   const authorName = author.name || "Author";
@@ -44,7 +51,11 @@ export const revalidate = 600; // author profile
 export default async function AuthorProfile({ params }: Props) {
   const { slug } = await params;
 
-  const author = await db.author.findUnique({ where: { slug }, include: { user: true } });
+  const [author] = await db.query.author.findMany({ 
+    where: eq(authorTable.slug, slug), 
+    with: { user: true },
+    limit: 1
+  });
   if (!author) notFound();
 
   // Parse social links
@@ -60,25 +71,26 @@ export default async function AuthorProfile({ params }: Props) {
   } catch { socials = []; }
 
   // Fetch articles
-  const authorArticleWhere = {
-    status: "PUBLISHED" as const,
-    OR: [{ authorId: author.id }, ...(author.name ? [{ author: author.name }] : [])],
-  };
-
   // The list is capped, so the view total cannot be summed from it -- that
   // would silently under-report as soon as an author passes the cap. Postgres
   // does the sum over every row instead, which is one cheap indexed aggregate.
+  const authorArticleWhere = and(
+    eq(articleTable.status, "PUBLISHED"),
+    or(eq(articleTable.authorId, author.id), author.name ? eq(articleTable.author, author.name) : undefined)
+  );
+
   const [articles, viewsAggregate] = await Promise.all([
-    db.article.findMany({
+    db.query.article.findMany({
       where: authorArticleWhere,
-      orderBy: { createdAt: "desc" },
-      take: LISTING_ARTICLE_LIMIT,
-      select: ARTICLE_CARD_SELECT,
+      orderBy: (a, { desc }) => [desc(a.createdAt)],
+      limit: LISTING_ARTICLE_LIMIT,
+      columns: ARTICLE_CARD_COLUMNS,
+      with: ARTICLE_CARD_WITH,
     }),
-    db.article.aggregate({ where: authorArticleWhere, _sum: { views: true } }),
+    db.select({ totalViews: sum(articleTable.views) }).from(articleTable).where(authorArticleWhere),
   ]);
 
-  const totalViews = viewsAggregate._sum.views || 0;
+  const totalViews = Number(viewsAggregate?.[0]?.totalViews) || 0;
 
   return (
     <AuthorProfileView 

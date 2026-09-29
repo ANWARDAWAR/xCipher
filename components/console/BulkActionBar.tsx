@@ -1,7 +1,6 @@
 "use client";
 
 import { Fragment, useState, useTransition } from "react";
-import type { ArticleStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { Archive, Send, Globe, RotateCcw, X, Loader2, Trash2 } from "lucide-react";
 import {
@@ -14,6 +13,7 @@ import {
 } from "@/app/actions/workflow";
 import { showToast } from "@/lib/utils";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { ArticleStatus } from "@/lib/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Bulk action bar — appears only when rows are selected.

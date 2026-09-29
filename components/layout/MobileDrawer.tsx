@@ -95,17 +95,17 @@ export default function MobileDrawer() {
           <Link href="/latest" className={pathname === "/latest" ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Latest</Link>
           
           <div className="dr-group">SECTIONS</div>
-          <Link href="/category/ai" className={pathname.startsWith("/category/ai") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>AI & Machine Learning</Link>
-          <Link href="/category/cybersecurity" className={pathname.startsWith("/category/cybersecurity") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Cybersecurity</Link>
-          <Link href="/category/gadgets" className={pathname.startsWith("/category/gadgets") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Gadgets</Link>
-          <Link href="/category/software" className={pathname.startsWith("/category/software") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Software</Link>
-          <Link href="/category/programming" className={pathname.startsWith("/category/programming") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Programming</Link>
-          <Link href="/category/business" className={pathname.startsWith("/category/business") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Startups & Business</Link>
-          <Link href="/category/gaming" className={pathname.startsWith("/category/gaming") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Gaming</Link>
-          <Link href="/category/reviews" className={pathname.startsWith("/category/reviews") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Reviews</Link>
-          <Link href="/category/how-to" className={pathname.startsWith("/category/how-to") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>How-To</Link>
-          <Link href="/category/opinion" className={pathname.startsWith("/category/opinion") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Opinion</Link>
-          <Link href="/category/science" className={pathname.startsWith("/category/science") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Science</Link>
+          <Link href="/category/ai" className={pathname?.startsWith("/category/ai") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>AI & Machine Learning</Link>
+          <Link href="/category/cybersecurity" className={pathname?.startsWith("/category/cybersecurity") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Cybersecurity</Link>
+          <Link href="/category/gadgets" className={pathname?.startsWith("/category/gadgets") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Gadgets</Link>
+          <Link href="/category/software" className={pathname?.startsWith("/category/software") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Software</Link>
+          <Link href="/category/programming" className={pathname?.startsWith("/category/programming") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Programming</Link>
+          <Link href="/category/business" className={pathname?.startsWith("/category/business") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Startups & Business</Link>
+          <Link href="/category/gaming" className={pathname?.startsWith("/category/gaming") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Gaming</Link>
+          <Link href="/category/reviews" className={pathname?.startsWith("/category/reviews") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Reviews</Link>
+          <Link href="/category/how-to" className={pathname?.startsWith("/category/how-to") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>How-To</Link>
+          <Link href="/category/opinion" className={pathname?.startsWith("/category/opinion") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Opinion</Link>
+          <Link href="/category/science" className={pathname?.startsWith("/category/science") ? "bg-[var(--accent)] !text-white font-semibold" : ""}>Science</Link>
           
           <div className="dr-group">COMPANY / INFO</div>
           <Link href="/page/about">About</Link>

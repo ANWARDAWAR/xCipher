@@ -1,6 +1,9 @@
+export const runtime = 'edge';
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { ARTICLE_CARD_WITH_TAGS_SELECT } from "@/lib/queries";
+import { eq, ilike, and, or, sql } from "drizzle-orm";
+import { article as articleTable, category as categoryTable, user as userTable, tag as tagTable, _articleToTag } from "@/lib/db/schema";
+import { ARTICLE_CARD_COLUMNS, ARTICLE_CARD_WITH_TAGS_WITH } from "@/lib/queries";
 import StoryRow from "@/components/article/StoryRow";
 import Sidebar from "@/components/layout/Sidebar";
 
@@ -35,36 +38,34 @@ export default async function SearchPage({ searchParams }: Props) {
   let totalCount = 0;
   
   if (q || cat) {
-    const whereClause: any = {
-      status: "PUBLISHED",
-      ...(cat ? { category: { slug: cat } } : {}),
-      ...(q ? {
-        OR: [
-          { title: { contains: q, mode: "insensitive" } },
-          { deck: { contains: q, mode: "insensitive" } },
-          { contentHtml: { contains: q, mode: "insensitive" } },
-          { author: { contains: q, mode: "insensitive" } },
-          { authorModel: { name: { contains: q, mode: "insensitive" } } },
-          { legacyTags: { has: q } },
-          { tags: { some: { name: { contains: q, mode: "insensitive" } } } },
-          { category: { name: { contains: q, mode: "insensitive" } } }
-        ]
-      } : {}),
-    };
+    const whereClause = and(
+      eq(articleTable.status, "PUBLISHED"),
+      cat ? sql`${articleTable.categoryId} IN (SELECT id FROM "Category" WHERE slug = ${cat})` : undefined,
+      q ? or(
+        ilike(articleTable.title, `%${q}%`),
+        ilike(articleTable.deck, `%${q}%`),
+        ilike(articleTable.author, `%${q}%`),
+        sql`${articleTable.authorId} IN (SELECT id FROM "User" WHERE "name" ILIKE ${`%${q}%`})`,
+        sql`${q} = ANY(${articleTable.legacyTags})`,
+        sql`${articleTable.id} IN (SELECT "A" FROM "_ArticleToTag" WHERE "B" IN (SELECT id FROM "Tag" WHERE "name" ILIKE ${`%${q}%`}))`,
+        sql`${articleTable.categoryId} IN (SELECT id FROM "Category" WHERE "name" ILIKE ${`%${q}%`})`
+      ) : undefined
+    );
 
-    const [items, count] = await Promise.all([
-      db.article.findMany({
+    const [items, countResult] = await Promise.all([
+      db.query.article.findMany({
         where: whereClause,
-        orderBy: { publishedAt: "desc" },
-        skip,
-        take: limit,
-        select: ARTICLE_CARD_WITH_TAGS_SELECT,
+        orderBy: (a, { desc }) => [desc(a.publishedAt)],
+        offset: skip,
+        limit: limit,
+        columns: ARTICLE_CARD_COLUMNS,
+        with: ARTICLE_CARD_WITH_TAGS_WITH,
       }),
-      db.article.count({ where: whereClause })
+      db.select({ count: sql`count(*)`.mapWith(Number) }).from(articleTable).where(whereClause)
     ]);
 
     results = items;
-    totalCount = count;
+    totalCount = countResult[0].count;
   }
 
   const hasNextPage = skip + limit < totalCount;

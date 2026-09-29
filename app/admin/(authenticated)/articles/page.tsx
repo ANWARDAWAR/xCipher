@@ -1,14 +1,17 @@
+export const runtime = 'edge';
 import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { Role, ArticleStatus, Prisma } from "@prisma/client";
-import { buildArticleScope, authorize, ARTICLE_LIST_SELECT, Actor } from "@/lib/capabilities";
+import { buildArticleScope, authorize, ARTICLE_LIST_COLUMNS, ARTICLE_LIST_WITH, Actor } from "@/lib/capabilities";
+import { eq, inArray, notInArray, and, or, ilike, sql, desc, asc, gte, lte } from "drizzle-orm";
+import { user as userTable, article as articleTable, category as categoryTable } from "@/lib/db/schema";
 import ArticleIndex from "@/components/console/ArticleIndex";
 import FilterBar from "@/components/console/FilterBar";
 import Pagination from "@/components/console/Pagination";
 import { Plus } from "lucide-react";
+import { Role, ArticleStatus, ARTICLE_STATUSES } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -41,9 +44,10 @@ export default async function AdminArticles({ searchParams }: PageProps) {
     redirect("/admin/login");
   }
 
-  const dbUser = await db.user.findUnique({
-    where: { id: user.id },
-    include: { authorProfile: true },
+  const [dbUser] = await db.query.user.findMany({
+    where: eq(userTable.id, user.id),
+    with: { authorProfile: true },
+    limit: 1,
   });
 
   if (!dbUser) {
@@ -52,7 +56,7 @@ export default async function AdminArticles({ searchParams }: PageProps) {
 
   const actor: Actor = {
     id: dbUser.id,
-    role: dbUser.role as Role,
+    role: dbUser.role as any,
     authorId: dbUser.authorProfile?.id || null,
   };
 
@@ -79,41 +83,31 @@ export default async function AdminArticles({ searchParams }: PageProps) {
   const scopeWhere = buildArticleScope(actor);
 
   // Layer on user-selected filters
-  const filterConditions: Prisma.ArticleWhereInput[] = [];
+  const filterConditions: any[] = [];
 
   // Status filter
   if (statusParam) {
     const statuses = statusParam.split(",").filter((s) =>
-      Object.values(ArticleStatus).includes(s as ArticleStatus)
+      ARTICLE_STATUSES.includes(s as ArticleStatus)
     ) as ArticleStatus[];
     if (statuses.length > 0) {
-      filterConditions.push({ status: { in: statuses } });
+      filterConditions.push(inArray(articleTable.status, statuses));
     }
   } else {
     // If no explicit status filter is applied, hide terminal statuses from the "All" view
-    filterConditions.push({
-      status: { notIn: ["ARCHIVED", "REJECTED"] },
-    });
+    filterConditions.push(notInArray(articleTable.status, ["ARCHIVED", "REJECTED"]));
   }
 
   // Author filter
   if (authorParam) {
-    filterConditions.push({ authorId: authorParam });
+    filterConditions.push(eq(articleTable.authorId, authorParam));
   }
 
   // Category filter
   if (categoryParam) {
-    filterConditions.push({ categoryId: categoryParam });
+    filterConditions.push(eq(articleTable.categoryId, categoryParam));
   }
 
-  // Date range, applied to the field currently being sorted on where that field
-  // is a date, otherwise to updatedAt. Parsed defensively: an unparseable date
-  // is ignored rather than throwing, because it arrives from the URL and a user
-  // can type anything there.
-  //
-  // `to` is widened to the end of that day. A range of 2026-01-05 to 2026-01-05
-  // should mean "that whole day", not "the single instant at midnight", which
-  // would match nothing.
   const dateFilter: { gte?: Date; lte?: Date } = {};
   if (fromParam) {
     const from = new Date(`${fromParam}T00:00:00.000Z`);
@@ -124,96 +118,85 @@ export default async function AdminArticles({ searchParams }: PageProps) {
     if (!Number.isNaN(to.getTime())) dateFilter.lte = to;
   }
   if (dateFilter.gte || dateFilter.lte) {
-    // Guard against an inverted range: the inputs are bound to each other in the
-    // UI, but the URL can still be edited by hand, and gte > lte silently
-    // returns nothing, which reads as a bug rather than as empty input.
     if (!dateFilter.gte || !dateFilter.lte || dateFilter.gte <= dateFilter.lte) {
-      filterConditions.push({ updatedAt: dateFilter });
+      if (dateFilter.gte) filterConditions.push(gte(articleTable.updatedAt, dateFilter.gte));
+      if (dateFilter.lte) filterConditions.push(lte(articleTable.updatedAt, dateFilter.lte));
     }
   }
 
   // Search — case-insensitive across title, deck, slug, author name
   if (query) {
-    filterConditions.push({
-      OR: [
-        { title: { contains: query, mode: "insensitive" } },
-        { deck: { contains: query, mode: "insensitive" } },
-        { slug: { contains: query, mode: "insensitive" } },
-        { author: { contains: query, mode: "insensitive" } },
-        { authorModel: { name: { contains: query, mode: "insensitive" } } },
-        { category: { name: { contains: query, mode: "insensitive" } } },
-      ],
-    });
+    filterConditions.push(
+      or(
+        ilike(articleTable.title, `%${query}%`),
+        ilike(articleTable.deck, `%${query}%`),
+        ilike(articleTable.slug, `%${query}%`),
+        ilike(articleTable.author, `%${query}%`),
+        sql`${articleTable.authorId} IN (SELECT id FROM "User" WHERE "name" ILIKE ${`%${query}%`})`,
+        sql`${articleTable.categoryId} IN (SELECT id FROM "Category" WHERE "name" ILIKE ${`%${query}%`})`
+      )
+    );
   }
 
   // Combine scope + filters
-  const where: Prisma.ArticleWhereInput = {
-    AND: [scopeWhere as Prisma.ArticleWhereInput, ...filterConditions],
-  };
+  const where = and(scopeWhere, ...filterConditions);
 
   // Sort
   const sortField = SORT_FIELDS[sortParam] || "updatedAt";
-  const orderBy: Prisma.ArticleOrderByWithRelationInput[] = [
-    { [sortField]: dirParam },
-    { id: "asc" }, // stable secondary sort
-  ];
+  const orderByFn = (a: any) => dirParam === "asc" ? [asc(a[sortField]), asc(a.id)] : [desc(a[sortField]), asc(a.id)];
 
   // ── Execute parallel queries ──────────────────────────────────────────────
   const [articles, totalCount, statusCounts, authorOptions, categoryOptions] =
     await Promise.all([
       // Page of articles (NO body fields)
-      db.article.findMany({
+      db.query.article.findMany({
         where,
-        orderBy,
-        skip: (pageParam - 1) * perPage,
-        take: perPage,
-        select: ARTICLE_LIST_SELECT,
+        orderBy: (a) => orderByFn(a),
+        offset: (pageParam - 1) * perPage,
+        limit: perPage,
+        columns: ARTICLE_LIST_COLUMNS,
+        with: ARTICLE_LIST_WITH,
       }),
 
       // Total count for pagination
-      db.article.count({ where }),
+      db.select({ count: sql`count(*)`.mapWith(Number) }).from(articleTable).where(where).then(res => res[0]?.count || 0),
 
       // Status counts within scope (for filter bar badges)
-      db.article.groupBy({
-        by: ["status"],
-        where: scopeWhere as Prisma.ArticleWhereInput,
-        _count: true,
-      }).then((groups) => {
-        const counts: Record<string, number> = {};
-        for (const g of groups) {
-          counts[g.status] = g._count;
-        }
-        return counts;
-      }),
+      db.select({ status: articleTable.status, _count: sql`count(*)`.mapWith(Number) })
+        .from(articleTable)
+        .where(scopeWhere)
+        .groupBy(articleTable.status)
+        .then((groups) => {
+          const counts: Record<string, number> = {};
+          for (const g of groups) {
+            counts[g.status as string] = Number(g._count);
+          }
+          return counts;
+        }),
 
       // Author options (those who actually have articles in scope)
-      db.article.findMany({
-        where: scopeWhere as Prisma.ArticleWhereInput,
-        select: {
-          authorModel: { select: { id: true, name: true } },
-        },
-        distinct: ["authorId"],
-      }).then((rows) =>
-        rows
-          .filter((r) => r.authorModel)
-          .map((r) => ({
-            value: r.authorModel!.id,
-            label: r.authorModel!.name,
-          }))
-          .sort((a, b) => a.label.localeCompare(b.label))
-      ),
+      db.selectDistinct({ authorId: articleTable.authorId }).from(articleTable).where(scopeWhere)
+        .then(async (rows) => {
+          const ids = rows.map(r => r.authorId).filter(Boolean) as string[];
+          if (!ids.length) return [];
+          const users = await db.select({ id: userTable.id, name: userTable.name }).from(userTable).where(inArray(userTable.id, ids));
+          return users.map(u => ({ value: u.id, label: u.name || "Unknown" })).sort((a, b) => a.label.localeCompare(b.label));
+        }),
 
       // Category options
-      db.category.findMany({
-        select: { id: true, name: true, _count: { select: { articles: true } } },
-        orderBy: { name: "asc" },
-      }).then((cats) =>
-        cats.map((c) => ({
-          value: c.id,
-          label: c.name,
-          count: c._count.articles,
-        }))
-      ),
+      db.select({
+        id: categoryTable.id,
+        name: categoryTable.name,
+        _count: sql`(SELECT count(*) FROM "Article" WHERE "categoryId" = ${categoryTable.id})`.mapWith(Number)
+      }).from(categoryTable)
+        .orderBy(categoryTable.name)
+        .then((cats) =>
+          cats.map((c) => ({
+            value: c.id,
+            label: c.name,
+            count: Number(c._count),
+          }))
+        ),
     ]);
 
   const isFiltered = !!(query || statusParam || authorParam || categoryParam || fromParam || toParam);
@@ -257,7 +240,7 @@ export default async function AdminArticles({ searchParams }: PageProps) {
       </Suspense>
 
       <ArticleIndex
-        articles={articles}
+        articles={articles as any}
         actor={actor}
         isFiltered={isFiltered}
         emptyMessage={isAuthorOnly ? "You haven't written any articles yet." : "No articles yet."}

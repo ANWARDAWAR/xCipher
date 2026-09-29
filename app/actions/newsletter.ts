@@ -4,18 +4,28 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
-import { Resend } from "resend";
 import { getCurrentUser } from "@/lib/auth";
+import { eq } from "drizzle-orm";
+import { subscriber as subscriberTable } from "@/lib/db/schema";
+import { randomHex } from "@/lib/utils";
 
-const resend = new Resend(process.env.RESEND_API_KEY || "re_test");
+import { sendEmail } from "@/lib/email";
 const emailSchema = z.string().email().max(320).transform((e) => e.toLowerCase().trim());
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://xsypher.com";
-const NEWSLETTER_FROM = process.env.NEWSLETTER_FROM_EMAIL || "newsletter@xsypher.com";
+
+function getNewsletterConfig() {
+  const env = process.env;
+  return {
+    siteUrl: env.NEXT_PUBLIC_SITE_URL || "https://xsypher.com",
+    from: env.NEWSLETTER_FROM_EMAIL || "newsletter@xsypher.com",
+  };
+}
 
 export async function subscribeNewsletter(
   email: string,
   source: string = "HOMEPAGE"
 ) {
+  const { siteUrl, from } = getNewsletterConfig();
+
   // Rate limit: 3 signups per 10 minutes per IP
   const hdrs = await headers();
   const ip = getClientIp(hdrs);
@@ -31,34 +41,36 @@ export async function subscribeNewsletter(
   const normalizedEmail = parsed.data;
 
   try {
-    const existing = await db.subscriber.findUnique({ where: { email: normalizedEmail } });
+    const [existing] = await db.select().from(subscriberTable).where(eq(subscriberTable.email, normalizedEmail)).limit(1);
     let subscriber = existing;
 
     if (existing) {
       if (existing.status === "ACTIVE") {
         return { success: false, code: "ALREADY_SUBSCRIBED", error: "This email is already subscribed." };
       }
-      // Re-subscribe: reset status to ACTIVE and refresh consent timestamp
-      subscriber = await db.subscriber.update({
-        where: { id: existing.id },
-        data: { status: "ACTIVE", consentAt: new Date(), source, updatedAt: new Date() },
-      });
+      
+      const [updated] = await db.update(subscriberTable).set({
+        status: "ACTIVE", consentAt: new Date(), source, updatedAt: new Date()
+      }).where(eq(subscriberTable.id, existing.id)).returning();
+      subscriber = updated;
     } else {
-      subscriber = await db.subscriber.create({
-        data: {
-          email: normalizedEmail,
-          status: "ACTIVE",
-          source,
-          consentAt: new Date(),
-        },
-      });
+      const [created] = await db.insert(subscriberTable).values({
+        id: crypto.randomUUID(),
+        email: normalizedEmail,
+        status: "ACTIVE",
+        source,
+        consentAt: new Date(),
+        unsubscribeToken: randomHex(32),
+        updatedAt: new Date(),
+      }).returning();
+      subscriber = created;
     }
 
     // Try sending Welcome Email via Resend
     try {
-      const unsubscribeUrl = `${SITE_URL}/unsubscribe/${subscriber.unsubscribeToken}`;
-      await resend.emails.send({
-        from: `xSypher <${NEWSLETTER_FROM}>`,
+      const unsubscribeUrl = `${siteUrl}/unsubscribe/${subscriber.unsubscribeToken}`;
+      await sendEmail({
+        from: `xSypher <${from}>`,
         to: normalizedEmail,
         subject: "Welcome to xSypher",
         html: `
@@ -74,7 +86,7 @@ export async function subscribeNewsletter(
               We'll keep you informed on our latest publications, security dispatches, and insights directly in your inbox.
             </p>
             <div style="margin: 32px 0; text-align: center;">
-              <a href="${SITE_URL}" style="background-color: #f04552; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Read Latest Dispatches</a>
+              <a href="${siteUrl}" style="background-color: #f04552; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Read Latest Dispatches</a>
             </div>
             <p style="font-size: 13px; color: #52525b; border-top: 1px solid #1f2127; padding-top: 24px; margin-bottom: 0; text-align: center;">
               To terminate your subscription, <a href="${unsubscribeUrl}" style="color: #a1a1aa; text-decoration: underline;">click here to unsubscribe</a>.
@@ -95,6 +107,7 @@ export async function subscribeNewsletter(
 }
 
 export async function sendNewsletterBroadcast(subject: string, htmlContent: string) {
+  const { siteUrl, from } = getNewsletterConfig();
   const user = await getCurrentUser();
   if (!user || (user.role !== "OWNER" && user.role !== "ADMIN")) {
     return { success: false, error: "Unauthorized. Only OWNER or ADMIN can send broadcasts." };
@@ -110,10 +123,9 @@ export async function sendNewsletterBroadcast(subject: string, htmlContent: stri
   }
 
   try {
-    const activeSubscribers = await db.subscriber.findMany({
-      where: { status: "ACTIVE" },
-      select: { email: true, unsubscribeToken: true }
-    });
+    const activeSubscribers = await db.select({ email: subscriberTable.email, unsubscribeToken: subscriberTable.unsubscribeToken })
+      .from(subscriberTable)
+      .where(eq(subscriberTable.status, "ACTIVE"));
 
     if (activeSubscribers.length === 0) {
       return { success: false, error: "No active subscribers found." };
@@ -131,7 +143,7 @@ export async function sendNewsletterBroadcast(subject: string, htmlContent: stri
       <br/><br/>
       <hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;" />
       <p style="font-size: 12px; color: #666;">
-        To unsubscribe from these emails, <a href="${SITE_URL}/unsubscribe/{{params.UNSUBSCRIBE_TOKEN}}" style="color: #666;">click here</a>.
+        To unsubscribe from these emails, <a href="${siteUrl}/unsubscribe/{{params.UNSUBSCRIBE_TOKEN}}" style="color: #666;">click here</a>.
       </p>
     `;
 
@@ -149,7 +161,7 @@ export async function sendNewsletterBroadcast(subject: string, htmlContent: stri
           "content-type": "application/json"
         },
         body: JSON.stringify({
-          sender: { name: "xSypher", email: NEWSLETTER_FROM },
+          sender: { name: "xSypher", email: from },
           subject: subject,
           htmlContent: htmlWithFooter,
           messageVersions
@@ -176,7 +188,7 @@ export async function unsubscribeByToken(token: string) {
   }
 
   try {
-    const subscriber = await db.subscriber.findUnique({ where: { unsubscribeToken: token } });
+    const [subscriber] = await db.select().from(subscriberTable).where(eq(subscriberTable.unsubscribeToken, token)).limit(1);
 
     if (!subscriber) {
       return { success: false, error: "This unsubscribe link is invalid or has already been used." };
@@ -186,10 +198,9 @@ export async function unsubscribeByToken(token: string) {
       return { success: true, message: "You are already unsubscribed.", alreadyDone: true };
     }
 
-    await db.subscriber.update({
-      where: { id: subscriber.id },
-      data: { status: "UNSUBSCRIBED" },
-    });
+    await db.update(subscriberTable)
+      .set({ status: "UNSUBSCRIBED", updatedAt: new Date() })
+      .where(eq(subscriberTable.id, subscriber.id));
 
     return { success: true, message: "You have been unsubscribed successfully." };
   } catch (error: any) {
@@ -205,13 +216,12 @@ export async function adminUnsubscribeUser(email: string) {
   }
   
   try {
-    const subscriber = await db.subscriber.findUnique({ where: { email } });
+    const [subscriber] = await db.select().from(subscriberTable).where(eq(subscriberTable.email, email)).limit(1);
     if (!subscriber) return { success: false, error: "Subscriber not found." };
     
-    await db.subscriber.update({
-      where: { email },
-      data: { status: "UNSUBSCRIBED" }
-    });
+    await db.update(subscriberTable)
+      .set({ status: "UNSUBSCRIBED", updatedAt: new Date() })
+      .where(eq(subscriberTable.email, email));
     return { success: true, message: `Successfully unsubscribed ${email}.` };
   } catch (error) {
     console.error("[newsletter] adminUnsubscribeUser error:", error);
@@ -226,9 +236,7 @@ export async function adminDeleteSubscriber(email: string) {
   }
   
   try {
-    await db.subscriber.delete({
-      where: { email }
-    });
+    await db.delete(subscriberTable).where(eq(subscriberTable.email, email));
     return { success: true, message: `Successfully deleted ${email} from database.` };
   } catch (error) {
     console.error("[newsletter] adminDeleteSubscriber error:", error);

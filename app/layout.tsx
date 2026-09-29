@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+export const runtime = 'edge';
+
 import { getPublicationSettings } from "@/lib/settings";
 import { siteConfig } from "@/lib/seo";
 import { Space_Grotesk, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';

@@ -1,7 +1,10 @@
+export const runtime = 'edge';
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { ARTICLE_CARD_WITH_TAGS_SELECT } from "@/lib/queries";
+import { eq, inArray, and, sql } from "drizzle-orm";
+import { tag as tagTable, article as articleTable, _articleToTag } from "@/lib/db/schema";
+import { ARTICLE_CARD_COLUMNS, ARTICLE_CARD_WITH_TAGS_WITH } from "@/lib/queries";
 import StoryRow from "@/components/article/StoryRow";
 import Sidebar from "@/components/layout/Sidebar";
 import Link from "next/link";
@@ -13,18 +16,19 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const tag = await db.tag.findUnique({ where: { slug } });
+  const [tag] = await db.query.tag.findMany({ where: eq(tagTable.slug, slug), limit: 1 });
   
   if (!tag) {
     return { title: "Tag Not Found — xSypher" };
   }
   
-  const count = await db.article.count({
-    where: {
-      status: "PUBLISHED",
-      tags: { some: { id: tag.id } }
-    }
-  });
+  const [countResult] = await db.select({ count: sql`count(*)`.mapWith(Number) })
+    .from(articleTable)
+    .where(and(
+      eq(articleTable.status, "PUBLISHED"),
+      inArray(articleTable.id, sql`(SELECT "A" FROM "_ArticleToTag" WHERE "B" = ${tag.id})`)
+    ));
+  const count = countResult?.count || 0;
 
   return {
     title: `${tag.name} News & Articles — xSypher`,
@@ -48,29 +52,28 @@ export default async function TagPage({ params, searchParams }: Props) {
   const limit = 20;
   const skip = (page - 1) * limit;
 
-  const tag = await db.tag.findUnique({ where: { slug } });
+  const [tag] = await db.query.tag.findMany({ where: eq(tagTable.slug, slug), limit: 1 });
   if (!tag) {
     notFound();
   }
 
-  const [articles, totalCount] = await Promise.all([
-    db.article.findMany({
-      where: {
-        status: "PUBLISHED",
-        tags: { some: { id: tag.id } }
-      },
-      orderBy: { publishedAt: "desc" },
-      skip,
-      take: limit,
-      select: ARTICLE_CARD_WITH_TAGS_SELECT,
+  const whereClause = and(
+    eq(articleTable.status, "PUBLISHED"),
+    inArray(articleTable.id, sql`(SELECT "A" FROM "_ArticleToTag" WHERE "B" = ${tag.id})`)
+  );
+
+  const [articles, countResult] = await Promise.all([
+    db.query.article.findMany({
+      where: whereClause,
+      orderBy: (a, { desc }) => [desc(a.publishedAt)],
+      offset: skip,
+      limit: limit,
+      columns: ARTICLE_CARD_COLUMNS,
+      with: ARTICLE_CARD_WITH_TAGS_WITH,
     }),
-    db.article.count({
-      where: {
-        status: "PUBLISHED",
-        tags: { some: { id: tag.id } }
-      }
-    })
+    db.select({ count: sql`count(*)`.mapWith(Number) }).from(articleTable).where(whereClause)
   ]);
+  const totalCount = countResult[0]?.count || 0;
 
   const hasNextPage = skip + limit < totalCount;
   const hasPrevPage = page > 1;

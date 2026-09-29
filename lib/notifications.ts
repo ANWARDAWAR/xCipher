@@ -1,7 +1,10 @@
 import { db } from "@/lib/db";
 import { authorize, ROLE_CAPABILITIES } from "@/lib/capabilities";
 import { sendNotificationEmail } from "@/lib/email";
-import type { Role } from "@prisma/client";
+import { notification, user as userTable } from "@/lib/db/schema";
+import { eq, inArray, isNotNull, and } from "drizzle-orm";
+
+import { Role } from "@/lib/types";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Notification emitter
@@ -44,9 +47,9 @@ async function emit({ userIds, message, link }: NotifyInput): Promise<void> {
   if (unique.length === 0) return;
 
   try {
-    await db.notification.createMany({
-      data: unique.map((userId) => ({ userId, message, link: link ?? null })),
-    });
+    await db.insert(notification).values(
+      unique.map((userId) => ({ id: crypto.randomUUID(), userId, message, link: link ?? null }))
+    );
   } catch (error) {
     console.error("[notifications] emit failed:", error);
   }
@@ -69,9 +72,9 @@ async function emailFanout(
   if (!process.env.RESEND_API_KEY) return;
 
   try {
-    const recipients = await db.user.findMany({
-      where: { id: { in: userIds }, isActive: true, email: { not: null } },
-      select: { id: true, email: true, name: true, notificationPrefs: true },
+    const recipients = await db.query.user.findMany({
+      where: and(inArray(userTable.id, userIds), eq(userTable.isActive, true), isNotNull(userTable.email)),
+      columns: { id: true, email: true, name: true, notificationPrefs: true },
     });
 
     const wanted = recipients.filter((u) => {
@@ -107,10 +110,7 @@ async function emailFanout(
 async function userIdForAuthor(authorId: string | null | undefined): Promise<string | null> {
   if (!authorId) return null;
   try {
-    const user = await db.user.findFirst({
-      where: { authorId },
-      select: { id: true },
-    });
+    const [user] = await db.select({ id: userTable.id }).from(userTable).where(eq(userTable.authorId, authorId)).limit(1);
     return user?.id ?? null;
   } catch (error) {
     console.error("[notifications] author lookup failed:", error);
@@ -124,10 +124,7 @@ async function reviewerUserIds(): Promise<string[]> {
     authorize(role, "article.review")
   );
   try {
-    const users = await db.user.findMany({
-      where: { isActive: true, role: { in: reviewerRoles } },
-      select: { id: true },
-    });
+    const users = await db.select({ id: userTable.id }).from(userTable).where(and(eq(userTable.isActive, true), inArray(userTable.role, reviewerRoles)));
     return users.map((u) => u.id);
   } catch (error) {
     console.error("[notifications] reviewer lookup failed:", error);

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { unsubscribeByToken } from "@/app/actions/newsletter";
 import Link from "next/link";
 

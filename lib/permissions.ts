@@ -1,5 +1,5 @@
-import { Role } from "@prisma/client";
 import { authorize } from "./capabilities";
+import { Role } from "@/lib/types";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Role hierarchy — retained ONLY for user management rank comparisons.

@@ -1,9 +1,12 @@
+export const runtime = 'edge';
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getCategoryArticles } from "@/lib/cached-queries";
+import { eq, inArray, sql } from "drizzle-orm";
+import { category as categoryTable } from "@/lib/db/schema";
 import { siteConfig } from "@/lib/seo";
 import StoryRow from "@/components/article/StoryRow";
 import Sidebar from "@/components/layout/Sidebar";
@@ -19,8 +22,9 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const cat = await db.category.findUnique({
-    where: { slug },
+  const [cat] = await db.query.category.findMany({
+    where: eq(categoryTable.slug, slug),
+    limit: 1,
   });
 
   const catName = cat?.name;
@@ -51,18 +55,19 @@ export const revalidate = 300; // category listing
 export default async function CategoryPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const { sub } = await searchParams;
-  const category = await db.category.findUnique({
-    where: { slug },
+  const [category] = await db.query.category.findMany({
+    where: eq(categoryTable.slug, slug),
+    limit: 1,
   });
 
   if (!category) {
     notFound();
   }
 
-  const subcategories = await db.category.findMany({
-    where: { parent: { slug } },
-    orderBy: { name: "asc" },
-    select: { name: true, slug: true }
+  const subcategories = await db.query.category.findMany({
+    where: sql`${categoryTable.parentId} IN (SELECT id FROM "Category" WHERE slug = ${slug})`,
+    orderBy: (c, { asc }) => [asc(c.name)],
+    columns: { name: true, slug: true }
   });
 
   const catName = category.name || slug;

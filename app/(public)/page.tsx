@@ -3,8 +3,10 @@ import Link from "next/link";
 import { getImgSrc, fmtViews } from "@/lib/utils";
 import RelativeTime from "@/components/common/RelativeTime";
 import { getHomeArticles } from "@/lib/cached-queries";
-import { ARTICLE_CARD_SELECT } from "@/lib/queries";
+import { ARTICLE_CARD_COLUMNS, ARTICLE_CARD_WITH } from "@/lib/queries";
 import { db } from "@/lib/db";
+import { eq, ne, or } from "drizzle-orm";
+import { article as articleTable } from "@/lib/db/schema";
 import StoryCard from "@/components/article/StoryCard";
 import StoryRow from "@/components/article/StoryRow";
 import BreakingTicker from "@/components/home/BreakingTicker";
@@ -57,36 +59,36 @@ export default async function Home() {
     pick: a.homepagePlacement === "picks",
   }));
 
-  let dbHeroArticle = await db.article.findFirst({
-    where: { 
-      status: "PUBLISHED", 
-      OR: [
-        { featured: true },
-        { homepagePlacement: "featured" }
-      ]
-    },
-    orderBy: { publishedAt: "desc" },
-    select: ARTICLE_CARD_SELECT,
+  let [dbHeroArticle] = await db.query.article.findMany({
+    where: or(
+      eq(articleTable.featured, true),
+      eq(articleTable.homepagePlacement, "featured")
+    ),
+    orderBy: (a, { desc }) => [desc(a.publishedAt)],
+    limit: 1,
+    columns: ARTICLE_CARD_COLUMNS,
+    with: ARTICLE_CARD_WITH,
   });
   
   if (!dbHeroArticle) {
-    dbHeroArticle = await db.article.findFirst({
-      where: { status: "PUBLISHED" },
-      orderBy: { publishedAt: "desc" },
-      select: ARTICLE_CARD_SELECT,
+    const [fallback] = await db.query.article.findMany({
+      where: eq(articleTable.status, "PUBLISHED"),
+      orderBy: (a, { desc }) => [desc(a.publishedAt)],
+      limit: 1,
+      columns: ARTICLE_CARD_COLUMNS,
+      with: ARTICLE_CARD_WITH,
     });
+    dbHeroArticle = fallback;
   }
 
   const heroArticle = dbHeroArticle || dbArticles[0];
 
-  const dbBriefingRaw = await db.article.findMany({
-    where: { 
-      status: "PUBLISHED", 
-      id: { not: heroArticle.id } 
-    },
-    orderBy: { publishedAt: "desc" },
-    take: 4,
-    select: ARTICLE_CARD_SELECT,
+  const dbBriefingRaw = await db.query.article.findMany({
+    where: ne(articleTable.id, heroArticle.id),
+    orderBy: (a, { desc }) => [desc(a.publishedAt)],
+    limit: 4,
+    columns: ARTICLE_CARD_COLUMNS,
+    with: ARTICLE_CARD_WITH,
   });
 
   const lead = {

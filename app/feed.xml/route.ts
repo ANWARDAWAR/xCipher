@@ -1,22 +1,22 @@
 import { db } from "@/lib/db";
 import { siteConfig } from "@/lib/seo";
+import { and, eq, lte } from "drizzle-orm";
+import { article as articleTable } from "@/lib/db/schema";
 
+export const runtime = 'edge';
 export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const articles = await db.article.findMany({
-      where: {
-        status: "PUBLISHED",
-        publishedAt: {
-          lte: new Date(),
-        },
-      },
-      orderBy: {
-        publishedAt: "desc",
-      },
-      take: 20,
-      include: {
+    const articles = await db.query.article.findMany({
+      where: and(
+        eq(articleTable.status, "PUBLISHED"),
+        lte(articleTable.publishedAt, new Date())
+      ),
+      orderBy: (a, { desc }) => [desc(a.publishedAt)],
+      limit: 20,
+      with: {
         authorModel: true,
       },
     });

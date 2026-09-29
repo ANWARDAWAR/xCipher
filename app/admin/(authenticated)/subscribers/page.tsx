@@ -1,9 +1,12 @@
+export const runtime = 'edge';
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { canViewSubscribers } from "@/lib/permissions";
-import { Role } from "@prisma/client";
 import { db } from "@/lib/db";
+import { eq, ilike, sql } from "drizzle-orm";
+import { subscriber as subscriberTable } from "@/lib/db/schema";
 import SubscribersClient from "./SubscribersClient";
+import { Role } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -24,26 +27,31 @@ export default async function SubscribersPage(props: {
   const limit = typeof searchParams.limit === 'string' ? parseInt(searchParams.limit, 10) : 25;
   const skip = (Math.max(1, page) - 1) * limit;
 
-  const where: any = {};
-
+  let whereClause = undefined;
   if (query) {
-    where.email = { contains: query, mode: 'insensitive' };
+    whereClause = ilike(subscriberTable.email, `%${query}%`);
   }
 
-  const [total, active, unsubscribed, bounced, subscribers, totalItems] = await Promise.all([
-    db.subscriber.count(),
-    db.subscriber.count({ where: { status: "ACTIVE" } }),
-    db.subscriber.count({ where: { status: "UNSUBSCRIBED" } }),
-    db.subscriber.count({ where: { status: "BOUNCED" } }),
-    db.subscriber.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: limit,
-      select: { id: true, email: true, status: true, source: true, consentAt: true, createdAt: true },
+  const [totalResult, activeResult, unsubscribedResult, bouncedResult, subscribers, totalItemsResult] = await Promise.all([
+    db.select({ count: sql`count(*)`.mapWith(Number) }).from(subscriberTable),
+    db.select({ count: sql`count(*)`.mapWith(Number) }).from(subscriberTable).where(eq(subscriberTable.status, "ACTIVE")),
+    db.select({ count: sql`count(*)`.mapWith(Number) }).from(subscriberTable).where(eq(subscriberTable.status, "UNSUBSCRIBED")),
+    db.select({ count: sql`count(*)`.mapWith(Number) }).from(subscriberTable).where(eq(subscriberTable.status, "BOUNCED")),
+    db.query.subscriber.findMany({
+      where: whereClause,
+      orderBy: (s, { desc }) => [desc(s.createdAt)],
+      offset: skip,
+      limit: limit,
+      columns: { id: true, email: true, status: true, source: true, consentAt: true, createdAt: true },
     }),
-    db.subscriber.count({ where })
+    db.select({ count: sql`count(*)`.mapWith(Number) }).from(subscriberTable).where(whereClause)
   ]);
+
+  const total = totalResult[0]?.count || 0;
+  const active = activeResult[0]?.count || 0;
+  const unsubscribed = unsubscribedResult[0]?.count || 0;
+  const bounced = bouncedResult[0]?.count || 0;
+  const totalItems = totalItemsResult[0]?.count || 0;
 
   const stats = {
     total,

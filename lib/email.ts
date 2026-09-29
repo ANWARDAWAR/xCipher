@@ -1,21 +1,32 @@
-import { Resend } from "resend";
+// Edge-safe email utility using native fetch API against Resend REST endpoint
 
-// Constructed lazily. `new Resend(undefined)` throws "Missing API key" at
-// construction time, so building it at module scope meant that merely importing
-// this file crashed whenever RESEND_API_KEY was absent -- which is the normal
-// state in local development, in CI, and for any newsroom running in-app
-// notifications only.
-//
-// That was survivable while the only caller was the invitation flow, which is
-// rare and deliberate. It stopped being survivable once lib/notifications.ts
-// began importing this on every workflow transition: an unconfigured install
-// would have thrown on import and taken the transition with it, exactly the
-// failure the fail-soft notification contract exists to prevent.
-let client: Resend | null = null;
-function getResend(): Resend | null {
-  if (!process.env.RESEND_API_KEY) return null;
-  if (!client) client = new Resend(process.env.RESEND_API_KEY);
-  return client;
+export async function sendEmail({ to, subject, html, from }: { to: string; subject: string; html: string; from?: string }) {
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (!resendApiKey) {
+    console.error("[email] RESEND_API_KEY is missing");
+    throw new Error("RESEND_API_KEY is missing");
+  }
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${resendApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: from || process.env.EMAIL_FROM_ADDRESS || "xSypher <noreply@xsypher.com>",
+      to,
+      subject,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Resend API Error:", errorText);
+    throw new Error(`Failed to send email: ${errorText}`);
+  }
+  return await res.json();
 }
 
 interface SendInvitationEmailParams {
@@ -25,21 +36,17 @@ interface SendInvitationEmailParams {
 }
 
 export async function sendInvitationEmail({ to, role, inviteUrl }: SendInvitationEmailParams) {
-  const resend = getResend();
-  if (!resend) {
-    // Unlike a workflow notification, an invitation that silently vanishes
-    // strands a person who is waiting for a link, so this one reports rather
-    // than skipping quietly. The caller surfaces the error.
+  if (!process.env.RESEND_API_KEY) {
     console.error("[email] RESEND_API_KEY is not set; invitation not sent to", to);
     return { success: false, error: "Email delivery is not configured." };
   }
+  
   try {
-    const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM_ADDRESS || "xSypher <noreply@xsypher.com>",
+    const data = await sendEmail({
       to,
       subject: "You have been invited to join xSypher",
       html: `
-                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0c0d10; color: #ffffff; padding: 40px 32px; border-radius: 12px; border: 1px solid #1f2127;">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0c0d10; color: #ffffff; padding: 40px 32px; border-radius: 12px; border: 1px solid #1f2127;">
           <div style="text-align: center; margin-bottom: 32px; border-bottom: 1px solid #1f2127; padding-bottom: 24px;">
             <h1 style="color: #ffffff; font-size: 28px; font-weight: 800; letter-spacing: -0.05em; margin: 0;">x<span style="color: #f04552;">Sypher</span></h1>
           </div>
@@ -60,11 +67,6 @@ export async function sendInvitationEmail({ to, role, inviteUrl }: SendInvitatio
       `,
     });
 
-    if (error) {
-      console.error("Resend error:", error);
-      return { success: false, error: error.message };
-    }
-
     return { success: true, data };
   } catch (error: any) {
     console.error("Failed to send invitation email:", error);
@@ -78,18 +80,17 @@ export interface SendPasswordResetEmailParams {
 }
 
 export async function sendPasswordResetEmail({ to, resetUrl }: SendPasswordResetEmailParams) {
-  const resend = getResend();
-  if (!resend) {
+  if (!process.env.RESEND_API_KEY) {
     console.error("[email] RESEND_API_KEY is not set; password reset not sent to", to);
     return { success: false, error: "Email delivery is not configured." };
   }
+  
   try {
-    const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM_ADDRESS || "xSypher <noreply@xsypher.com>",
+    const data = await sendEmail({
       to,
       subject: "Reset your xSypher password",
       html: `
-                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0c0d10; color: #ffffff; padding: 40px 32px; border-radius: 12px; border: 1px solid #1f2127;">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0c0d10; color: #ffffff; padding: 40px 32px; border-radius: 12px; border: 1px solid #1f2127;">
           <div style="text-align: center; margin-bottom: 32px; border-bottom: 1px solid #1f2127; padding-bottom: 24px;">
             <h1 style="color: #ffffff; font-size: 28px; font-weight: 800; letter-spacing: -0.05em; margin: 0;">x<span style="color: #f04552;">Sypher</span></h1>
           </div>
@@ -110,24 +111,12 @@ export async function sendPasswordResetEmail({ to, resetUrl }: SendPasswordReset
       `,
     });
 
-    if (error) {
-      console.error("Resend error:", error);
-      return { success: false, error: error.message };
-    }
-
     return { success: true, data };
   } catch (error: any) {
     console.error("Failed to send password reset email:", error);
     return { success: false, error: error.message };
   }
 }
-
-// ---------------------------------------------------------------------------
-// Workflow notification email
-// ---------------------------------------------------------------------------
-// Sent from lib/notifications.ts alongside the in-app row, never instead of it.
-// The in-app notification is the record; email is a nudge for people who are
-// not currently looking at the console.
 
 interface SendNotificationEmailParams {
   to: string;
@@ -137,10 +126,6 @@ interface SendNotificationEmailParams {
 }
 
 function escapeHtml(value: string) {
-  // Article titles are interpolated into this template and are author-supplied.
-  // Resend does not sanitize, so an apostrophe or angle bracket in a headline
-  // would otherwise break the markup -- and a crafted title could inject into
-  // the email body.
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -155,11 +140,7 @@ export async function sendNotificationEmail({
   message,
   link,
 }: SendNotificationEmailParams) {
-  // Absent configuration is a normal state, not an error. Local development and
-  // CI have no Resend key, and a newsroom may deliberately run in-app only;
-  // none of those should produce error noise on every transition.
-  const resend = getResend();
-  if (!resend) {
+  if (!process.env.RESEND_API_KEY) {
     return { success: false, skipped: true as const, error: "RESEND_API_KEY is not set" };
   }
 
@@ -169,11 +150,8 @@ export async function sendNotificationEmail({
   const greeting = recipientName ? `Hello ${escapeHtml(recipientName)},` : "Hello,";
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM_ADDRESS || "xSypher <onboarding@resend.dev>",
+    const data = await sendEmail({
       to,
-      // The message already reads as a sentence about a specific article, so it
-      // makes a better subject than a generic "You have a notification".
       subject: message.length > 90 ? `${message.slice(0, 87)}...` : message,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #111; color: #fff; padding: 20px; border-radius: 8px;">
@@ -195,10 +173,6 @@ export async function sendNotificationEmail({
       `,
     });
 
-    if (error) {
-      console.error("[email] Resend error:", error);
-      return { success: false, error: error.message };
-    }
     return { success: true, data };
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Failed to send notification email";

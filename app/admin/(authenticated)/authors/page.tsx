@@ -1,10 +1,13 @@
+export const runtime = 'edge';
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { authorize } from "@/lib/capabilities";
-import { Role } from "@prisma/client";
+import { eq, and, isNotNull, sql } from "drizzle-orm";
+import { author as authorTable, article as articleTable, user as userTable } from "@/lib/db/schema";
 import AuthorDirectoryTable from "./AuthorDirectoryTable";
+import { Role } from "@/lib/types";
 
 export const metadata = {
   title: "Authors | xSypher",
@@ -36,9 +39,9 @@ export default async function AuthorsPage() {
   // One grouped count instead of a per-author query. An N+1 here would be
   // invisible with a dozen authors and painful with two hundred.
   const [authors, publishedCounts] = await Promise.all([
-    db.author.findMany({
-      orderBy: { name: "asc" },
-      select: {
+    db.query.author.findMany({
+      orderBy: (a, { asc }) => [asc(a.name)],
+      columns: {
         id: true,
         slug: true,
         name: true,
@@ -48,22 +51,26 @@ export default async function AuthorsPage() {
         email: true,
         verifiedTitle: true,
         joinedAt: true,
-        _count: { select: { articles: true } },
-        user: { select: { id: true, email: true, role: true } },
       },
+      with: { 
+        user: { columns: { id: true, email: true, role: true } },
+        articles: { columns: { id: true } }
+      }
     }),
-    db.article.groupBy({
-      by: ["authorId"],
-      where: { status: "PUBLISHED", authorId: { not: null } },
-      _count: { _all: true },
-      _sum: { views: true },
-    }),
+    db.select({
+      authorId: articleTable.authorId,
+      published: sql`count(*)`.mapWith(Number),
+      views: sql`sum(${articleTable.views})`.mapWith(Number)
+    })
+    .from(articleTable)
+    .where(and(eq(articleTable.status, "PUBLISHED"), isNotNull(articleTable.authorId)))
+    .groupBy(articleTable.authorId)
   ]);
 
   const publishedByAuthor = new Map<string, { published: number; views: number }>(
-    publishedCounts.map((row: { authorId: string | null; _count: { _all: number }; _sum: { views: number | null } }) => [
+    publishedCounts.map((row) => [
       row.authorId as string,
-      { published: row._count._all, views: row._sum.views ?? 0 },
+      { published: row.published || 0, views: row.views || 0 },
     ])
   );
 
@@ -77,7 +84,7 @@ export default async function AuthorsPage() {
     email: a.email,
     verifiedTitle: a.verifiedTitle,
     joinedAt: a.joinedAt.toISOString(),
-    totalArticles: a._count.articles,
+    totalArticles: a.articles?.length || 0,
     publishedArticles: publishedByAuthor.get(a.id)?.published ?? 0,
     totalViews: publishedByAuthor.get(a.id)?.views ?? 0,
     linkedUserEmail: a.user?.email ?? null,

@@ -1,12 +1,16 @@
+export const runtime = 'edge';
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { canViewReviewQueue } from "@/lib/permissions";
-import { Role } from "@prisma/client";
+import { eq } from "drizzle-orm";
+import { user as userTable, article as articleTable } from "@/lib/db/schema";
 import ReviewWorkspace from "@/components/editorial/ReviewWorkspace";
 import Link from "next/link";
 import Image from "next/image";
 import ArticleBody from "@/components/article/ArticleBody";
+import { Role } from "@/lib/types";
+import { fetchFromR2 } from "@/lib/storage";
 
 interface ReviewScreenProps {
   params: Promise<{ id: string }>;
@@ -17,9 +21,10 @@ export default async function ReviewScreen({ params }: ReviewScreenProps) {
   const user = await getCurrentUser();
   if (!user) redirect("/admin/login");
 
-  const dbUser = await db.user.findUnique({
-    where: { id: user.id },
-    select: { role: true },
+  const [dbUser] = await db.query.user.findMany({
+    where: eq(userTable.id, user.id),
+    columns: { role: true },
+    limit: 1,
   });
 
   const userRole = (dbUser?.role || user.role || "AUTHOR").toUpperCase() as Role;
@@ -28,27 +33,31 @@ export default async function ReviewScreen({ params }: ReviewScreenProps) {
     redirect("/admin");
   }
 
-  const article = await db.article.findUnique({
-    where: { id },
-    include: {
+  const [article] = await db.query.article.findMany({
+    where: eq(articleTable.id, id),
+    limit: 1,
+    with: {
       category: true,
       authorModel: true,
       tags: true,
       revisions: {
-        orderBy: { createdAt: "desc" },
-        include: { user: { select: { name: true, email: true } } }
+        orderBy: (r, { desc }) => [desc(r.createdAt)],
+        with: { user: { columns: { name: true, email: true } } }
       },
-      reviewer: { select: { name: true, email: true } }
+      reviewer: { columns: { name: true, email: true } }
     }
   });
 
   if (!article) notFound();
 
   // Server-computed pre-flight checklist
+  const r2Content = await fetchFromR2(article.contentUrl);
+  const articleHtml = typeof r2Content === "object" ? r2Content?.html : r2Content || "";
+  
   const hasTitle = Boolean(article.title?.trim());
   const hasDeck = Boolean(article.deck?.trim());
-  const hasContent = Boolean(article.contentHtml?.trim());
-  const wordCount = article.contentHtml ? article.contentHtml.replace(/<[^>]*>?/gm, '').split(/\s+/).length : 0;
+  const hasContent = Boolean(articleHtml?.trim());
+  const wordCount = articleHtml ? articleHtml.replace(/<[^>]*>?/gm, '').split(/\s+/).length : 0;
   const hasImage = Boolean(article.img);
   const isSufficientLength = wordCount >= 300; // arbitrary checklist criteria
   
@@ -108,7 +117,7 @@ export default async function ReviewScreen({ params }: ReviewScreenProps) {
             )}
             
             <div className="story-content" style={{ fontSize: "18px", lineHeight: 1.6, color: "var(--ink)" }}>
-              <ArticleBody html={article.contentHtml || "<p>No content provided.</p>"} />
+              <ArticleBody html={articleHtml || "<p>No content provided.</p>"} />
             </div>
           </div>
         </div>
@@ -134,18 +143,30 @@ export default async function ReviewScreen({ params }: ReviewScreenProps) {
               // Each action revalidates the affected routes itself; the client
               // then calls router.refresh() so this page re-renders with the
               // new status rather than waiting for a manual reload.
-              const { rejectArticle, requestChanges, publishArticle } = await import("@/app/actions/workflow");
-              
+              let res;
               if (status === "REJECTED") {
-                const res = await rejectArticle(article.id, "EDITORIAL", notes);
-                if (!res.ok) throw new Error(res.message);
+                const fetchRes = await fetch("/api/article/workflow", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "reject", articleId: article.id, category: "EDITORIAL", notes }),
+                });
+                res = await fetchRes.json();
               } else if (status === "REVISION_REQUESTED") {
-                const res = await requestChanges(article.id, notes);
-                if (!res.ok) throw new Error(res.message);
+                const fetchRes = await fetch("/api/article/workflow", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "requestChanges", articleId: article.id, notes }),
+                });
+                res = await fetchRes.json();
               } else if (status === "PUBLISHED") {
-                const res = await publishArticle(article.id);
-                if (!res.ok) throw new Error(res.message);
+                const fetchRes = await fetch("/api/article/workflow", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "publish", articleId: article.id }),
+                });
+                res = await fetchRes.json();
               }
+              if (res && !res.ok) throw new Error(res.message || res.error || "An error occurred");
             }}
           />
 

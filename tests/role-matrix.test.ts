@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { authorize } from "@/lib/capabilities";
-import type { Role } from "@prisma/client";
+import { Role } from "@/lib/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The role model, stated once

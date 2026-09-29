@@ -3,9 +3,10 @@
 import { getCurrentUser } from "@/lib/auth";
 import { authorize } from "@/lib/capabilities";
 import { db } from "@/lib/db";
+import { eq } from "drizzle-orm";
+import { user as userTable } from "@/lib/db/schema";
 import { uploadFileToR2, buildObjectKey, getR2Config } from "@/lib/storage";
 import { MAX_UPLOAD_BYTES, formatBytes, sniffImageMime, MAX_IMAGE_WIDTH, WEBP_QUALITY } from "@/lib/upload-constraints";
-import sharp from "sharp";
 
 export interface UploadResult {
   ok: boolean;
@@ -21,10 +22,7 @@ export async function uploadArticleImage(formData: FormData): Promise<UploadResu
     return { ok: false, error: "Sign in to upload images." };
   }
 
-  const dbUser = await db.user.findUnique({
-    where: { id: user.id },
-    select: { role: true, isActive: true },
-  });
+  const [dbUser] = await db.select({ role: userTable.role, isActive: userTable.isActive }).from(userTable).where(eq(userTable.id, user.id)).limit(1);
 
   if (!dbUser?.isActive) {
     return { ok: false, error: "This account is not active." };
@@ -52,7 +50,8 @@ export async function uploadArticleImage(formData: FormData): Promise<UploadResu
     };
   }
 
-  const input = Buffer.from(await blob.arrayBuffer());
+  const arrayBuffer = await blob.arrayBuffer();
+  const input = new Uint8Array(arrayBuffer);
 
   if (input.byteLength > MAX_UPLOAD_BYTES) {
     return { ok: false, error: `That image exceeds ${formatBytes(MAX_UPLOAD_BYTES)}.` };
@@ -72,14 +71,10 @@ export async function uploadArticleImage(formData: FormData): Promise<UploadResu
       return { ok: false, error: config.error };
     }
 
-    const processedBuffer = await sharp(input)
-      .resize(MAX_IMAGE_WIDTH, null, { withoutEnlargement: true, fit: 'inside' })
-      .webp({ quality: WEBP_QUALITY })
-      
-      .toBuffer();
+    const sniffedType = sniffed;
 
-    const key = buildObjectKey("xsypher/articles", "webp");
-    const blobToUpload = new Blob([processedBuffer], { type: "image/webp" });
+    const key = buildObjectKey("xsypher/articles", sniffedType.split("/")[1]);
+    const blobToUpload = new Blob([input], { type: sniffedType });
     const url = await uploadFileToR2(blobToUpload, config.bucket, key);
     
     return {
@@ -89,7 +84,7 @@ export async function uploadArticleImage(formData: FormData): Promise<UploadResu
       height: undefined,
     };
   } catch (e) {
-    console.error("[upload-article-image] Image processing or R2 upload failed:", e);
+    console.error("[upload-article-image] R2 upload failed:", e);
     return { ok: false, error: "The image could not be uploaded. Please try again." };
   }
 }
@@ -100,10 +95,7 @@ export async function processExternalImage(url: string): Promise<UploadResult> {
     return { ok: false, error: "Sign in to process images." };
   }
 
-  const dbUser = await db.user.findUnique({
-    where: { id: user.id },
-    select: { role: true, isActive: true },
-  });
+  const [dbUser] = await db.select({ role: userTable.role, isActive: userTable.isActive }).from(userTable).where(eq(userTable.id, user.id)).limit(1);
 
   if (!dbUser?.isActive) {
     return { ok: false, error: "This account is not active." };
@@ -132,10 +124,15 @@ export async function processExternalImage(url: string): Promise<UploadResult> {
     }
 
     const arrayBuffer = await response.arrayBuffer();
-    const input = Buffer.from(arrayBuffer);
+    const input = new Uint8Array(arrayBuffer);
 
     if (input.byteLength > MAX_UPLOAD_BYTES) {
       return { ok: false, error: `That image exceeds ${formatBytes(MAX_UPLOAD_BYTES)}.` };
+    }
+
+    const sniffed = sniffImageMime(input);
+    if (!sniffed) {
+      return { ok: false, error: "External file is not a supported image format." };
     }
 
     const config = getR2Config();
@@ -143,13 +140,10 @@ export async function processExternalImage(url: string): Promise<UploadResult> {
       return { ok: false, error: config.error };
     }
 
-    const processedBuffer = await sharp(input)
-      .resize(MAX_IMAGE_WIDTH, null, { withoutEnlargement: true, fit: 'inside' })
-      .webp({ quality: WEBP_QUALITY })
-      .toBuffer();
+    const sniffedType = sniffed;
 
-    const key = buildObjectKey("xsypher/articles/external", "webp");
-    const blobToUpload = new Blob([processedBuffer], { type: "image/webp" });
+    const key = buildObjectKey("xsypher/articles/external", sniffedType.split("/")[1]);
+    const blobToUpload = new Blob([input], { type: sniffedType });
     const finalUrl = await uploadFileToR2(blobToUpload, config.bucket, key);
     
     return {
@@ -157,8 +151,7 @@ export async function processExternalImage(url: string): Promise<UploadResult> {
       url: finalUrl
     };
   } catch (e) {
-    console.error("[processExternalImage] Image processing or R2 upload failed:", e);
+    console.error("[processExternalImage] R2 upload failed:", e);
     return { ok: false, error: "Failed to import image from this URL. The host may be blocking downloads." };
   }
 }
-

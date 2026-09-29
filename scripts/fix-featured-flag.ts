@@ -1,19 +1,21 @@
 import { db } from "../lib/db";
+import { isNull, isNotNull } from "drizzle-orm";
+import { article as articleTable } from "../lib/db/schema";
 
 async function main() {
   console.log("Fixing featured flags...");
 
-  const falseResult = await db.article.updateMany({
-    where: { homepagePlacement: null },
-    data: { featured: false },
-  });
-  console.log(`Updated ${falseResult.count} articles to featured = false`);
+  const falseResult = await db.update(articleTable)
+    .set({ featured: false })
+    .where(isNull(articleTable.homepagePlacement))
+    .returning({ id: articleTable.id });
+  console.log(`Updated ${falseResult.length} articles to featured = false`);
 
-  const trueResult = await db.article.updateMany({
-    where: { homepagePlacement: { not: null } },
-    data: { featured: true },
-  });
-  console.log(`Updated ${trueResult.count} articles to featured = true`);
+  const trueResult = await db.update(articleTable)
+    .set({ featured: true })
+    .where(isNotNull(articleTable.homepagePlacement))
+    .returning({ id: articleTable.id });
+  console.log(`Updated ${trueResult.length} articles to featured = true`);
 
   console.log("Done.");
 }

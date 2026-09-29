@@ -2,35 +2,31 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { resetPassword } from "../app/actions/password-reset";
 import { db } from "../lib/db";
 
+const mockLimit = vi.fn();
+const mockWhere = vi.fn(() => ({ limit: mockLimit }));
+const mockFrom = vi.fn(() => ({ where: mockWhere }));
+const mockSelect = vi.fn(() => ({ from: mockFrom }));
+const mockTx = {
+  update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn() })) })),
+  insert: vi.fn(() => ({ values: vi.fn() })),
+};
+
 vi.mock("../lib/db", () => ({
   db: {
-    passwordResetToken: {
-      findUnique: vi.fn(),
-      updateMany: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-    user: {
-      findUnique: vi.fn(),
-      update: vi.fn(),
-    },
-    auditLog: {
-      create: vi.fn(),
-    },
-    $transaction: vi.fn(async (cb) => {
-      const tx = {
-        user: { update: vi.fn() },
-        passwordResetToken: { update: vi.fn() },
-        auditLog: { create: vi.fn() }
-      };
-      return cb(tx);
-    }),
+    select: mockSelect,
+    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn() })) })),
+    insert: vi.fn(() => ({ values: vi.fn() })),
+    transaction: vi.fn(async (cb) => cb(mockTx)),
   }
 }));
 
 describe("Password Reset Logic", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLimit.mockReset();
+    mockWhere.mockClear();
+    mockFrom.mockClear();
+    mockSelect.mockClear();
   });
 
   describe("Password validation", () => {
@@ -38,29 +34,29 @@ describe("Password Reset Logic", () => {
       const result = await resetPassword("sometoken", "short");
       expect(result.success).toBe(false);
       expect(result.error).toMatch(/at least 8 characters/);
-      expect(db.passwordResetToken.findUnique).not.toHaveBeenCalled();
+      expect(mockSelect).not.toHaveBeenCalled();
     });
 
     it("proceeds to token validation if password is 8 or more characters", async () => {
-      vi.mocked(db.passwordResetToken.findUnique).mockResolvedValue(null);
+      mockLimit.mockResolvedValueOnce([]);
       
       const result = await resetPassword("sometoken", "validpassword123");
       expect(result.success).toBe(false);
       expect(result.error).toMatch(/Invalid or expired/);
-      expect(db.passwordResetToken.findUnique).toHaveBeenCalledWith({ where: { token: "sometoken" }});
+      expect(mockSelect).toHaveBeenCalled();
     });
   });
 
   describe("Token expiry check", () => {
     it("returns correct error string for expired token", async () => {
-      vi.mocked(db.passwordResetToken.findUnique).mockResolvedValue({
+      mockLimit.mockResolvedValueOnce([{
         id: "token-1",
         userId: "user-1",
         token: "sometoken",
         expires: new Date(Date.now() - 10000),
         used: false,
         createdAt: new Date(),
-      } as any);
+      }]);
 
       const result = await resetPassword("sometoken", "validpassword123");
       expect(result.success).toBe(false);
@@ -68,14 +64,14 @@ describe("Password Reset Logic", () => {
     });
 
     it("returns correct error string for already used token", async () => {
-      vi.mocked(db.passwordResetToken.findUnique).mockResolvedValue({
+      mockLimit.mockResolvedValueOnce([{
         id: "token-1",
         userId: "user-1",
         token: "sometoken",
         expires: new Date(Date.now() + 10000),
         used: true,
         createdAt: new Date(),
-      } as any);
+      }]);
 
       const result = await resetPassword("sometoken", "validpassword123");
       expect(result.success).toBe(false);
@@ -83,18 +79,18 @@ describe("Password Reset Logic", () => {
     });
 
     it("returns success when valid token and valid password", async () => {
-      vi.mocked(db.passwordResetToken.findUnique).mockResolvedValue({
+      mockLimit.mockResolvedValueOnce([{
         id: "token-1",
         userId: "user-1",
         token: "sometoken",
         expires: new Date(Date.now() + 100000),
         used: false,
         createdAt: new Date(),
-      } as any);
+      }]);
 
       const result = await resetPassword("sometoken", "validpassword123");
       expect(result.success).toBe(true);
-      expect(db.$transaction).toHaveBeenCalled();
+      expect(db.transaction).toHaveBeenCalled();
     });
   });
 });

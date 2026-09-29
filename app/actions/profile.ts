@@ -3,10 +3,13 @@
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { authorize } from "@/lib/capabilities";
-import type { Role } from "@prisma/client";
-import { revalidatePath } from "next/cache";
-import { sanitizeBioHtml, isValidSafeUrl, ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
-import { deleteImageFromCloudinary } from "@/lib/storage";
+import { revalidatePath } from "@/lib/revalidate";
+import { eq, sql, inArray, isNull } from "drizzle-orm";
+import { user as userTable, author as authorTable, article } from "@/lib/db/schema";
+
+import { sanitizeBioHtml, isValidSafeUrl, getAllowedMediaDomains } from "@/lib/sanitize";
+import { deleteImageFromCloudinary } from "@/lib/cloudinary";
+import { Role } from "@/lib/types";
 
 export async function updateProfile(data: any) {
   try {
@@ -30,7 +33,7 @@ export async function updateProfile(data: any) {
         ? data.targetUserId.trim()
         : undefined;
 
-    const actor = await db.user.findUnique({ where: { id: user.id } });
+    const [actor] = await db.select().from(userTable).where(eq(userTable.id, user.id)).limit(1);
     if (!actor) {
       throw new Error("User not found in database.");
     }
@@ -41,9 +44,9 @@ export async function updateProfile(data: any) {
       return { success: false, error: "You do not have permission to edit another user's profile." };
     }
 
-    const dbUser = isEditingOther
-      ? await db.user.findUnique({ where: { id: requestedTargetId! } })
-      : actor;
+    const [dbUser] = isEditingOther
+      ? await db.select().from(userTable).where(eq(userTable.id, requestedTargetId!)).limit(1)
+      : [actor];
 
     if (!dbUser) {
       throw new Error("User not found in database.");
@@ -62,7 +65,7 @@ export async function updateProfile(data: any) {
     let finalVerifiedTitle = verifiedTitle;
     
     // Validate avatar URL against trusted domains
-    if (avatar && !isValidSafeUrl(avatar, ALLOWED_MEDIA_DOMAINS)) {
+    if (avatar && !isValidSafeUrl(avatar, getAllowedMediaDomains())) {
       return { success: false, error: "Avatar URL is invalid or from an unapproved domain." };
     }
 
@@ -97,7 +100,7 @@ export async function updateProfile(data: any) {
     let updatedPreviousSlugs: string[] = [];
 
     if (dbUser.authorId) {
-      const existing = await db.author.findUnique({ where: { id: dbUser.authorId } });
+      const [existing] = await db.select().from(authorTable).where(eq(authorTable.id, dbUser.authorId)).limit(1);
       if (existing) {
         if (!isEditorialAdmin && actor.role !== "AUTHOR") {
            // Let's assume standard authors might be allowed to change name but admins can change slug?
@@ -122,41 +125,39 @@ export async function updateProfile(data: any) {
       finalSlug = submittedSlug || baseSlug;
     }
 
-    const author = await db.author.upsert({
-      where: { id: dbUser.authorId || 'non-existent-id' },
-      update: { 
+    const createData = { 
+        id: dbUser.authorId || crypto.randomUUID(),
+        slug: finalSlug, name, headline, role: isEditorialAdmin ? finalRole : null, 
+        overview, bio: safeBio, avatar, location, website, email, socialLinks: safeSocialLinks,
+        expertise, verifiedTitle: isEditorialAdmin ? (finalVerifiedTitle || false) : false,
+        disclosure, publicContact: publicContact !== undefined ? publicContact : true 
+      };
+
+    const updateData = { 
         slug: finalSlug, previousSlugs: updatedPreviousSlugs,
         name, headline, role: isEditorialAdmin ? finalRole : undefined, 
         overview, bio: safeBio, avatar, location, website, email, socialLinks: safeSocialLinks,
         expertise, verifiedTitle: isEditorialAdmin ? finalVerifiedTitle : undefined,
         disclosure, publicContact 
-      },
-      create: { 
-        slug: finalSlug, name, headline, role: isEditorialAdmin ? finalRole : null, 
-        overview, bio: safeBio, avatar, location, website, email, socialLinks: safeSocialLinks,
-        expertise, verifiedTitle: isEditorialAdmin ? (finalVerifiedTitle || false) : false,
-        disclosure, publicContact: publicContact !== undefined ? publicContact : true 
-      },
-    });
+      };
+      
+    const [author] = await db.insert(authorTable)
+      .values(createData)
+      .onConflictDoUpdate({
+        target: authorTable.id,
+        set: updateData
+      }).returning();
 
     if (!dbUser.authorId || dbUser.name !== name || pgpPublicKey !== undefined) {
-      await db.user.update({
-        // dbUser, not the actor: when an owner edits someone else's profile
-        // the author record must attach to that user's account.
-        where: { id: dbUser.id },
-        data: { 
+      await db.update(userTable).set({ 
           authorId: author.id, 
           name, 
           ...(pgpPublicKey !== undefined ? { pgpPublicKey } : {})
-        },
-      });
+        }).where(eq(userTable.id, dbUser.id));
     }
 
     // Cascade update to denormalized author name on all articles
-    await db.article.updateMany({
-      where: { authorId: author.id },
-      data: { author: name },
-    });
+    await db.update(article).set({ author: name }).where(eq(article.authorId, author.id));
 
     revalidatePath('/', 'layout');
     revalidatePath('/admin/settings');
@@ -199,10 +200,7 @@ export async function updateNotificationPrefs(prefs: NotificationPrefsInput) {
       reviewUpdates: prefs.reviewUpdates !== false,
     };
 
-    await db.user.update({
-      where: { id: user.id },
-      data: { notificationPrefs: clean },
-    });
+    await db.update(userTable).set({ notificationPrefs: clean }).where(eq(userTable.id, user.id));
 
     revalidatePath("/admin/settings");
     return { success: true, prefs: clean };
@@ -210,5 +208,104 @@ export async function updateNotificationPrefs(prefs: NotificationPrefsInput) {
     const message =
       error instanceof Error ? error.message : "Failed to update preferences";
     return { success: false, error: message };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sync Existing Users to Authors
+// ---------------------------------------------------------------------------
+// Since existing OWNER and ADMIN accounts were created before the Author linking 
+// logic, we need to generate Author profiles for them retroactively.
+
+export async function syncAllExistingAuthors() {
+  const user = await getCurrentUser();
+  if (!user || !authorize(user.role as Role, "user.manage")) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  try {
+    const unlinkedUsers = await db.query.user.findMany({
+      where: isNull(userTable.authorId)
+    });
+
+    const rolesToSync = ["OWNER", "ADMIN", "EDITOR", "MODERATOR", "REVIEWER", "AUTHOR"];
+    const usersToProcess = unlinkedUsers.filter(u => rolesToSync.includes(u.role || ""));
+
+    let syncedCount = 0;
+    for (const u of usersToProcess) {
+      // 1. Try to find an existing author by email
+      let existingAuthor = null;
+      if (u.email) {
+        const [matched] = await db.query.author.findMany({
+          where: eq(authorTable.email, u.email),
+          limit: 1
+        });
+        existingAuthor = matched || null;
+      }
+
+      let authorIdToLink = existingAuthor?.id;
+
+      // 2. If no existing author found, create one
+      if (!authorIdToLink) {
+        const name = u.name || `User ${u.id.substring(0, 6)}`;
+        let baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || `user-${u.id.substring(0, 6)}`;
+        
+        // Ensure slug uniqueness
+        let uniqueSlug = baseSlug;
+        let counter = 1;
+        while (true) {
+          const [slugConflict] = await db.query.author.findMany({
+            where: eq(authorTable.slug, uniqueSlug),
+            limit: 1
+          });
+          if (!slugConflict) break;
+          uniqueSlug = `${baseSlug}-${counter}`;
+          counter++;
+        }
+
+        const createData = { 
+          id: crypto.randomUUID(),
+          slug: uniqueSlug, 
+          name, 
+          role: u.role, 
+          overview: "", 
+          bio: "", 
+          avatar: u.image || null, 
+          location: "", 
+          website: "", 
+          email: u.email || "", 
+          socialLinks: [],
+          expertise: "", 
+          verifiedTitle: false,
+          disclosure: "", 
+          publicContact: true 
+        };
+
+        const [newAuthor] = await db.insert(authorTable)
+          .values(createData)
+          .returning();
+        
+        authorIdToLink = newAuthor.id;
+      }
+
+      // 3. Link the user to the author
+      if (authorIdToLink) {
+        await db.update(userTable)
+          .set({ authorId: authorIdToLink })
+          .where(eq(userTable.id, u.id));
+        syncedCount++;
+      }
+    }
+
+    if (syncedCount > 0) {
+      revalidatePath("/admin/settings");
+      revalidatePath("/admin/authors");
+      revalidatePath("/admin/users");
+    }
+
+    return { success: true, count: syncedCount };
+  } catch (error: any) {
+    console.error("syncAllExistingAuthors error:", error);
+    return { success: false, error: error.message || "Failed to sync authors" };
   }
 }

@@ -1,38 +1,53 @@
 import { MetadataRoute } from 'next';
 import { db } from '@/lib/db';
 import { siteConfig } from '@/lib/seo';
+import { eq } from 'drizzle-orm';
+import { article as articleTable } from '@/lib/db/schema';
 
+export const runtime = 'edge';
 export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [articles, categories, authors] = await Promise.all([
-    db.article.findMany({
-      where: { status: 'PUBLISHED' },
-      select: { slug: true, updatedAt: true },
-    }),
-    db.category.findMany({
-      select: { slug: true },
-    }),
-    db.author.findMany({
-      select: { slug: true },
-    }),
-  ]);
+  let articles: any[] = [];
+  let categories: any[] = [];
+  let authors: any[] = [];
 
-  const articleEntries: MetadataRoute.Sitemap = articles.map((a) => ({
+  try {
+    const res = await Promise.all([
+      db.query.article.findMany({
+        where: eq(articleTable.status, 'PUBLISHED'),
+        columns: { slug: true, updatedAt: true },
+      }),
+      db.query.category.findMany({
+        columns: { slug: true },
+      }),
+      db.query.author.findMany({
+        columns: { slug: true },
+      }),
+    ]);
+    articles = res[0];
+    categories = res[1];
+    authors = res[2];
+  } catch (error) {
+    console.warn('[sitemap] Failed to fetch dynamic entries from DB:', error);
+  }
+
+  const articleEntries: MetadataRoute.Sitemap = articles.map((a: any) => ({
     url: `${siteConfig.url}/article/${a.slug}`,
     lastModified: a.updatedAt,
     changeFrequency: 'daily',
     priority: 0.8,
   }));
 
-  const categoryEntries: MetadataRoute.Sitemap = categories.map((c) => ({
+  const categoryEntries: MetadataRoute.Sitemap = categories.map((c: any) => ({
     url: `${siteConfig.url}/category/${c.slug}`,
     lastModified: new Date(),
     changeFrequency: 'weekly',
     priority: 0.6,
   }));
 
-  const authorEntries: MetadataRoute.Sitemap = authors.map((a) => ({
+  const authorEntries: MetadataRoute.Sitemap = authors.map((a: any) => ({
     url: `${siteConfig.url}/author/${a.slug}`,
     lastModified: new Date(),
     changeFrequency: 'weekly',

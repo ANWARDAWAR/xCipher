@@ -1,9 +1,11 @@
+export const runtime = 'edge';
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { Role, ArticleStatus } from "@prisma/client";
 import { authorize, buildArticleScope, Actor } from "@/lib/capabilities";
+import { eq, and } from "drizzle-orm";
+import { user as userTable, article as articleTable } from "@/lib/db/schema";
 import StatusChip from "@/components/console/StatusChip";
 import ArticleTimeline from "@/components/console/ArticleTimeline";
 import { Edit3, ExternalLink, ArrowLeft, Eye, MessageSquare, History } from "lucide-react";
@@ -46,15 +48,16 @@ export default async function ArticleDetailPage({ params }: PageProps) {
   const user = await getCurrentUser();
   if (!user) redirect("/admin/login");
 
-  const dbUser = await db.user.findUnique({
-    where: { id: user.id },
-    include: { authorProfile: true },
+  const [dbUser] = await db.query.user.findMany({
+    where: eq(userTable.id, user.id),
+    with: { authorProfile: true },
+    limit: 1,
   });
   if (!dbUser) redirect("/admin/login");
 
   const actor: Actor = {
     id: dbUser.id,
-    role: dbUser.role as Role,
+    role: dbUser.role as any,
     authorId: dbUser.authorProfile?.id || null,
   };
 
@@ -70,9 +73,9 @@ export default async function ArticleDetailPage({ params }: PageProps) {
   // correct answer: confirming existence is itself a disclosure.
   const scope = buildArticleScope(actor);
 
-  const article = await db.article.findFirst({
-    where: { AND: [{ id }, scope] },
-    select: {
+  const [article] = await db.query.article.findMany({
+    where: and(eq(articleTable.id, id), scope),
+    columns: {
       id: true,
       slug: true,
       title: true,
@@ -94,28 +97,30 @@ export default async function ArticleDetailPage({ params }: PageProps) {
       archivedAt: true,
       seoTitle: true,
       seoDesc: true,
-      authorModel: { select: { id: true, name: true, slug: true, avatar: true } },
-      category: { select: { id: true, name: true, slug: true } },
-      tags: { select: { id: true, name: true } },
-      reviewer: { select: { name: true, email: true } },
+    },
+    with: {
+      authorModel: { columns: { id: true, name: true, slug: true, avatar: true } },
+      category: { columns: { id: true, name: true, slug: true } },
+      tags: { with: { tag: { columns: { id: true, name: true } } } },
+      reviewer: { columns: { name: true, email: true } },
       // Bodies are deliberately not selected here either -- this page renders
       // metadata and history, never the article text.
       revisions: {
-        orderBy: { createdAt: "desc" },
-        take: 20,
-        select: {
+        orderBy: (r: any, { desc }: any) => [desc(r.createdAt)],
+        limit: 20,
+        columns: {
           id: true,
           notes: true,
           statusChange: true,
           createdAt: true,
           title: true,
-          user: { select: { name: true, email: true } },
         },
+        with: { user: { columns: { name: true, email: true } } },
       },
       reviews: {
-        orderBy: { createdAt: "desc" },
-        take: 20,
-        select: {
+        orderBy: (r: any, { desc }: any) => [desc(r.createdAt)],
+        limit: 20,
+        columns: {
           id: true,
           decision: true,
           reason: true,
@@ -124,10 +129,10 @@ export default async function ArticleDetailPage({ params }: PageProps) {
           toStatus: true,
           passNumber: true,
           createdAt: true,
-          reviewer: { select: { name: true, email: true } },
         },
+        with: { reviewer: { columns: { name: true, email: true } } },
       },
-      _count: { select: { revisions: true, comments: true } },
+      comments: { columns: { id: true } }
     },
   });
 
@@ -175,7 +180,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
       <header className="space-y-4 pb-8 border-b border-line">
         <div className="flex items-start justify-between gap-6 flex-wrap">
           <div className="space-y-3 min-w-0 flex-1">
-            <StatusChip status={article.status as ArticleStatus} />
+            <StatusChip status={article.status as any} />
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-ink leading-tight font-[var(--f-display)]">
               {article.title}
             </h1>
@@ -213,11 +218,11 @@ export default async function ArticleDetailPage({ params }: PageProps) {
           </span>
           <span className="inline-flex items-center gap-1.5">
             <MessageSquare className="w-3.5 h-3.5" />
-            {article._count.comments}
+            {article.comments?.length || 0}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <History className="w-3.5 h-3.5" />
-            {article._count.revisions}
+            {article.revisions?.length || 0}
           </span>
         </div>
 
@@ -302,8 +307,8 @@ export default async function ArticleDetailPage({ params }: PageProps) {
             <dd className="text-sm text-ink font-[var(--f-ui)]">
               {article.tags.length > 0 ? (
                 <span className="flex flex-wrap gap-x-2 gap-y-1">
-                  {article.tags.map((t) => (
-                    <span key={t.id}>{t.name}</span>
+                  {article.tags.map((t: any) => (
+                    <span key={t.B}>{t.tag.name}</span>
                   ))}
                 </span>
               ) : (
@@ -340,23 +345,23 @@ export default async function ArticleDetailPage({ params }: PageProps) {
           <h2 className="text-xs font-bold uppercase tracking-wider text-muted font-[var(--f-ui)]">
             History
           </h2>
-          {article._count.revisions > 20 && (
+          {article.revisions?.length > 20 && (
             <span className="text-xs text-muted font-[var(--f-ui)]">
-              Showing the 20 most recent of {article._count.revisions}
+              Showing the 20 most recent revisions
             </span>
           )}
         </div>
 
         <ArticleTimeline
-          revisions={article.revisions.map((r) => ({
+          revisions={article.revisions?.map((r: any) => ({
             id: r.id,
             notes: r.notes,
             statusChange: r.statusChange,
             createdAt: r.createdAt.toISOString(),
             title: r.title,
             actor: r.user?.name || r.user?.email || "Unknown",
-          }))}
-          reviews={article.reviews.map((r) => ({
+          })) || []}
+          reviews={article.reviews?.map((r: any) => ({
             id: r.id,
             decision: r.decision,
             reason: r.reason,
@@ -366,7 +371,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
             passNumber: r.passNumber,
             createdAt: r.createdAt.toISOString(),
             actor: r.reviewer?.name || r.reviewer?.email || "Unknown",
-          }))}
+          })) || []}
           canRestore={canEdit}
           isPublished={article.status === "PUBLISHED"}
         />
@@ -386,23 +391,25 @@ export async function generateMetadata({ params }: PageProps) {
   const user = await getCurrentUser();
   if (!user) return { title: "Article | xSypher" };
 
-  const dbUser = await db.user.findUnique({
-    where: { id: user.id },
-    include: { authorProfile: true },
+  const [dbUser] = await db.query.user.findMany({
+    where: eq(userTable.id, user.id),
+    with: { authorProfile: true },
+    limit: 1
   });
-  if (!dbUser || !authorize(dbUser.role as Role, "console.access")) {
+  if (!dbUser || !authorize(dbUser.role as any, "console.access")) {
     return { title: "Article | xSypher" };
   }
 
   const scope = buildArticleScope({
     id: dbUser.id,
-    role: dbUser.role as Role,
+    role: dbUser.role as any,
     authorId: dbUser.authorProfile?.id || null,
   });
 
-  const article = await db.article.findFirst({
-    where: { AND: [{ id }, scope] },
-    select: { title: true },
+  const [article] = await db.query.article.findMany({
+    where: and(eq(articleTable.id, id), scope),
+    columns: { title: true },
+    limit: 1,
   });
 
   return {

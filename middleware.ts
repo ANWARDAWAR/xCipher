@@ -1,9 +1,11 @@
-import { withAuth } from "next-auth/middleware";
+import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export default withAuth(
-  function middleware(req) {
-    const token = req.nextauth.token;
+export default async function middleware(req: NextRequest) {
+    const session = await auth();
+    const token = session?.user;
+    
     const url = req.nextUrl.clone();
     const hostname = req.headers.get("host") || "";
     const pathname = url.pathname;
@@ -62,13 +64,7 @@ export default withAuth(
     }
     
     return NextResponse.next();
-  },
-  {
-    callbacks: {
-      authorized: () => true, // Let the middleware body handle all auth logic and redirects
-    },
-  }
-);
+}
 
 export const config = {
   matcher: [

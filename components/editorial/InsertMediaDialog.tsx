@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { X, ImagePlus, MonitorPlay, AlertCircle, UploadCloud, Link2 } from "lucide-react";
 import ImageDropzone from "./ImageDropzone";
-import { uploadArticleImage, processExternalImage } from "@/app/actions/upload-article-image";
-import { ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
+
+import { getAllowedMediaDomains } from "@/lib/sanitize";
 import { parseYouTubeId, youTubeThumbnail } from "@/lib/embeds";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -133,16 +133,26 @@ export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsert
       
       let finalSrc = src.trim();
       
-      // If it's an external URL (not already uploaded to R2)
       if (tab === "url" && !finalSrc.includes("pub-") && !finalSrc.includes("xsypher")) {
         setIsProcessing(true);
-        const res = await processExternalImage(finalSrc);
-        setIsProcessing(false);
-        if (!res.ok || !res.url) {
-          setError(res.error || "Failed to import image from this URL. The host may be blocking downloads.");
+        try {
+          const fetchRes = await fetch("/api/upload/external", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: finalSrc }),
+          });
+          const res = await fetchRes.json();
+          setIsProcessing(false);
+          if (!res.ok || !res.url) {
+            setError(res.error || "Failed to import image from this URL. The host may be blocking downloads.");
+            return;
+          }
+          finalSrc = res.url;
+        } catch (e) {
+          setIsProcessing(false);
+          setError("Network error while trying to process the external image.");
           return;
         }
-        finalSrc = res.url;
       }
       
       onInsertImage({ src: finalSrc, alt: alt.trim(), caption: caption.trim(), credit: credit.trim() });
@@ -217,9 +227,23 @@ export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsert
           {isImage && tab === "upload" && (
             <ImageDropzone
               onUpload={async (file) => {
-                const fd = new FormData();
-                fd.append("file", file);
-                return uploadArticleImage(fd);
+                try {
+                  const { processImageForUpload } = await import("@/lib/image-optimizer");
+                  const processedFile = await processImageForUpload(file);
+                  const fd = new FormData();
+                  fd.append("file", processedFile);
+                  const res = await fetch("/api/upload", {
+                    method: "POST",
+                    body: fd,
+                  });
+                  if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    return { ok: false, error: data?.error || `Upload failed with status ${res.status}` };
+                  }
+                  return await res.json();
+                } catch (e) {
+                  return { ok: false, error: "The upload failed. Check your connection and try again." };
+                }
               }}
               // A successful upload fills the URL field rather than inserting
               // straight away, so the author still writes alt text before the

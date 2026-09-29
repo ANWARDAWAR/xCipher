@@ -2,26 +2,31 @@
 
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { createHash } from "crypto";
+import { comment, article } from "@/lib/db/schema";
+import { eq, and, asc, desc, inArray, sql } from "drizzle-orm";
+
 import { headers } from "next/headers";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import { getCurrentUser } from "@/lib/auth";
 import { hasRequiredRole } from "@/lib/permissions";
-import { Role, CommentStatus } from "@prisma/client";
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate";
+import { Role } from "@/lib/types";
 
 // ─── Safe public shape returned to readers ──────────────────────────────────
 export interface PublicComment {
   id: string;
   displayName: string;
-  emailHash: string; // for Gravatar — safe to expose
+  emailHash: string;
   body: string;
   createdAt: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-function sha256(input: string): string {
-  return createHash("sha256").update(input.toLowerCase().trim()).digest("hex");
+async function sha256(input: string): Promise<string> {
+  const msgUint8 = new TextEncoder().encode(input.toLowerCase().trim());
+  const hashBuffer = await crypto.subtle.digest("SHA-256", msgUint8);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 const nameSchema = z.string().min(1).max(60).trim();
@@ -32,11 +37,16 @@ const bodySchema = z.string().min(10).max(1200).trim();
 export async function getComments(articleSlug: string): Promise<PublicComment[]> {
   if (!articleSlug || typeof articleSlug !== "string") return [];
 
-  const comments = await db.comment.findMany({
-    where: { articleSlug, status: "APPROVED" },
-    orderBy: { createdAt: "asc" },
-    select: { id: true, displayName: true, emailHash: true, body: true, createdAt: true },
-  });
+  const comments = await db.select({
+    id: comment.id,
+    displayName: comment.displayName,
+    emailHash: comment.emailHash,
+    body: comment.body,
+    createdAt: comment.createdAt,
+  })
+  .from(comment)
+  .where(and(eq(comment.articleSlug, articleSlug), eq(comment.status, "APPROVED")))
+  .orderBy(asc(comment.createdAt));
 
   return comments.map((c) => ({
     ...c,
@@ -47,7 +57,10 @@ export async function getComments(articleSlug: string): Promise<PublicComment[]>
 // ─── Get comment count for an article (for SSR display) ─────────────────────
 export async function getCommentCount(articleSlug: string): Promise<number> {
   if (!articleSlug || typeof articleSlug !== "string") return 0;
-  return db.comment.count({ where: { articleSlug, status: "APPROVED" } });
+  const [res] = await db.select({ count: sql<number>`count(*)::int` })
+    .from(comment)
+    .where(and(eq(comment.articleSlug, articleSlug), eq(comment.status, "APPROVED")));
+  return res?.count || 0;
 }
 
 // ─── Post a comment ──────────────────────────────────────────────────────────
@@ -55,7 +68,6 @@ export async function postComment(
   articleSlug: string,
   formData: FormData
 ): Promise<{ success: boolean; error?: string }> {
-  // Rate limit: 5 comments per 10 minutes per IP
   const hdrs = await headers();
   const ip = getClientIp(hdrs);
   const rl = await checkRateLimit("comment", ip, { limit: 5, windowMs: 10 * 60 * 1000 });
@@ -82,32 +94,31 @@ export async function postComment(
     };
   }
 
-  // Find article by slug to get its ID
-  const article = await db.article.findUnique({
-    where: { slug: articleSlug },
-    select: { id: true, status: true },
-  });
+  const [a] = await db.select({ id: article.id, status: article.status })
+    .from(article)
+    .where(eq(article.slug, articleSlug))
+    .limit(1);
 
-  if (!article || article.status !== "PUBLISHED") {
+  if (!a || a.status !== "PUBLISHED") {
     return { success: false, error: "Article not found or not published." };
   }
 
-  const emailHash = sha256(emailResult.data);
-  const ipHash = sha256(ip);
+  const emailHash = await sha256(emailResult.data);
+  const ipHash = await sha256(ip);
   const ua = hdrs.get("user-agent") || undefined;
 
   try {
-    await db.comment.create({
-      data: {
-        articleId: article.id,
-        articleSlug,
-        displayName: nameResult.data,
-        emailHash,
-        body: bodyResult.data,
-        status: "PENDING",
-        ipHash,
-        userAgent: ua?.slice(0, 500) ?? null,
-      },
+    await db.insert(comment).values({
+      id: crypto.randomUUID(),
+      articleId: a.id,
+      articleSlug,
+      displayName: nameResult.data,
+      emailHash,
+      body: bodyResult.data,
+      status: "PENDING",
+      ipHash,
+      userAgent: ua?.slice(0, 500) ?? null,
+      updatedAt: new Date(),
     });
 
     return { success: true };
@@ -133,25 +144,23 @@ export async function moderateComment(
     return { success: false, error: "Invalid comment ID." };
   }
 
-  const validActions: CommentStatus[] = ["APPROVED", "REJECTED", "SPAM"];
-  if (!validActions.includes(action as CommentStatus)) {
+  const validActions = ["APPROVED", "REJECTED", "SPAM"];
+  if (!validActions.includes(action)) {
     return { success: false, error: "Invalid moderation action." };
   }
 
   try {
-    const comment = await db.comment.findUnique({ where: { id: commentId } });
-    if (!comment) return { success: false, error: "Comment not found." };
+    const [c] = await db.select().from(comment).where(eq(comment.id, commentId)).limit(1);
+    if (!c) return { success: false, error: "Comment not found." };
 
-    await db.comment.update({
-      where: { id: commentId },
-      data: {
-        status: action as CommentStatus,
-        moderatorId: user.id,
-        moderatorNote: note?.trim().slice(0, 500) || null,
-      },
-    });
+    const [updatedComment] = await db.update(comment).set({
+      status: action as any,
+      moderatorId: user.id,
+      moderatorNote: note?.trim().slice(0, 500) || null,
+      updatedAt: new Date(),
+    }).where(eq(comment.id, commentId)).returning();
 
-    revalidatePath(`/article/${comment.articleSlug}`, "page");
+    revalidatePath(`/article/${c.articleSlug}`, "page");
     return { success: true };
   } catch (error: any) {
     console.error("[comments] moderateComment error:", error);
@@ -170,26 +179,16 @@ export async function getPendingComments(page = 1) {
   const perPage = 20;
   const skip = (page - 1) * perPage;
 
-  const [comments, total] = await Promise.all([
-    db.comment.findMany({
-      where: { status: { in: ["PENDING", "SPAM"] } },
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: perPage,
-      select: {
-        id: true,
-        articleSlug: true,
-        displayName: true,
-        body: true,
-        status: true,
-        ipHash: true,
-        createdAt: true,
-        moderatorNote: true,
-        moderator: { select: { name: true } },
-      },
+  const [commentsRes, [{ count }]] = await Promise.all([
+    db.query.comment.findMany({
+      where: inArray(comment.status, ["PENDING", "SPAM"]),
+      orderBy: [desc(comment.createdAt)],
+      offset: skip,
+      limit: perPage,
+      with: { moderator: { columns: { name: true } } }
     }),
-    db.comment.count({ where: { status: { in: ["PENDING", "SPAM"] } } }),
+    db.select({ count: sql<number>`count(*)::int` }).from(comment).where(inArray(comment.status, ["PENDING", "SPAM"])),
   ]);
 
-  return { success: true, comments, total, pages: Math.ceil(total / perPage) };
+  return { success: true, comments: commentsRes, total: count, pages: Math.ceil(count / perPage) };
 }

@@ -9,6 +9,12 @@ export function getImgSrc(imgId: number | string, w: number = 1200, h: number = 
   return `https://images.pexels.com/photos/${numId}/pexels-photo-${numId}.${e}?auto=compress&cs=tinysrgb&fit=crop&w=${w}&h=${h}`;
 }
 
+export function randomHex(bytes = 32): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(bytes)))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 export function timeAgo(mins: number) {
   if (mins < 1) return "Just now";
   if (mins < 60) return mins + " minutes ago";

@@ -1,10 +1,13 @@
+export const runtime = 'edge';
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { canViewAuditLogs } from "@/lib/permissions";
-import { Role } from "@prisma/client";
+import { eq, or, ilike, and, inArray, gte, sql } from "drizzle-orm";
+import { auditLog as auditLogTable, user as userTable } from "@/lib/db/schema";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import AuditLogsClient from "./AuditLogsClient";
+import { Role } from "@/lib/types";
 
 export const metadata = {
   title: "Audit Logs | xSypher",
@@ -62,27 +65,28 @@ export default async function AuditLogsPage(props: {
   // eslint-disable-next-line react-hooks/purity
   const renderedAt = Date.now();
 
-  const where: any = {};
+  const filterConditions = [];
 
   if (query) {
-    where.OR = [
-      { action: { contains: query, mode: 'insensitive' } },
-      { entityType: { contains: query, mode: 'insensitive' } },
-      { entityId: { contains: query, mode: 'insensitive' } },
-      { user: { name: { contains: query, mode: 'insensitive' } } },
-      { user: { email: { contains: query, mode: 'insensitive' } } },
-    ];
+    filterConditions.push(
+      or(
+        ilike(auditLogTable.action, `%${query}%`),
+        ilike(auditLogTable.entityType, `%${query}%`),
+        ilike(auditLogTable.entityId, `%${query}%`),
+        sql`${auditLogTable.userId} IN (SELECT id FROM "User" WHERE "name" ILIKE ${`%${query}%`} OR "email" ILIKE ${`%${query}%`})`
+      )
+    );
   }
 
   if (category && category !== 'All') {
     if (category === 'Publishing') {
-      where.action = { in: ['ARTICLE_PUBLISH', 'ARTICLE_UPDATE', 'ARTICLE_CREATE', 'ARTICLE_DELETE'] };
+      filterConditions.push(inArray(auditLogTable.action, ['ARTICLE_PUBLISH', 'ARTICLE_UPDATE', 'ARTICLE_CREATE', 'ARTICLE_DELETE']));
     } else if (category === 'Authentication') {
-      where.action = { in: ['LOGIN_SUCCESS', 'LOGIN_FAILED', 'PASSWORD_RESET', 'LOGOUT'] };
+      filterConditions.push(inArray(auditLogTable.action, ['LOGIN_SUCCESS', 'LOGIN_FAILED', 'PASSWORD_RESET', 'LOGOUT']));
     } else if (category === 'User Management') {
-      where.action = { in: ['USER_INVITED', 'USER_REVOKED', 'ROLE_CHANGED'] };
+      filterConditions.push(inArray(auditLogTable.action, ['USER_INVITED', 'USER_REVOKED', 'ROLE_CHANGED']));
     } else if (category === 'System') {
-      where.action = { in: ['CONFIG_CHANGE', 'TAXONOMY_ADD', 'TAXONOMY_REMOVE'] };
+      filterConditions.push(inArray(auditLogTable.action, ['CONFIG_CHANGE', 'TAXONOMY_ADD', 'TAXONOMY_REMOVE']));
     }
   }
 
@@ -96,23 +100,26 @@ export default async function AuditLogsPage(props: {
     } else if (dateRange === '30d') {
       startDate.setDate(now.getDate() - 30);
     }
-    where.createdAt = { gte: startDate };
+    filterConditions.push(gte(auditLogTable.createdAt, startDate));
   }
 
-  const [logs, totalLogs] = await Promise.all([
-    db.auditLog.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: limit,
-      include: {
+  const whereClause = and(...filterConditions);
+
+  const [logs, countResult] = await Promise.all([
+    db.query.auditLog.findMany({
+      where: whereClause,
+      orderBy: (a, { desc }) => [desc(a.createdAt)],
+      offset: skip,
+      limit: limit,
+      with: {
         user: {
-          select: { name: true, email: true },
+          columns: { name: true, email: true },
         },
       },
     }),
-    db.auditLog.count({ where })
+    db.select({ count: sql`count(*)`.mapWith(Number) }).from(auditLogTable).where(whereClause)
   ]);
+  const totalLogs = countResult[0]?.count || 0;
 
   return (
     <>

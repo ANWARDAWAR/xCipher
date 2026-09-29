@@ -2,12 +2,14 @@
 
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { publicationSettings, auditLog } from "@/lib/db/schema";
+
 import { authorize } from "@/lib/capabilities";
-import { isValidSafeUrl, ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
+import { isValidSafeUrl, getAllowedMediaDomains } from "@/lib/sanitize";
 import { SETTINGS_ID } from "@/lib/settings";
 import { revalidatePath } from "next/cache";
-import type { Role } from "@prisma/client";
 import { handleServerError } from "@/lib/errors";
+import { Role } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // Publication settings
@@ -48,7 +50,7 @@ export async function updatePublicationSettings(input: PublicationSettingsInput)
     ["Default social image", input.defaultOgImage],
   ] as const) {
     const v = clean(value);
-    if (v && !isValidSafeUrl(v, ALLOWED_MEDIA_DOMAINS)) {
+    if (v && !isValidSafeUrl(v, getAllowedMediaDomains())) {
       return {
         success: false,
         error: `${label} is invalid or from an unapproved domain.`,
@@ -68,24 +70,23 @@ export async function updatePublicationSettings(input: PublicationSettingsInput)
       defaultOgImage: clean(input.defaultOgImage),
       footerText: clean(input.footerText),
       updatedById: user.id,
+      updatedAt: new Date(),
     };
 
-    // upsert rather than update: the migration creates the table empty on
-    // purpose, so the first save is an insert and every later one an update.
-    await db.publicationSettings.upsert({
-      where: { id: SETTINGS_ID },
-      create: { id: SETTINGS_ID, ...data },
-      update: data,
-    });
+    await db.insert(publicationSettings)
+      .values({ id: SETTINGS_ID, ...data })
+      .onConflictDoUpdate({
+        target: publicationSettings.id,
+        set: data
+      });
 
-    await db.auditLog.create({
-      data: {
-        userId: user.id,
-        action: "UPDATE_PUBLICATION_SETTINGS",
-        entityType: "PublicationSettings",
-        entityId: SETTINGS_ID,
-        details: { siteName: data.siteName, tagline: data.tagline },
-      },
+    await db.insert(auditLog).values({
+      id: crypto.randomUUID(),
+      userId: user.id,
+      action: "UPDATE_PUBLICATION_SETTINGS",
+      entityType: "PublicationSettings",
+      entityId: SETTINGS_ID,
+      details: { siteName: data.siteName, tagline: data.tagline },
     });
 
     // These values appear in the root layout's metadata and in the footer on

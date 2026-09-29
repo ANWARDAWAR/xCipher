@@ -1,4 +1,6 @@
 import { db } from "@/lib/db";
+import { eq } from "drizzle-orm";
+import { publicationSettings } from "@/lib/db/schema";
 import {
   DEFAULT_SETTINGS as FALLBACK,
   SETTINGS_ID,
@@ -37,9 +39,7 @@ function nullable(value: string | null | undefined): string | null {
 
 export async function getPublicationSettings(): Promise<ResolvedSettings> {
   try {
-    const row = await db.publicationSettings.findUnique({
-      where: { id: SETTINGS_ID },
-    });
+    const [row] = await db.select().from(publicationSettings).where(eq(publicationSettings.id, SETTINGS_ID)).limit(1);
 
     if (!row) return FALLBACK;
 

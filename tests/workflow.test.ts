@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
-import type { Role, ArticleStatus } from "@prisma/client";
 import {
   TRANSITIONS,
   validateTransition,
   getAllowedTransitions,
   isTerminalStatus,
 } from "@/lib/workflow";
+import { Role, ArticleStatus } from "@/lib/types";
 
 /**
  * Tests for the article state machine.

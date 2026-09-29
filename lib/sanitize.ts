@@ -6,30 +6,34 @@ import { isAllowedEmbedSrc } from './embeds';
 function uploadHosts(): string[] {
   const hosts: string[] = [];
 
-  const r2 = process.env.NEXT_PUBLIC_R2_PUBLIC_BASE;
+  // Read the same runtime bindings as storage, including on promoted builds.
+  const env = process.env;
+  const r2 = env.NEXT_PUBLIC_R2_PUBLIC_BASE || "";
   if (r2) {
     try {
       hosts.push(new URL(r2).hostname);
     } catch {}
   }
 
-  if (process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
+  if (env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
     hosts.push("res.cloudinary.com");
   }
 
   return hosts;
 }
 
-export const ALLOWED_MEDIA_DOMAINS = [
-  "images.pexels.com",
-  "images.unsplash.com",
-  "plus.unsplash.com",
-  "avatars.githubusercontent.com",
-  "lh3.googleusercontent.com",
-  "upload.wikimedia.org",
-  "res.cloudinary.com",
-  ...uploadHosts(),
-];
+export function getAllowedMediaDomains(): string[] {
+  return [
+    "images.pexels.com",
+    "images.unsplash.com",
+    "plus.unsplash.com",
+    "avatars.githubusercontent.com",
+    "lh3.googleusercontent.com",
+    "upload.wikimedia.org",
+    "res.cloudinary.com",
+    ...uploadHosts(),
+  ];
+}
 
 const IFRAME_ALLOW = "accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
 

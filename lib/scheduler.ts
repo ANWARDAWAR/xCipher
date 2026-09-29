@@ -2,7 +2,9 @@ import { db } from "@/lib/db";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { CACHE_TAGS, articleTag, categoryTag } from "./cache-tags";
 import { notifyPublished } from "@/lib/notifications";
-import type { Prisma } from "@prisma/client";
+import { eq, lte, and, inArray } from "drizzle-orm";
+import { article as articleTable, auditLog } from "@/lib/db/schema";
+
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Scheduled publication executor
@@ -47,21 +49,23 @@ export async function runScheduledPublications(
 ): Promise<ScheduledRunResult> {
   const now = new Date();
 
-  const due = await db.article.findMany({
-    where: {
-      status: "SCHEDULED",
-      scheduledFor: { lte: now },
-    },
-    orderBy: { scheduledFor: "asc" },
-    take: limit + 1, // one extra, purely to detect a backlog
-    select: {
+  const due = await db.query.article.findMany({
+    where: and(
+      eq(articleTable.status, "SCHEDULED"),
+      lte(articleTable.scheduledFor, now)
+    ),
+    orderBy: (a, { asc }) => [asc(a.scheduledFor)],
+    limit: limit + 1, // one extra, purely to detect a backlog
+    columns: {
       id: true,
       slug: true,
       title: true,
       authorId: true,
       scheduledFor: true,
-      category: { select: { slug: true } },
     },
+    with: {
+      category: { columns: { slug: true } },
+    }
   });
 
   const hasMore = due.length > limit;
@@ -72,7 +76,7 @@ export async function runScheduledPublications(
   // Collected as we go rather than derived afterwards: it keeps the set exact
   // (only categories of articles that actually published) without a second pass.
   const categorySlugs = new Set<string>();
-  const auditRows: Prisma.AuditLogCreateManyInput[] = [];
+  const auditRows: (typeof auditLog.$inferInsert)[] = [];
   const notifyTargets: typeof due = [];
 
   for (const article of batch) {
@@ -80,19 +84,16 @@ export async function runScheduledPublications(
       // Conditional update: re-checks status inside the write, so an article
       // unscheduled between the read above and this line is left alone, and a
       // concurrent run cannot publish the same row twice.
-      const { count } = await db.article.updateMany({
-        where: {
-          id: article.id,
-          status: "SCHEDULED",
-          scheduledFor: { lte: now },
-        },
-        data: {
+      const [{ count }] = await db.update(articleTable).set({
           status: "PUBLISHED",
           publishedAt: article.scheduledFor ?? now,
-        },
-      });
+      }).where(and(
+          eq(articleTable.id, article.id),
+          eq(articleTable.status, "SCHEDULED"),
+          lte(articleTable.scheduledFor, now)
+      )).returning({ count: articleTable.id });
 
-      if (count === 0) {
+      if (!count) {
         // Lost the race, or the article was unscheduled. Not an error.
         continue;
       }
@@ -105,6 +106,7 @@ export async function runScheduledPublications(
       // single batched write. What was genuinely wasteful was the two awaits
       // that follow it, which have nothing to do with that race.
       auditRows.push({
+        id: crypto.randomUUID(),
         userId: null, // performed by the system, not a person
         action: "PUBLISH_ARTICLE_SCHEDULED",
         entityType: "Article",
@@ -128,7 +130,7 @@ export async function runScheduledPublications(
   // One insert for the whole run instead of one per article.
   if (auditRows.length > 0) {
     try {
-      await db.auditLog.createMany({ data: auditRows });
+      await db.insert(auditLog).values(auditRows);
     } catch (error) {
       // The articles are published; losing the audit rows must not fail the
       // run or make it look like nothing happened.

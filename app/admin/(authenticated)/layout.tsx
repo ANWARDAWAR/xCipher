@@ -1,7 +1,10 @@
+export const runtime = 'edge';
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { eq, sql } from "drizzle-orm";
+import { user as userTable, article as articleTable, comment as commentTable } from "@/lib/db/schema";
 import SignOutButton from "@/components/editorial/SignOutButton";
 import AdminNavLinks from "@/components/editorial/AdminNavLinks";
 import ThemeToggle from "@/components/layout/ThemeToggle";
@@ -10,8 +13,8 @@ import ConsoleNavDrawer from "@/components/console/ConsoleNavDrawer";
 import { getNotifications } from "@/app/actions/notifications";
 import { canViewReviewQueue, canViewUsersList, canViewAuditLogs, canModerateComments, canViewSubscribers, canViewTaxonomy } from "@/lib/permissions";
 import { authorize } from "@/lib/capabilities";
-import { Role } from "@prisma/client";
 import Logo from "@/components/common/Logo";
+import { Role } from "@/lib/types";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -29,9 +32,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect("/");
   }
 
-  const dbUser = await db.user.findUnique({
-    where: { id: user.id },
-    include: { authorProfile: true },
+  const dbUser = await db.query.user.findFirst({
+    where: eq(userTable.id, user.id),
+    with: { authorProfile: true },
   });
 
   const displayName = dbUser?.authorProfile?.name || dbUser?.name || user.name || "User";
@@ -43,16 +46,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   let reviewCount = 0;
   if (canViewReviewQueue(userRole as Role)) {
-    reviewCount = await db.article.count({
-      where: { status: "SUBMITTED" }
-    });
+    reviewCount = await db.select({ count: sql`count(*)`.mapWith(Number) })
+      .from(articleTable)
+      .where(eq(articleTable.status, "SUBMITTED"))
+      .then(res => res[0]?.count || 0);
   }
 
   let pendingCommentsCount = 0;
   if (canModerateComments(userRole as Role)) {
-    pendingCommentsCount = await db.comment.count({
-      where: { status: "PENDING" }
-    });
+    pendingCommentsCount = await db.select({ count: sql`count(*)`.mapWith(Number) })
+      .from(commentTable)
+      .where(eq(commentTable.status, "PENDING"))
+      .then(res => res[0]?.count || 0);
   }
 
   const { items: notifications, unreadCount } = await getNotifications();
@@ -79,7 +84,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <ThemeToggle />
           <a 
             className="btn-cs" 
-            href={process.env.NEXT_PUBLIC_SITE_URL || "https://www.xsypher.com"} 
+            href={process.env.NEXT_PUBLIC_SITE_URL || "https://www.xsypher.com"}
             target="_blank" 
             rel="noopener noreferrer"
             title="Open public website in a new tab"

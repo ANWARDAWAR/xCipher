@@ -3,7 +3,9 @@
 import { db } from "@/lib/db";
 import { getActor } from "@/lib/auth";
 import { authorize, ROLE_CAPABILITIES } from "@/lib/capabilities";
-import { ArticleStatus, Role, Prisma } from "@prisma/client";
+import { eq, and, inArray, or, sql } from "drizzle-orm";
+import { article, user, _articleToTag, articleRevision, articleReview, auditLog, comment, notification } from "@/lib/db/schema";
+
 
 const REVIEWER_ROLES = (Object.keys(ROLE_CAPABILITIES) as Role[]).filter(role => 
   authorize(role, "article.review")
@@ -17,9 +19,10 @@ import {
   notifyPublished,
   notifyUnpublished,
 } from "@/lib/notifications";
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "@/lib/revalidate";
 import { CACHE_TAGS, articleTag, articleMutationTags } from "@/lib/cache-tags";
-import { deleteFileFromR2 } from "@/lib/storage";
+import { deleteFileFromR2, deleteKeyFromR2, fetchFromR2, getR2Config } from "@/lib/storage";
+import { ArticleStatus, Role } from "@/lib/types";
 
 export type ActionResponse<T = any> =
   | { ok: true; data?: T; updatedAt?: string }
@@ -30,9 +33,9 @@ export type ActionResponse<T = any> =
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function getArticle(id: string) {
-  return await db.article.findUnique({
-    where: { id },
-    select: {
+  return await db.query.article.findFirst({
+    where: eq(article.id, id),
+    columns: {
       id: true,
       status: true,
       authorId: true,
@@ -40,20 +43,18 @@ async function getArticle(id: string) {
       title: true,
       slug: true,
       categoryId: true,
-      category: { select: { slug: true } },
-      authorModel: { select: { slug: true } },
       deck: true,
-      contentHtml: true,
+      contentUrl: true,
       img: true,
-    }
+    },
+    with: { category: { columns: { slug: true } }, authorModel: { columns: { slug: true } } }
   });
 }
 
-async function checkSelfReviewGuard(article: any, actor: any) {
-  if (article.authorId && actor.authorId && article.authorId === actor.authorId) {
-    const activeReviewersCount = await db.user.count({
-      where: { isActive: true, role: { in: REVIEWER_ROLES } }
-    });
+async function checkSelfReviewGuard(articleData: any, actor: any) {
+  if (articleData.authorId && actor.authorId && articleData.authorId === actor.authorId) {
+    const [activeReviewersRes] = await db.select({ count: sql<number>`count(*)::int` }).from(user).where(and(eq(user.isActive, true), inArray(user.role, REVIEWER_ROLES)));
+    const activeReviewersCount = activeReviewersRes?.count || 0;
     if (activeReviewersCount > 1) {
       return { ok: false, code: "FORBIDDEN", message: "A reviewer cannot decide on their own article. Please ask another editor to review it." };
     }
@@ -74,23 +75,27 @@ export async function claimReview(id: string): Promise<ActionResponse> {
   }
 
   try {
-    const article = await getArticle(id);
-    if (!article) return { ok: false, code: "NOT_FOUND", message: "Article not found." };
-    if (article.reviewedById && article.reviewedById !== actor.id) {
+    const articleData = await getArticle(id);
+    if (!articleData) return { ok: false, code: "NOT_FOUND", message: "Article not found." };
+    if (articleData.reviewedById && articleData.reviewedById !== actor.id) {
       return { ok: false, code: "CONFLICT", message: "Article is already claimed by another reviewer." };
     }
 
-    const { count } = await db.article.updateMany({
-      where: { id, reviewedById: null, status: article.status },
-      data: { reviewedById: actor.id }
-    });
+    const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(article).where(and(eq(article.id, id), sql`${article.reviewedById} IS NULL`, eq(article.status, articleData.status)));
+    if (count > 0) {
+      await db.update(article).set({ reviewedById: actor.id, updatedAt: new Date() }).where(eq(article.id, id));
+    }
 
     if (count === 0) {
       return { ok: false, code: "CONFLICT", message: "Article was claimed by another reviewer just now." };
     }
 
-    await db.auditLog.create({
-      data: { userId: actor.id, action: "CLAIM_REVIEW", entityType: "Article", entityId: id }
+    await db.insert(auditLog).values({
+      id: crypto.randomUUID(),
+      userId: actor.id,
+      action: "CLAIM_REVIEW",
+      entityType: "Article",
+      entityId: id
     });
 
     revalidatePath(`/admin/review`);
@@ -105,20 +110,21 @@ export async function releaseReview(id: string): Promise<ActionResponse> {
   const actor = await getActor();
   if (!actor) return { ok: false, code: "UNAUTHENTICATED", message: "Sign in required." };
   
-  const article = await getArticle(id);
-  if (!article) return { ok: false, code: "NOT_FOUND", message: "Article not found." };
+  const articleData = await getArticle(id);
+  if (!articleData) return { ok: false, code: "NOT_FOUND", message: "Article not found." };
   
-  if (article.reviewedById !== actor.id) {
+  if (articleData.reviewedById !== actor.id) {
     return { ok: false, code: "FORBIDDEN", message: "You cannot release an article you have not claimed." };
   }
 
-  await db.article.update({
-    where: { id },
-    data: { reviewedById: null }
-  });
+  await db.update(article).set({ reviewedById: null, updatedAt: new Date() }).where(eq(article.id, id));
 
-  await db.auditLog.create({
-    data: { userId: actor.id, action: "RELEASE_REVIEW", entityType: "Article", entityId: id }
+  await db.insert(auditLog).values({
+    id: crypto.randomUUID(),
+    userId: actor.id,
+    action: "RELEASE_REVIEW",
+    entityType: "Article",
+    entityId: id
   });
 
   revalidatePath(`/admin/review`);
@@ -133,14 +139,14 @@ export async function takeOverReview(id: string, confirm: boolean): Promise<Acti
     return { ok: false, code: "FORBIDDEN", message: "Insufficient permissions." };
   }
 
-  const article = await getArticle(id);
-  if (!article) return { ok: false, code: "NOT_FOUND", message: "Article not found." };
+  const articleData = await getArticle(id);
+  if (!articleData) return { ok: false, code: "NOT_FOUND", message: "Article not found." };
 
-  if (!article.reviewedById) {
+  if (!articleData.reviewedById) {
     return { ok: false, code: "VALIDATION", message: "This article is unclaimed. Please use the ordinary claim action." };
   }
   
-  if (article.reviewedById === actor.id) {
+  if (articleData.reviewedById === actor.id) {
     return { ok: false, code: "VALIDATION", message: "You are already the reviewer of this article." };
   }
   
@@ -148,13 +154,15 @@ export async function takeOverReview(id: string, confirm: boolean): Promise<Acti
     return { ok: false, code: "VALIDATION", message: "You must explicitly confirm to take over an article." };
   }
 
-  await db.article.update({
-    where: { id },
-    data: { reviewedById: actor.id }
-  });
+  await db.update(article).set({ reviewedById: actor.id, updatedAt: new Date() }).where(eq(article.id, id));
 
-  await db.auditLog.create({
-    data: { userId: actor.id, action: "TAKEOVER_REVIEW", entityType: "Article", entityId: id, details: { previousReviewerId: article.reviewedById, newReviewerId: actor.id } }
+  await db.insert(auditLog).values({
+    id: crypto.randomUUID(),
+    userId: actor.id,
+    action: "TAKEOVER_REVIEW",
+    entityType: "Article",
+    entityId: id,
+    details: { previousReviewerId: articleData.reviewedById, newReviewerId: actor.id }
   });
 
   revalidatePath(`/admin/review`);
@@ -194,7 +202,8 @@ function revalidateArticleRoutes(article: {
   // this article, its category, its author -- and leaves everything else
   // cached.
   for (const tag of articleMutationTags(article)) {
-    updateTag(tag);
+    // @ts-ignore
+    revalidateTag(tag);
   }
 
   // The article's own route is still invalidated by path. Its page component
@@ -208,23 +217,23 @@ function revalidateArticleRoutes(article: {
 
 async function executeTransition(
   id: string,
-  to: ArticleStatus,
-  actionFn: (article: any, actor: any) => Promise<ActionResponse>
+  to: any,
+  actionFn: (articleData: any, actor: any) => Promise<ActionResponse>
 ): Promise<ActionResponse> {
   const actor = await getActor();
   if (!actor) return { ok: false, code: "UNAUTHENTICATED", message: "Sign in required." };
 
-  const article = await getArticle(id);
-  if (!article) return { ok: false, code: "NOT_FOUND", message: "Article not found." };
+  const articleData = await getArticle(id);
+  if (!articleData) return { ok: false, code: "NOT_FOUND", message: "Article not found." };
 
-  const validationError = validateTransition(article.status, to, actor, article);
+  const validationError = validateTransition(articleData.status, to, actor, articleData);
   if (validationError) {
     return { ok: false, code: "FORBIDDEN", message: validationError };
   }
 
-  const res = await actionFn(article, actor);
+  const res = await actionFn(articleData, actor);
   if (res.ok) {
-    const fresh = await db.article.findUnique({ where: { id }, select: { updatedAt: true } });
+    const [fresh] = await db.select({ updatedAt: article.updatedAt }).from(article).where(eq(article.id, id)).limit(1);
     if (fresh) {
       res.updatedAt = fresh.updatedAt.toISOString();
     }
@@ -233,37 +242,41 @@ async function executeTransition(
 }
 
 export async function submitArticle(id: string): Promise<ActionResponse> {
-  return executeTransition(id, "SUBMITTED", async (article, actor) => {
-    if (!article.title?.trim()) {
+  return executeTransition(id, "SUBMITTED", async (articleData, actor) => {
+    if (!articleData.title?.trim()) {
       return { ok: false, code: "VALIDATION", message: "Title is required for submission." };
     }
-    if (!article.deck || article.deck.trim().length < 10) {
+    if (!articleData.deck || articleData.deck.trim().length < 10) {
       return { ok: false, code: "VALIDATION", message: "A short description (deck) of at least 10 characters is required." };
     }
-    if (!article.categoryId) {
+    if (!articleData.categoryId) {
       return { ok: false, code: "VALIDATION", message: "Category is required." };
     }
-    const textContent = article.contentHtml?.replace(/<[^>]+>/g, '').trim() || "";
+    const r2Content = await fetchFromR2(articleData.contentUrl);
+    const articleHtml = typeof r2Content === "object" ? r2Content?.html : r2Content || "";
+    const textContent = articleHtml.replace(/<[^>]*>?/gm, '');
     const wordCount = textContent.split(/\s+/).filter(Boolean).length;
     if (wordCount < 50) {
       return { ok: false, code: "VALIDATION", message: `Content must be at least 50 words. Currently: ${wordCount}` };
     }
 
-    await db.$transaction(async (tx) => {
-      await tx.article.update({
-        where: { id },
-        data: { 
-          status: "SUBMITTED", 
-          submittedAt: new Date(),
-          submittedById: actor.id
-        }
-      });
-      await tx.auditLog.create({
-        data: { userId: actor.id, action: "SUBMIT_ARTICLE", entityType: "Article", entityId: id }
-      });
-    });
+    
+            await db.update(article).set({ 
+              status: "SUBMITTED", 
+              submittedAt: new Date(),
+              submittedById: actor.id,
+              updatedAt: new Date()
+            }).where(eq(article.id, id));
+            await db.insert(auditLog).values({
+              id: crypto.randomUUID(),
+              userId: actor.id,
+              action: "SUBMIT_ARTICLE",
+              entityType: "Article",
+              entityId: id
+            });
+          
 
-    await notifySubmitted(article, actor.id);
+    await notifySubmitted(articleData, actor.id);
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/review`);
@@ -274,16 +287,17 @@ export async function submitArticle(id: string): Promise<ActionResponse> {
 }
 
 export async function withdrawArticle(id: string): Promise<ActionResponse> {
-  return executeTransition(id, "DRAFT", async (article, actor) => {
-    await db.$transaction(async (tx) => {
-      await tx.article.update({
-        where: { id },
-        data: { status: "DRAFT" }
-      });
-      await tx.auditLog.create({
-        data: { userId: actor.id, action: "WITHDRAW_ARTICLE", entityType: "Article", entityId: id }
-      });
-    });
+  return executeTransition(id, "DRAFT", async (articleData, actor) => {
+    
+            await db.update(article).set({ status: "DRAFT", updatedAt: new Date() }).where(eq(article.id, id));
+            await db.insert(auditLog).values({
+              id: crypto.randomUUID(),
+              userId: actor.id,
+              action: "WITHDRAW_ARTICLE",
+              entityType: "Article",
+              entityId: id
+            });
+          
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
@@ -292,57 +306,59 @@ export async function withdrawArticle(id: string): Promise<ActionResponse> {
 }
 
 export async function approveArticle(id: string, notes?: string): Promise<ActionResponse> {
-  return executeTransition(id, "APPROVED", async (article, actor) => {
-    const selfGuard = await checkSelfReviewGuard(article, actor);
+  return executeTransition(id, "APPROVED", async (articleData, actor) => {
+    const selfGuard = await checkSelfReviewGuard(articleData, actor);
     if (!selfGuard.ok) return selfGuard as any;
 
-    await db.$transaction(async (tx) => {
-      await tx.article.update({
-        where: { id },
-        data: { 
-          status: "APPROVED",
-          approvedAt: new Date(),
-          approvedById: actor.id,
-          reviewedAt: new Date(),
-          reviewedById: actor.id
-        }
-      });
-      
-      const passNumber = await tx.articleReview.count({ where: { articleId: id } }) + 1;
-      
-      await tx.articleReview.create({
-        data: {
-          articleId: id,
-          reviewerId: actor.id,
-          decision: "APPROVED",
-          fromStatus: article.status,
-          toStatus: "APPROVED",
-          passNumber,
-          reason: selfGuard.isSelfReview ? `[Self-review: no other reviewers] ${notes || ""}`.trim() : (notes || null)
-        }
-      });
+    
+            await db.update(article).set({ 
+              status: "APPROVED",
+              approvedAt: new Date(),
+              approvedById: actor.id,
+              reviewedAt: new Date(),
+              reviewedById: actor.id,
+              updatedAt: new Date()
+            }).where(eq(article.id, id));
+            
+            const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(articleReview).where(eq(articleReview.articleId, id));
+            const passNumber = count + 1;
+            
+            await db.insert(articleReview).values({
+              id: crypto.randomUUID(),
+              articleId: id,
+              reviewerId: actor.id,
+              decision: "APPROVED",
+              fromStatus: articleData.status,
+              toStatus: "APPROVED",
+              passNumber,
+              reason: selfGuard.isSelfReview ? `[Self-review: no other reviewers] ${notes || ""}`.trim() : (notes || null)
+            });
 
-      if (selfGuard.isSelfReview) {
-        await tx.auditLog.create({
-          data: { userId: actor.id, action: "SELF_REVIEW", entityType: "Article", entityId: id, details: { decision: "APPROVED", reason: "no other reviewers available" } }
-        });
-      }
-
-      if (article.authorId) {
-        const authorUser = await tx.user.findFirst({ where: { authorId: article.authorId } });
-        if (authorUser && authorUser.id !== actor.id) {
-          await tx.notification.create({
-            data: {
-              userId: authorUser.id,
-              message: `"${article.title || 'Untitled'}" was approved.`,
-              link: `/admin/editor/${id}`
+            if (selfGuard.isSelfReview) {
+              await db.insert(auditLog).values({
+                id: crypto.randomUUID(),
+                userId: actor.id,
+                action: "SELF_REVIEW",
+                entityType: "Article",
+                entityId: id,
+                details: { decision: "APPROVED", reason: "no other reviewers available" }
+              });
             }
-          });
-        }
-      }
-    });
 
-    await notifyApproved(article, actor.id);
+            if (articleData.authorId) {
+              const [authorUser] = await db.select({ id: user.id }).from(user).where(eq(user.authorId, articleData.authorId)).limit(1);
+              if (authorUser && authorUser.id !== actor.id) {
+                await db.insert(notification).values({
+                  id: crypto.randomUUID(),
+                  userId: authorUser.id,
+                  message: `"${articleData.title || 'Untitled'}" was approved.`,
+                  link: `/admin/editor/${id}`
+                });
+              }
+            }
+          
+
+    await notifyApproved(articleData, actor.id);
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/review`);
@@ -352,59 +368,61 @@ export async function approveArticle(id: string, notes?: string): Promise<Action
 }
 
 export async function requestChanges(id: string, reason: string): Promise<ActionResponse> {
-  return executeTransition(id, "REVISION_REQUESTED", async (article, actor) => {
+  return executeTransition(id, "REVISION_REQUESTED", async (articleData, actor) => {
     if (!reason || reason.trim().length < 20) {
       return { ok: false, code: "VALIDATION", message: "A reason of at least 20 characters is required to request changes." };
     }
 
-    const selfGuard = await checkSelfReviewGuard(article, actor);
+    const selfGuard = await checkSelfReviewGuard(articleData, actor);
     if (!selfGuard.ok) return selfGuard as any;
 
-    await db.$transaction(async (tx) => {
-      await tx.article.update({
-        where: { id },
-        data: { 
-          status: "REVISION_REQUESTED",
-          reviewedAt: new Date(),
-          reviewedById: actor.id
-        }
-      });
-      
-      const passNumber = await tx.articleReview.count({ where: { articleId: id } }) + 1;
-      
-      await tx.articleReview.create({
-        data: {
-          articleId: id,
-          reviewerId: actor.id,
-          decision: "CHANGES_REQUESTED",
-          fromStatus: article.status,
-          toStatus: "REVISION_REQUESTED",
-          passNumber,
-          reason: selfGuard.isSelfReview ? `[Self-review: no other reviewers] ${reason}` : reason
-        }
-      });
+    
+            await db.update(article).set({ 
+              status: "REVISION_REQUESTED",
+              reviewedAt: new Date(),
+              reviewedById: actor.id,
+              updatedAt: new Date()
+            }).where(eq(article.id, id));
+            
+            const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(articleReview).where(eq(articleReview.articleId, id));
+            const passNumber = count + 1;
+            
+            await db.insert(articleReview).values({
+              id: crypto.randomUUID(),
+              articleId: id,
+              reviewerId: actor.id,
+              decision: "CHANGES_REQUESTED",
+              fromStatus: articleData.status,
+              toStatus: "REVISION_REQUESTED",
+              passNumber,
+              reason: selfGuard.isSelfReview ? `[Self-review: no other reviewers] ${reason}` : reason
+            });
 
-      if (selfGuard.isSelfReview) {
-        await tx.auditLog.create({
-          data: { userId: actor.id, action: "SELF_REVIEW", entityType: "Article", entityId: id, details: { decision: "CHANGES_REQUESTED", reason: "no other reviewers available" } }
-        });
-      }
-
-      if (article.authorId) {
-        const authorUser = await tx.user.findFirst({ where: { authorId: article.authorId } });
-        if (authorUser && authorUser.id !== actor.id) {
-          await tx.notification.create({
-            data: {
-              userId: authorUser.id,
-              message: `Changes requested on "${article.title || 'Untitled'}": ${reason.trim().slice(0, 140)}`,
-              link: `/admin/editor/${id}`
+            if (selfGuard.isSelfReview) {
+              await db.insert(auditLog).values({
+                id: crypto.randomUUID(),
+                userId: actor.id,
+                action: "SELF_REVIEW",
+                entityType: "Article",
+                entityId: id,
+                details: { decision: "CHANGES_REQUESTED", reason: "no other reviewers available" }
+              });
             }
-          });
-        }
-      }
-    });
 
-    await notifyChangesRequested(article, actor.id, reason);
+            if (articleData.authorId) {
+              const [authorUser] = await db.select({ id: user.id }).from(user).where(eq(user.authorId, articleData.authorId)).limit(1);
+              if (authorUser && authorUser.id !== actor.id) {
+                await db.insert(notification).values({
+                  id: crypto.randomUUID(),
+                  userId: authorUser.id,
+                  message: `Changes requested on "${articleData.title || 'Untitled'}": ${reason.trim().slice(0, 140)}`,
+                  link: `/admin/editor/${id}`
+                });
+              }
+            }
+          
+
+    await notifyChangesRequested(articleData, actor.id, reason);
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/review`);
@@ -414,7 +432,7 @@ export async function requestChanges(id: string, reason: string): Promise<Action
 }
 
 export async function rejectArticle(id: string, reason: string, reasonCode: string): Promise<ActionResponse> {
-  return executeTransition(id, "REJECTED", async (article, actor) => {
+  return executeTransition(id, "REJECTED", async (articleData, actor) => {
     if (!reason || reason.trim().length < 20) {
       return { ok: false, code: "VALIDATION", message: "A reason of at least 20 characters is required for rejection." };
     }
@@ -422,55 +440,57 @@ export async function rejectArticle(id: string, reason: string, reasonCode: stri
       return { ok: false, code: "VALIDATION", message: "A reason code is required." };
     }
 
-    const selfGuard = await checkSelfReviewGuard(article, actor);
+    const selfGuard = await checkSelfReviewGuard(articleData, actor);
     if (!selfGuard.ok) return selfGuard as any;
 
-    await db.$transaction(async (tx) => {
-      await tx.article.update({
-        where: { id },
-        data: { 
-          status: "REJECTED",
-          reviewedAt: new Date(),
-          reviewedById: actor.id
-        }
-      });
-      
-      const passNumber = await tx.articleReview.count({ where: { articleId: id } }) + 1;
-      
-      await tx.articleReview.create({
-        data: {
-          articleId: id,
-          reviewerId: actor.id,
-          decision: "REJECTED",
-          fromStatus: article.status,
-          toStatus: "REJECTED",
-          passNumber,
-          reason: selfGuard.isSelfReview ? `[Self-review: no other reviewers] ${reason}` : reason,
-          reasonCode
-        }
-      });
+    
+            await db.update(article).set({ 
+              status: "REJECTED",
+              reviewedAt: new Date(),
+              reviewedById: actor.id,
+              updatedAt: new Date()
+            }).where(eq(article.id, id));
+            
+            const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(articleReview).where(eq(articleReview.articleId, id));
+            const passNumber = count + 1;
+            
+            await db.insert(articleReview).values({
+              id: crypto.randomUUID(),
+              articleId: id,
+              reviewerId: actor.id,
+              decision: "REJECTED",
+              fromStatus: articleData.status,
+              toStatus: "REJECTED",
+              passNumber,
+              reason: selfGuard.isSelfReview ? `[Self-review: no other reviewers] ${reason}` : reason,
+              reasonCode
+            });
 
-      if (selfGuard.isSelfReview) {
-        await tx.auditLog.create({
-          data: { userId: actor.id, action: "SELF_REVIEW", entityType: "Article", entityId: id, details: { decision: "REJECTED", reason: "no other reviewers available" } }
-        });
-      }
-
-      if (article.authorId) {
-        const authorUser = await tx.user.findFirst({ where: { authorId: article.authorId } });
-        if (authorUser && authorUser.id !== actor.id) {
-          await tx.notification.create({
-            data: {
-              userId: authorUser.id,
-              message: `"${article.title || 'Untitled'}" was rejected: ${reason.trim().slice(0, 140)}`,
-              link: `/admin/editor/${id}`
+            if (selfGuard.isSelfReview) {
+              await db.insert(auditLog).values({
+                id: crypto.randomUUID(),
+                userId: actor.id,
+                action: "SELF_REVIEW",
+                entityType: "Article",
+                entityId: id,
+                details: { decision: "REJECTED", reason: "no other reviewers available" }
+              });
             }
-          });
-        }
-      }
-    });
 
-    await notifyRejected(article, actor.id, reason);
+            if (articleData.authorId) {
+              const [authorUser] = await db.select({ id: user.id }).from(user).where(eq(user.authorId, articleData.authorId)).limit(1);
+              if (authorUser && authorUser.id !== actor.id) {
+                await db.insert(notification).values({
+                  id: crypto.randomUUID(),
+                  userId: authorUser.id,
+                  message: `"${articleData.title || 'Untitled'}" was rejected: ${reason.trim().slice(0, 140)}`,
+                  link: `/admin/editor/${id}`
+                });
+              }
+            }
+          
+
+    await notifyRejected(articleData, actor.id, reason);
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/review`);
@@ -480,16 +500,17 @@ export async function rejectArticle(id: string, reason: string, reasonCode: stri
 }
 
 export async function reopenArticle(id: string): Promise<ActionResponse> {
-  return executeTransition(id, "DRAFT", async (article, actor) => {
-    await db.$transaction(async (tx) => {
-      await tx.article.update({
-        where: { id },
-        data: { status: "DRAFT" }
-      });
-      await tx.auditLog.create({
-        data: { userId: actor.id, action: "REOPEN_ARTICLE", entityType: "Article", entityId: id }
-      });
-    });
+  return executeTransition(id, "DRAFT", async (articleData, actor) => {
+    
+            await db.update(article).set({ status: "DRAFT", updatedAt: new Date() }).where(eq(article.id, id));
+            await db.insert(auditLog).values({
+              id: crypto.randomUUID(),
+              userId: actor.id,
+              action: "REOPEN_ARTICLE",
+              entityType: "Article",
+              entityId: id
+            });
+          
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
@@ -498,98 +519,105 @@ export async function reopenArticle(id: string): Promise<ActionResponse> {
 }
 
 export async function publishArticle(id: string): Promise<ActionResponse> {
-  return executeTransition(id, "PUBLISHED", async (article, actor) => {
-    const { count } = await db.article.updateMany({
-      where: { id, status: article.status },
-      data: { 
+  return executeTransition(id, "PUBLISHED", async (articleData, actor) => {
+    const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(article).where(and(eq(article.id, id), eq(article.status, articleData.status)));
+    if (count > 0) {
+      await db.update(article).set({ 
         status: "PUBLISHED",
         publishedAt: new Date(),
-        scheduledFor: null
-      }
-    });
+        scheduledFor: null,
+        updatedAt: new Date()
+      }).where(eq(article.id, id));
+    }
 
     if (count === 0) {
       return { ok: false, code: "CONFLICT", message: "Article was modified just now." };
     }
 
-    await db.auditLog.create({
-      data: { userId: actor.id, action: "PUBLISH_ARTICLE", entityType: "Article", entityId: id }
+    await db.insert(auditLog).values({
+      id: crypto.randomUUID(),
+      userId: actor.id,
+      action: "PUBLISH_ARTICLE",
+      entityType: "Article",
+      entityId: id
     });
 
-    await notifyPublished(article, actor.id);
+    await notifyPublished(articleData, actor.id);
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/review`);
     revalidatePath(`/admin/editor/${id}`);
     revalidatePath(`/admin`, `layout`);
-    revalidateArticleRoutes(article);
+    revalidateArticleRoutes(articleData as any);
     return { ok: true };
   });
 }
 
 export async function unpublishArticle(id: string): Promise<ActionResponse> {
-  return executeTransition(id, "DRAFT", async (article, actor) => {
-    await db.$transaction(async (tx) => {
-      await tx.article.update({
-        where: { id },
-        data: { status: "DRAFT" }
-      });
-      await tx.auditLog.create({
-        data: { userId: actor.id, action: "UNPUBLISH_ARTICLE", entityType: "Article", entityId: id }
-      });
-    });
+  return executeTransition(id, "DRAFT", async (articleData, actor) => {
+    
+            await db.update(article).set({ status: "DRAFT", updatedAt: new Date() }).where(eq(article.id, id));
+            await db.insert(auditLog).values({
+              id: crypto.randomUUID(),
+              userId: actor.id,
+              action: "UNPUBLISH_ARTICLE",
+              entityType: "Article",
+              entityId: id
+            });
+          
 
-    await notifyUnpublished(article, actor.id);
+    await notifyUnpublished(articleData, actor.id);
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
-    revalidateArticleRoutes(article);
+    revalidateArticleRoutes(articleData as any);
     return { ok: true };
   });
 }
 
 export async function scheduleArticle(id: string, date: Date): Promise<ActionResponse> {
-  return executeTransition(id, "SCHEDULED", async (article, actor) => {
+  return executeTransition(id, "SCHEDULED", async (articleData, actor) => {
     if (new Date(date) <= new Date()) {
       return { ok: false, code: "VALIDATION", message: "Scheduled date must be in the future." };
     }
 
-    await db.$transaction(async (tx) => {
-      await tx.article.update({
-        where: { id },
-        data: { 
-          status: "SCHEDULED",
-          scheduledFor: new Date(date)
-        }
-      });
-      await tx.auditLog.create({
-        data: { userId: actor.id, action: "SCHEDULE_ARTICLE", entityType: "Article", entityId: id }
-      });
-    });
+    
+            await db.update(article).set({ 
+              status: "SCHEDULED",
+              scheduledFor: new Date(date),
+              updatedAt: new Date()
+            }).where(eq(article.id, id));
+            await db.insert(auditLog).values({
+              id: crypto.randomUUID(),
+              userId: actor.id,
+              action: "SCHEDULE_ARTICLE",
+              entityType: "Article",
+              entityId: id
+            });
+          
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
-    // No public revalidation at the moment of scheduling: nothing public changes
-    // until the article actually goes live. /api/cron/publish-scheduled does the
-    // public revalidation when it performs the publication.
     return { ok: true };
   });
 }
 
 export async function cancelSchedule(id: string): Promise<ActionResponse> {
-  return executeTransition(id, "APPROVED", async (article, actor) => {
-    await db.$transaction(async (tx) => {
-      await tx.article.update({
-        where: { id },
-        data: { 
-          status: "APPROVED",
-          scheduledFor: null
-        }
-      });
-      await tx.auditLog.create({
-        data: { userId: actor.id, action: "UNSCHEDULE_ARTICLE", entityType: "Article", entityId: id }
-      });
-    });
+  return executeTransition(id, "APPROVED", async (articleData, actor) => {
+    
+            await db.update(article).set({ 
+              status: "APPROVED",
+              scheduledFor: null,
+              updatedAt: new Date()
+            }).where(eq(article.id, id));
+            await db.insert(auditLog).values({
+              id: crypto.randomUUID(),
+              userId: actor.id,
+              action: "UNSCHEDULE_ARTICLE",
+              entityType: "Article",
+              entityId: id
+            });
+          
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
@@ -598,42 +626,45 @@ export async function cancelSchedule(id: string): Promise<ActionResponse> {
 }
 
 export async function archiveArticle(id: string): Promise<ActionResponse> {
-  return executeTransition(id, "ARCHIVED", async (article, actor) => {
-    await db.$transaction(async (tx) => {
-      await tx.article.update({
-        where: { id },
-        data: { 
-          status: "ARCHIVED",
-          archivedAt: new Date()
-        }
-      });
-      await tx.auditLog.create({
-        data: { userId: actor.id, action: "ARCHIVE_ARTICLE", entityType: "Article", entityId: id }
-      });
-    });
+  return executeTransition(id, "ARCHIVED", async (articleData, actor) => {
+    
+            await db.update(article).set({ 
+              status: "ARCHIVED",
+              archivedAt: new Date(),
+              updatedAt: new Date()
+            }).where(eq(article.id, id));
+            await db.insert(auditLog).values({
+              id: crypto.randomUUID(),
+              userId: actor.id,
+              action: "ARCHIVE_ARTICLE",
+              entityType: "Article",
+              entityId: id
+            });
+          
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
-    revalidateArticleRoutes(article);
+    revalidateArticleRoutes(articleData as any);
     return { ok: true };
   });
 }
 
 export async function restoreArticle(id: string): Promise<ActionResponse> {
-  return executeTransition(id, "DRAFT", async (article, actor) => {
-    await db.$transaction(async (tx) => {
-      await tx.article.update({
-        where: { id },
-        data: { status: "DRAFT" }
-      });
-      await tx.auditLog.create({
-        data: { userId: actor.id, action: "RESTORE_ARTICLE", entityType: "Article", entityId: id }
-      });
-    });
+  return executeTransition(id, "DRAFT", async (articleData, actor) => {
+    
+            await db.update(article).set({ status: "DRAFT", updatedAt: new Date() }).where(eq(article.id, id));
+            await db.insert(auditLog).values({
+              id: crypto.randomUUID(),
+              userId: actor.id,
+              action: "RESTORE_ARTICLE",
+              entityType: "Article",
+              entityId: id
+            });
+          
 
     revalidatePath(`/admin/articles`);
     revalidatePath(`/admin/editor/${id}`);
-    revalidateArticleRoutes(article);
+    revalidateArticleRoutes(articleData as any);
     return { ok: true };
   });
 }
@@ -646,33 +677,72 @@ export async function deleteArticlePermanently(id: string): Promise<ActionRespon
     return { ok: false, code: "FORBIDDEN", message: "Insufficient permissions to permanently delete." };
   }
 
-  const article = await getArticle(id);
-  if (!article) return { ok: false, code: "NOT_FOUND", message: "Article not found." };
+  const articleData = await getArticle(id);
+  if (!articleData) return { ok: false, code: "NOT_FOUND", message: "Article not found." };
   
-  if (article.status !== "ARCHIVED") {
+  if (articleData.status !== "ARCHIVED") {
     return { ok: false, code: "FORBIDDEN", message: "Only archived articles can be permanently deleted. Please archive the article first." };
   }
 
   try {
-    if (article.img) await deleteFileFromR2(article.img);
-    if (article.contentHtml) {
-      const urls = Array.from(article.contentHtml.matchAll(/<img[^>]+src="([^">]+)"/g)).map(m => m[1]);
-      await Promise.allSettled(urls.map(url => deleteFileFromR2(url)));
+    if (articleData.img) await deleteFileFromR2(articleData.img);
+    if (articleData.contentUrl) {
+      try {
+        const payload = await fetchFromR2(articleData.contentUrl);
+        if (payload) {
+          const config = getR2Config();
+          if (!("error" in config)) {
+            const publicBase = config.publicBase;
+            const imageUrls = new Set<string>();
+            
+            if (payload.json) {
+              const str = JSON.stringify(payload.json);
+              const regex = /"src":\s*"([^"]+)"/g;
+              let match;
+              while ((match = regex.exec(str)) !== null) {
+                if (match[1].startsWith(publicBase)) imageUrls.add(match[1]);
+              }
+            }
+            if (payload.html) {
+              const regex = /src=["']([^"']+)["']/g;
+              let match;
+              while ((match = regex.exec(payload.html)) !== null) {
+                if (match[1].startsWith(publicBase)) imageUrls.add(match[1]);
+              }
+            }
+
+            for (const url of imageUrls) {
+              await deleteFileFromR2(url);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Failed deep R2 deletion for permanent delete:", e);
+      }
+      await deleteKeyFromR2(articleData.contentUrl);
     }
 
-    await db.$transaction(async (tx) => {
-      await tx.auditLog.create({
-        data: { userId: actor.id, action: "DELETE_ARTICLE_PERMANENTLY", entityType: "Article", entityId: id, details: { title: article.title, slug: article.slug, authorId: article.authorId, status: article.status } }
-      });
-      
-      await tx.articleReview.deleteMany({ where: { articleId: id } });
-      await tx.articleRevision.deleteMany({ where: { articleId: id } });
-      await tx.comment.deleteMany({ where: { articleSlug: article.slug } });
-      
-      await tx.article.delete({ where: { id } });
-    });
+    
+            await db.insert(auditLog).values({
+              id: crypto.randomUUID(),
+              userId: actor.id,
+              action: "DELETE_ARTICLE_PERMANENTLY",
+              entityType: "Article",
+              entityId: id,
+              details: { title: articleData.title, slug: articleData.slug, authorId: articleData.authorId, status: articleData.status }
+            });
+            
+            await db.delete(articleReview).where(eq(articleReview.articleId, id));
+            await db.delete(articleRevision).where(eq(articleRevision.articleId, id));
+            await db.delete(comment).where(eq(comment.articleSlug, articleData.slug));
+            
+            await db.delete(article).where(eq(article.id, id));
+          
 
     revalidatePath(`/admin/articles`);
+    revalidatePath(`/article/${articleData.slug}`);
+    revalidatePath(`/`);
+    revalidatePath(`/sitemap.xml`);
     return { ok: true };
   } catch (e: any) {
     return { ok: false, code: "SERVER", message: e.message };
@@ -687,35 +757,74 @@ export async function deleteOwnDraft(id: string): Promise<ActionResponse> {
     return { ok: false, code: "FORBIDDEN", message: "Insufficient permissions." };
   }
 
-  const article = await getArticle(id);
-  if (!article) return { ok: false, code: "NOT_FOUND", message: "Article not found." };
+  const articleData = await getArticle(id);
+  if (!articleData) return { ok: false, code: "NOT_FOUND", message: "Article not found." };
 
-  if (article.status !== "DRAFT") {
+  if (articleData.status !== "DRAFT") {
     return { ok: false, code: "FORBIDDEN", message: "Only drafts can be deleted this way." };
   }
 
-  if (article.authorId !== actor.authorId && !authorize(actor.role, "article.delete")) {
+  if (articleData.authorId !== actor.authorId && !authorize(actor.role, "article.delete")) {
     return { ok: false, code: "FORBIDDEN", message: "You can only delete your own drafts." };
   }
 
   try {
-    if (article.img) await deleteFileFromR2(article.img);
-    if (article.contentHtml) {
-      const urls = Array.from(article.contentHtml.matchAll(/<img[^>]+src="([^">]+)"/g)).map(m => m[1]);
-      await Promise.allSettled(urls.map(url => deleteFileFromR2(url)));
+    if (articleData.img) await deleteFileFromR2(articleData.img);
+    if (articleData.contentUrl) {
+      try {
+        const payload = await fetchFromR2(articleData.contentUrl);
+        if (payload) {
+          const config = getR2Config();
+          if (!("error" in config)) {
+            const publicBase = config.publicBase;
+            const imageUrls = new Set<string>();
+            
+            if (payload.json) {
+              const str = JSON.stringify(payload.json);
+              const regex = /"src":\s*"([^"]+)"/g;
+              let match;
+              while ((match = regex.exec(str)) !== null) {
+                if (match[1].startsWith(publicBase)) imageUrls.add(match[1]);
+              }
+            }
+            if (payload.html) {
+              const regex = /src=["']([^"']+)["']/g;
+              let match;
+              while ((match = regex.exec(payload.html)) !== null) {
+                if (match[1].startsWith(publicBase)) imageUrls.add(match[1]);
+              }
+            }
+
+            for (const url of imageUrls) {
+              await deleteFileFromR2(url);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Failed deep R2 deletion for own draft:", e);
+      }
+      await deleteKeyFromR2(articleData.contentUrl);
     }
 
-    await db.$transaction(async (tx) => {
-      await tx.articleReview.deleteMany({ where: { articleId: id } });
-      await tx.articleRevision.deleteMany({ where: { articleId: id } });
-      await tx.article.delete({ where: { id } });
-      
-      await tx.auditLog.create({
-        data: { userId: actor.id, action: "DELETE_OWN_DRAFT", entityType: "Article", entityId: id, details: { title: article.title } }
-      });
-    });
+    
+            await db.delete(articleReview).where(eq(articleReview.articleId, id));
+            await db.delete(articleRevision).where(eq(articleRevision.articleId, id));
+            await db.delete(article).where(eq(article.id, id));
+            
+            await db.insert(auditLog).values({
+              id: crypto.randomUUID(),
+              userId: actor.id,
+              action: "DELETE_OWN_DRAFT",
+              entityType: "Article",
+              entityId: id,
+              details: { title: articleData.title }
+            });
+          
 
     revalidatePath(`/admin/articles`);
+    revalidatePath(`/article/${articleData.slug}`);
+    revalidatePath(`/`);
+    revalidatePath(`/sitemap.xml`);
     return { ok: true };
   } catch (e: any) {
     return { ok: false, code: "SERVER", message: e.message };
@@ -808,101 +917,75 @@ async function runBulkTransition(
     category: { slug: string } | null;
     authorModel: { slug: string } | null;
     deck: string | null;
-    contentHtml: string | null;
+    contentUrl: string | null;
   };
 
-  const found = (await db.article.findMany({
-    where: { id: { in: unique } },
-    select: {
-      id: true,
-      status: true,
-      authorId: true,
-      reviewedById: true,
-      title: true,
-      slug: true,
-      categoryId: true,
-      category: { select: { slug: true } },
-      authorModel: { select: { slug: true } },
-      deck: true,
-      contentHtml: true,
-    },
-  })) as BulkRow[];
-  const byId = new Map<string, BulkRow>(found.map((a) => [a.id, a]));
+  const found = await db.query.article.findMany({
+    where: inArray(article.id, unique),
+    columns: { id: true, status: true, authorId: true, reviewedById: true, title: true, slug: true, categoryId: true, deck: true, contentUrl: true },
+    with: { category: { columns: { slug: true } }, authorModel: { columns: { slug: true } } }
+  }) as BulkRow[];
+  const byId = new Map<string, BulkRow>(found.map((a: any) => [a.id, a]));
 
   // Writes are accumulated and issued together once every article has been
   // checked. Each is still an independent decision, so this is not an
   // all-or-nothing transaction: a rejected article simply contributes no write.
-  const updates: Prisma.PrismaPromise<unknown>[] = [];
-  const auditRows: Prisma.AuditLogCreateManyInput[] = [];
+  const updates: ((tx: any) => Promise<any>)[] = [];
+  const auditRows: any[] = [];
 
   for (const id of unique) {
-    const article = byId.get(id);
+    const articleLocal = byId.get(id);
 
-    if (!article) {
-      // Same answer for "does not exist" and "not yours to see" -- the loop
-      // must not become an existence oracle for ids the actor guessed.
+    if (!articleLocal) {
       outcomes.push({ id, title: "Unknown article", ok: false, message: "Not found." });
       continue;
     }
 
     const forTransition: ArticleForTransition = {
-      status: article.status,
-      authorId: article.authorId,
+      status: articleLocal.status,
+      authorId: articleLocal.authorId,
     };
 
-    const error = validateTransition(article.status, to, actor, forTransition);
+    const error = validateTransition(articleLocal.status, to, actor, forTransition);
     if (error) {
-      outcomes.push({ id, title: article.title, ok: false, message: error });
+      outcomes.push({ id, title: articleLocal.title, ok: false, message: error });
       continue;
     }
 
-    const data: Prisma.ArticleUpdateInput = { status: to };
+    const data: any = { status: to as any };
     if (to === "ARCHIVED") data.archivedAt = new Date();
     if (to === "DRAFT") {
-      // Coming back out of the archive: clear the stamp so the milestone
-      // list on the detail page does not claim it is still archived.
       data.archivedAt = null;
     }
 
-    updates.push(db.article.update({ where: { id }, data }));
+    updates.push((tx: any) => tx.update(article).set(data).where(eq(article.id, id)));
     auditRows.push({
+      id: crypto.randomUUID(),
       userId: actor.id,
       action: `BULK_${to}`,
       entityType: "Article",
       entityId: id,
-      details: { from: article.status, to, title: article.title },
+      details: { from: articleLocal.status, to, title: articleLocal.title },
     });
 
-    if (article.status === "PUBLISHED" || to === "PUBLISHED") {
+    if (articleLocal.status === "PUBLISHED" || to === "PUBLISHED") {
       publishedAffected = true;
-      if (article.slug) touchedSlugs.push(article.slug);
+      if (articleLocal.slug) touchedSlugs.push(articleLocal.slug);
     }
 
-    outcomes.push({ id, title: article.title, ok: true });
+    outcomes.push({ id, title: articleLocal.title, ok: true });
   }
 
-  // Issue the accepted writes together.
-  //
-  // $transaction here is about the round-trip, not atomicity across unrelated
-  // articles: every row in this array has already passed its own authorization
-  // and transition check, so there is no case where one should veto another.
-  // What it replaces is 2N sequential awaits -- an update and an audit insert
-  // per article, each waiting on the last.
-  //
-  // The audit rows go in as a single createMany for the same reason.
-  //
-  // If the batch does fail, it fails as a unit, so the outcomes optimistically
-  // recorded above would be wrong. They are corrected in the catch rather than
-  // reported as successes.
   if (updates.length > 0) {
     try {
-      await db.$transaction([
-        ...updates,
-        db.auditLog.createMany({ data: auditRows }),
-      ]);
+      
+                for (const up of updates) await up(db);
+                if (auditRows.length > 0) {
+                  await db.insert(auditLog).values(auditRows);
+                }
+              
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Update failed.";
-      // Nothing was written, so no article moved and no cache is stale.
       return {
         ok: true,
         data: {
@@ -923,9 +1006,11 @@ async function runBulkTransition(
   // a pile of drafts has no reader-facing effect and should not invalidate the
   // whole site.
   if (publishedAffected) {
-    updateTag(CACHE_TAGS.articles);
+    // @ts-ignore
+    revalidateTag(CACHE_TAGS.articles);
     for (const slug of touchedSlugs) {
-      updateTag(articleTag(slug));
+      // @ts-ignore
+      revalidateTag(articleTag(slug));
       revalidatePath(`/article/${slug}`, "page");
     }
   }
@@ -1017,11 +1102,10 @@ export async function bulkDelete(ids: string[]): Promise<BulkResponse> {
     slug: string;
   };
 
-  const found = (await db.article.findMany({
-    where: { id: { in: unique } },
-    select: { id: true, status: true, authorId: true, title: true, slug: true },
-  })) as DeleteRow[];
-  const byId = new Map<string, DeleteRow>(found.map((a) => [a.id, a]));
+  const found = await db.select({ id: article.id, status: article.status, authorId: article.authorId, title: article.title, slug: article.slug })
+    .from(article)
+    .where(inArray(article.id, unique));
+  const byId = new Map<string, any>(found.map((a: any) => [a.id, a]));
 
   const outcomes: BulkOutcome[] = [];
   const deletable: DeleteRow[] = [];
@@ -1092,36 +1176,27 @@ export async function bulkDelete(ids: string[]): Promise<BulkResponse> {
   const deletableSlugs = deletable.map((a) => a.slug);
 
   try {
-    // One transaction for the accepted set. Atomicity matters here in a way it
-    // does not for the status transitions: a half-finished delete would leave
-    // orphaned revisions and comments pointing at an article that no longer
-    // exists. Every row in this batch has already passed its own check, so
-    // nothing valid is being held hostage by something invalid.
-    //
-    // The audit rows are written first and deliberately survive the articles
-    // they describe -- that record is the only remaining trace once the rows
-    // are gone, and it is what makes an owner's deletion accountable.
-    await db.$transaction([
-      db.auditLog.createMany({
-        data: deletable.map((a) => ({
-          userId: actor.id,
-          action: "BULK_DELETE_ARTICLE",
-          entityType: "Article",
-          entityId: a.id,
-          details: {
-            title: a.title,
-            slug: a.slug,
-            status: a.status,
-            authorId: a.authorId,
-          },
-        })),
-      }),
-      db.articleReview.deleteMany({ where: { articleId: { in: deletableIds } } }),
-      db.articleRevision.deleteMany({ where: { articleId: { in: deletableIds } } }),
-      // Comments key off the slug, not the article id.
-      db.comment.deleteMany({ where: { articleSlug: { in: deletableSlugs } } }),
-      db.article.deleteMany({ where: { id: { in: deletableIds } } }),
-    ]);
+    
+            const auditPayload = deletable.map((a) => ({
+              id: crypto.randomUUID(),
+              userId: actor.id,
+              action: "BULK_DELETE_ARTICLE",
+              entityType: "Article",
+              entityId: a.id,
+              details: { title: a.title, slug: a.slug, status: a.status, authorId: a.authorId },
+            }));
+            if (auditPayload.length > 0) {
+              await db.insert(auditLog).values(auditPayload);
+            }
+            if (deletableIds.length > 0) {
+              await db.delete(articleReview).where(inArray(articleReview.articleId, deletableIds));
+              await db.delete(articleRevision).where(inArray(articleRevision.articleId, deletableIds));
+              await db.delete(article).where(inArray(article.id, deletableIds));
+            }
+            if (deletableSlugs.length > 0) {
+              await db.delete(comment).where(inArray(comment.articleSlug, deletableSlugs));
+            }
+          
 
     for (const a of deletable) {
       outcomes.push({ id: a.id, title: a.title, ok: true });

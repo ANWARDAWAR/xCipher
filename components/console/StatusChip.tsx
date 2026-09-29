@@ -1,5 +1,5 @@
-import { ArticleStatus } from "@prisma/client";
 import { STATUS_META } from "@/lib/workflow";
+import { ArticleStatus } from "@/lib/types";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // StatusChip — renders an article status with shape + label + tint

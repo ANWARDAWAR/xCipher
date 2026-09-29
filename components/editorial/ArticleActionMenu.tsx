@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, startTransition } from "react";
-import { archiveArticle, deleteArticlePermanently, deleteOwnDraft } from "@/app/actions/workflow";
+
 import { showToast } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import ConfirmDialog from "../ui/ConfirmDialog";
@@ -41,11 +41,17 @@ export default function ArticleActionMenu({ id, title, status, canArchive, canDe
 
     startTransition(async () => {
       try {
-        let result;
-        if (action === "archive") result = await archiveArticle(id);
-        else if (action === "delete") result = await deleteArticlePermanently(id);
-        else if (action === "draftDelete") result = await deleteOwnDraft(id);
-        
+        let fetchAction: string = action;
+        if (action === "delete") fetchAction = "deletePermanently";
+        if (action === "draftDelete") fetchAction = "deleteOwnDraft";
+
+        const fetchRes = await fetch("/api/article/workflow", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: fetchAction, articleId: id }),
+        });
+        const result = await fetchRes.json();
+
         if (result?.ok) {
           const successLabel = action === "archive"
             ? "Article archived successfully."

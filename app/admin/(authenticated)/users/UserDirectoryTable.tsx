@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { Role } from "@prisma/client";
 import { 
   ShieldCheck, 
   Shield, 
@@ -21,6 +20,7 @@ import { revokeInvitation } from "@/app/actions/invitations";
 import { showToast } from "@/lib/utils";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Link from "next/link";
+import { Role } from "@/lib/types";
 
 interface UserProfile {
   id: string;

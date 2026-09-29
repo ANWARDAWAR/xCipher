@@ -1,4 +1,4 @@
-import { ArticleStatus } from "@prisma/client";
+export type ArticleStatus = 'DRAFT' | 'REVIEW' | 'PUBLISHED' | 'SUBMITTED' | 'REVISION_REQUESTED' | 'REJECTED' | 'APPROVED' | 'SCHEDULED' | 'ARCHIVED';
 import { Capability, Actor, authorize } from "./capabilities";
 
 // ──────────────────────────────────────────────────────────────────────────────

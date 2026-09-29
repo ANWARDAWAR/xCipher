@@ -1,10 +1,9 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// Shared Prisma selects for article lists
+// Shared Drizzle columns and with blocks for article lists
 // ──────────────────────────────────────────────────────────────────────────────
 //
-// Every public list page used `include: { category: true }`, which is an
-// implicit SELECT * on Article: it returns contentHtml and contentJson for
-// every row. A single published article's body is routinely tens of kilobytes,
+// Every public list page used to select all columns including contentHtml and contentJson.
+// A single published article's body is routinely tens of kilobytes,
 // and no card renders it -- the list components read title, deck, img, slug,
 // author, category and a timestamp, and nothing else.
 //
@@ -18,7 +17,7 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 /** Everything a card or row needs, and nothing more. No body columns. */
-export const ARTICLE_CARD_SELECT = {
+export const ARTICLE_CARD_COLUMNS = {
   id: true,
   slug: true,
   title: true,
@@ -34,34 +33,43 @@ export const ARTICLE_CARD_SELECT = {
   publishedAt: true,
   homepagePlacement: true,
   categoryId: true,
+} as const;
+
+export const ARTICLE_CARD_WITH = {
   category: { 
-    select: { 
+    columns: { 
       id: true, 
       name: true, 
       slug: true,
-      parent: { select: { id: true, name: true, slug: true } }
-    } 
+    },
+    with: {
+      parent: { columns: { id: true, name: true, slug: true } }
+    }
   },
-  authorModel: { select: { avatar: true, name: true, slug: true } },
+  authorModel: { columns: { avatar: true, name: true, slug: true } },
 } as const;
 
 /** Card fields plus tag chips, for the tag and search listings. */
-export const ARTICLE_CARD_WITH_TAGS_SELECT = {
-  ...ARTICLE_CARD_SELECT,
-  tags: { select: { id: true, name: true, slug: true } },
+export const ARTICLE_CARD_WITH_TAGS_WITH = {
+  ...ARTICLE_CARD_WITH,
+  tags: { 
+    with: {
+      tag: { columns: { id: true, name: true, slug: true } }
+    }
+  },
 } as const;
 
 /** Card fields plus the author profile, for author pages and bylines. */
-export const ARTICLE_CARD_WITH_AUTHOR_SELECT = {
-  ...ARTICLE_CARD_SELECT,
-  authorModel: { select: { id: true, name: true, slug: true, avatar: true } },
+export const ARTICLE_CARD_WITH_AUTHOR_WITH = {
+  ...ARTICLE_CARD_WITH,
+  authorModel: { columns: { id: true, name: true, slug: true, avatar: true } },
 } as const;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Page sizes
 //
 // The homepage, latest, category and author listings previously fetched every
-// matching row with no `take` at all. That is unbounded: the query cost grows
+// matching row with no `limit` at all. That is unbounded: the query cost grows
 // with the archive forever, and the page renders slower every week it is left
 // running. These caps are generous relative to what each layout actually
 // displays, so nothing visible is lost today.

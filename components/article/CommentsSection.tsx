@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { getComments, postComment, type PublicComment } from "@/app/actions/comments";
+import { getComments, type PublicComment } from "@/app/actions/comments";
 
 interface CommentsSectionProps {
   articleSlug: string;
@@ -31,14 +31,23 @@ export default function CommentsSection({ articleSlug }: CommentsSectionProps) {
     formData.append("name", name);
     formData.append("email", email);
     formData.append("comment", text);
+    formData.append("slug", articleSlug);
 
     startTransition(async () => {
-      const res = await postComment(articleSlug, formData);
-      setSubmitResult(res);
-      if (res.success) {
-        setName("");
-        setEmail("");
-        setText("");
+      try {
+        const fetchRes = await fetch("/api/comments", {
+          method: "POST",
+          body: formData,
+        });
+        const res = await fetchRes.json();
+        setSubmitResult(res);
+        if (res.success) {
+          setName("");
+          setEmail("");
+          setText("");
+        }
+      } catch (e) {
+        setSubmitResult({ success: false, error: "Network error." });
       }
     });
   };

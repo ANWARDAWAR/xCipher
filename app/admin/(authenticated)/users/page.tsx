@@ -1,11 +1,15 @@
+export const runtime = 'edge';
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import Link from "next/link";
-import { Role } from "@prisma/client";
+import { eq } from "drizzle-orm";
+import { invitation as invitationTable } from "@/lib/db/schema";
 import { canViewUsersList } from "@/lib/permissions";
 import { UserPlus, ShieldAlert } from "lucide-react";
 import UserDirectoryTable from "./UserDirectoryTable";
+import SyncAuthorsButton from "./SyncAuthorsButton";
+import { Role } from "@/lib/types";
 
 export const metadata = {
   title: "User Management | xSypher",
@@ -55,10 +59,10 @@ export default async function UsersPage() {
   }
 
   const [users, pendingInvitations] = await Promise.all([
-    db.user.findMany({
-      include: {
+    db.query.user.findMany({
+      with: {
         authorProfile: {
-          select: {
+          columns: {
             id: true,
             name: true,
             avatar: true,
@@ -66,11 +70,11 @@ export default async function UsersPage() {
           },
         },
       },
-      orderBy: { email: "asc" },
+      orderBy: (u, { asc }) => [asc(u.email)],
     }),
-    db.invitation.findMany({
-      where: { status: "PENDING" },
-      orderBy: { createdAt: "desc" },
+    db.query.invitation.findMany({
+      where: eq(invitationTable.status, "PENDING"),
+      orderBy: (i, { desc }) => [desc(i.createdAt)],
     }),
   ]);
 
@@ -92,13 +96,16 @@ export default async function UsersPage() {
           </p>
         </div>
 
-        <Link
-          href="/admin/users/invite"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs hover:shadow transition-all duration-150 active:scale-[0.99] self-start sm:self-auto"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span className="text-white">+ Invite User</span>
-        </Link>
+        <div className="flex gap-2">
+          <SyncAuthorsButton />
+          <Link
+            href="/admin/users/invite"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs hover:shadow transition-all duration-150 active:scale-[0.99] self-start sm:self-auto"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span className="text-white">+ Invite User</span>
+          </Link>
+        </div>
       </div>
 
       {/* Directory Content */}

@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
-import type { Role } from "@prisma/client";
 import {
   authorize,
   buildArticleScope,
   ROLE_CAPABILITIES,
   type Capability,
 } from "@/lib/capabilities";
+import { Role } from "@/lib/types";
 
 /**
  * Tests for the capability layer.
@@ -203,16 +203,12 @@ describe("buildArticleScope", () => {
   it("does not let an author with no profile match other authors' rows", () => {
     // A null authorId must not become a wildcard. The sentinel keeps the
     // clause unsatisfiable instead of matching rows whose authorId is null.
-    const scope = buildArticleScope(actor("AUTHOR", null)) as {
-      authorId: string;
-    };
+    const scope = buildArticleScope(actor("AUTHOR", null)) as any;
     expect(scope.authorId).toEqual("__none__");
   });
 
   it("shows a REVIEWER the queue, published work and their own drafts", () => {
-    const scope = buildArticleScope(actor("REVIEWER", "author-2")) as {
-      OR: Array<Record<string, unknown>>;
-    };
+    const scope = buildArticleScope(actor("REVIEWER", "author-2")) as any;
     expect(scope.OR).toEqual([
       { status: { in: ["SUBMITTED", "REVISION_REQUESTED", "APPROVED"] } },
       { status: "PUBLISHED" },
@@ -221,9 +217,7 @@ describe("buildArticleScope", () => {
   });
 
   it("does not expose other people's drafts to a REVIEWER", () => {
-    const scope = buildArticleScope(actor("REVIEWER", "author-2")) as {
-      OR: Array<Record<string, unknown>>;
-    };
+    const scope = buildArticleScope(actor("REVIEWER", "author-2")) as any;
     const serialised = JSON.stringify(scope.OR);
     expect(serialised).not.toContain("DRAFT");
   });

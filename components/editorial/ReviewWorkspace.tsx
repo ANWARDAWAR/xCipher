@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import { Role } from "@prisma/client";
 
-import { claimReview, releaseReview, takeOverReview } from "@/app/actions/workflow";
 import { showToast } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import ConfirmDialog from "../ui/ConfirmDialog";
+import { Role } from "@/lib/types";
 
 interface Revision {
   id: string;
@@ -70,12 +69,17 @@ export default function ReviewWorkspace({ userRole, userId, reviewerId, reviewer
     setShowTakeOverConfirm(false);
     setIsSubmitting(true);
     try {
-      const res = await takeOverReview(articleId, true);
-      if (res.ok) {
+      const res = await fetch("/api/article/workflow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "takeOver", articleId }),
+      });
+      const data = await res.json();
+      if (data.ok) {
         showToast("Review taken over");
         refresh();
       } else {
-        alert(res.message || "Action failed.");
+        alert(data.message || "Action failed.");
       }
     } catch (e) {
       console.error(e);
@@ -85,15 +89,20 @@ export default function ReviewWorkspace({ userRole, userId, reviewerId, reviewer
     }
   };
 
-  const handleWorkflowAction = async (actionFn: (id: string) => Promise<any>, successMsg: string) => {
+  const handleWorkflowAction = async (actionStr: string, successMsg: string) => {
     setIsSubmitting(true);
     try {
-      const res = await actionFn(articleId);
-      if (res.ok) {
+      const res = await fetch("/api/article/workflow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: actionStr, articleId }),
+      });
+      const data = await res.json();
+      if (data.ok) {
         showToast(successMsg);
         refresh();
       } else {
-        alert(res.message || "Action failed.");
+        alert(data.message || "Action failed.");
       }
     } catch (e) {
       console.error(e);
@@ -154,7 +163,7 @@ export default function ReviewWorkspace({ userRole, userId, reviewerId, reviewer
         <div style={{ borderTop: "1px solid var(--line)", paddingTop: "16px", marginBottom: "16px" }}>
           <div style={{ padding: "12px", background: "var(--surface-1)", borderRadius: "6px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "13px" }}>This article is waiting for review.</span>
-            <button className="btn-cs primary" onClick={() => handleWorkflowAction(claimReview, "Review claimed")} disabled={busy}>
+            <button className="btn-cs primary" onClick={() => handleWorkflowAction("claim", "Review claimed")} disabled={busy}>
               Claim Review
             </button>
           </div>
@@ -165,7 +174,7 @@ export default function ReviewWorkspace({ userRole, userId, reviewerId, reviewer
         <div style={{ borderTop: "1px solid var(--line)", paddingTop: "16px", marginBottom: "16px" }}>
           <div style={{ padding: "12px", background: "rgba(16, 185, 129, 0.1)", color: "var(--success)", borderRadius: "6px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "13px", fontWeight: 600 }}>You have claimed this review.</span>
-            <button className="btn-cs" onClick={() => handleWorkflowAction(releaseReview, "Review released")} disabled={busy}>
+            <button className="btn-cs" onClick={() => handleWorkflowAction("release", "Review released")} disabled={busy}>
               Release Review
             </button>
           </div>

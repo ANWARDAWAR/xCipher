@@ -1,4 +1,7 @@
+export const runtime = 'edge';
 import { db } from "@/lib/db";
+import { eq } from "drizzle-orm";
+import { invitation as invitationTable } from "@/lib/db/schema";
 import Link from "next/link";
 import AcceptInviteForm from "./AcceptInviteForm";
 import Logo from "@/components/common/Logo";
@@ -14,8 +17,9 @@ export default async function InviteAcceptancePage({
 }) {
   const { token } = await params;
 
-  const invitation = await db.invitation.findUnique({
-    where: { token },
+  const [invitation] = await db.query.invitation.findMany({
+    where: eq(invitationTable.token, token),
+    limit: 1,
   });
 
   const isInvalid =

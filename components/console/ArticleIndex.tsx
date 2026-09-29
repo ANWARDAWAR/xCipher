@@ -9,13 +9,13 @@
 import { useState, useMemo, useOptimistic } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArticleStatus, Role } from "@prisma/client";
 import { authorize } from "@/lib/capabilities";
 import StatusChip from "./StatusChip";
 import { fmtViews } from "@/lib/utils";
 import ArticleActionMenu from "../editorial/ArticleActionMenu";
 import { Eye, ExternalLink, Edit3, FileText, Plus, Clock } from "lucide-react";
 import BulkActionBar from "./BulkActionBar";
+import { ArticleStatus, Role } from "@/lib/types";
 
 interface ArticleRow {
   id: string;

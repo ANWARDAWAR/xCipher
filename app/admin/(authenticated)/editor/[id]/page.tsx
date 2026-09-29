@@ -1,10 +1,14 @@
+export const runtime = 'edge';
 import { notFound, redirect } from "next/navigation";
 import ArticleEditor from "@/components/editorial/ArticleEditor";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { canEditArticle } from "@/lib/permissions";
 import { getCategories, getTags } from "@/app/actions/taxonomy";
+import { eq } from "drizzle-orm";
+import { user as userTable, article as articleTable } from "@/lib/db/schema";
 import ReviewFeedbackPanel from "@/components/editorial/ReviewFeedbackPanel";
+import { fetchFromR2 } from "@/lib/storage";
 
 interface EditDraftPageProps {
   params: Promise<{ id: string }>;
@@ -15,35 +19,35 @@ export default async function EditDraftPage({ params }: EditDraftPageProps) {
   const user = await getCurrentUser();
 
   const dbUser = user?.id
-    ? await db.user.findUnique({
-      where: { id: user.id },
-      include: { authorProfile: true },
+    ? await db.query.user.findFirst({
+      where: eq(userTable.id, user.id),
+      with: { authorProfile: true },
     })
     : null;
 
-  const draft = await db.article.findUnique({
-    where: { id },
-    include: {
+  const draft = await db.query.article.findFirst({
+    where: eq(articleTable.id, id),
+    with: {
       // Include parent category to support the CategorySelector component
-      category: { include: { parent: true } },
+      category: { with: { parent: true } },
       revisions: {
-        orderBy: { createdAt: "desc" },
-        include: { user: { select: { name: true, email: true } } }
+        orderBy: (r, { desc }) => [desc(r.createdAt)],
+        with: { user: { columns: { name: true, email: true } } }
       },
       // Only the most recent decision: the author needs to know what to fix
       // now, not the whole argument. The full history stays in revisions.
       reviews: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: {
+        orderBy: (r, { desc }) => [desc(r.createdAt)],
+        limit: 1,
+        columns: {
           id: true,
           decision: true,
           reason: true,
           reasonCode: true,
           createdAt: true,
           passNumber: true,
-          reviewer: { select: { name: true } },
         },
+        with: { reviewer: { columns: { name: true } } },
       },
     }
   });
@@ -61,13 +65,17 @@ export default async function EditDraftPage({ params }: EditDraftPageProps) {
     redirect('/admin/drafts');
   }
 
+  const r2Content = await fetchFromR2(draft.contentUrl);
+  const articleHtml = typeof r2Content === "object" ? r2Content?.html : r2Content || "";
+  const articleJson = typeof r2Content === "object" ? r2Content?.json : null;
+
   const initialData = {
     ...draft,
     cat: draft.category?.slug || "ai",
     status: draft.status,
-    bodyHtml: draft.contentHtml || "",
-    body: draft.contentHtml || "",
-    contentJson: draft.contentJson || null,
+    bodyHtml: articleHtml,
+    body: articleHtml,
+    contentJson: articleJson,
   };
 
   const [categories, tags] = await Promise.all([

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Role } from "@prisma/client";
+import { Role } from "@/lib/types";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // AdminNavLinks — capability-driven navigation
@@ -46,13 +46,13 @@ export default function AdminNavLinks({
   // Active state: prefix match with special cases
   const isActive = (path: string, exact?: boolean) => {
     if (exact) return pathname === path;
-    return pathname.startsWith(path);
+    return !!pathname?.startsWith(path);
   };
 
   // Special case: /admin/articles with status=SUBMITTED acts as the review queue
   const isReviewQueue =
     pathname === "/admin/articles" &&
-    searchParams.get("status") === "SUBMITTED";
+    searchParams?.get("status") === "SUBMITTED";
 
   /**
    * Active state was communicated by a CSS class alone, which is colour-only:

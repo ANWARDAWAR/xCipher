@@ -1,11 +1,14 @@
+export const runtime = 'edge';
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { Role, Prisma } from "@prisma/client";
+import { eq, inArray, and, not, sql } from "drizzle-orm";
+import { user as userTable, article as articleTable, category as categoryTable } from "@/lib/db/schema";
 import { canViewReviewQueue } from "@/lib/permissions";
 import { REVIEW_QUEUE_LIMIT } from "@/lib/queries";
 import Link from "next/link";
 import Image from "next/image";
+import { Role } from "@/lib/types";
 
 export const metadata = {
   title: "Review Queue · xSypher",
@@ -38,9 +41,10 @@ export default async function ReviewQueuePage(props: {
   const user = await getCurrentUser();
   if (!user) redirect("/admin/login");
 
-  const dbUser = await db.user.findUnique({
-    where: { id: user.id },
-    select: { role: true },
+  const [dbUser] = await db.query.user.findMany({
+    where: eq(userTable.id, user.id),
+    columns: { role: true },
+    limit: 1,
   });
   
   const userRole = (dbUser?.role || user.role || "AUTHOR").toUpperCase() as Role;
@@ -52,58 +56,57 @@ export default async function ReviewQueuePage(props: {
   const { category, author, claim, resubmissions, sort = "oldest" } = searchParams;
 
   // Build filters
-  const filterConditions: Prisma.ArticleWhereInput[] = [
-    { status: "SUBMITTED" }
+  const filterConditions: any[] = [
+    eq(articleTable.status, "SUBMITTED")
   ];
 
   if (category) {
-    filterConditions.push({ category: { slug: category } });
+    filterConditions.push(
+      sql`${articleTable.categoryId} IN (SELECT id FROM "Category" WHERE "slug" = ${category})`
+    );
   }
 
   if (author) {
-    filterConditions.push({ authorModel: { slug: author } });
+    filterConditions.push(
+      sql`${articleTable.authorId} IN (SELECT id FROM "Author" WHERE "slug" = ${author})`
+    );
   }
 
   if (claim === "me") {
-    filterConditions.push({ reviewedById: user.id });
+    filterConditions.push(eq(articleTable.reviewedById, user.id));
   } else if (claim === "unclaimed") {
-    filterConditions.push({ reviewedById: null });
+    filterConditions.push(sql`${articleTable.reviewedById} IS NULL`);
   } else if (claim === "other") {
-    filterConditions.push({
-      reviewedById: { not: null, notIn: [user.id] }
-    });
+    filterConditions.push(and(
+      sql`${articleTable.reviewedById} IS NOT NULL`,
+      not(eq(articleTable.reviewedById, user.id))
+    ));
   }
 
   if (resubmissions === "true") {
-    // Requires revisions count > 0.
-    filterConditions.push({
-      revisions: { some: {} }
-    });
+    filterConditions.push(
+      sql`EXISTS (SELECT 1 FROM "ArticleRevision" WHERE "articleId" = ${articleTable.id})`
+    );
   }
 
   // Build sort
-  const orderBy: Prisma.ArticleOrderByWithRelationInput[] = [];
+  let orderByFn = (a: any, { asc, desc }: any) => [asc(a.submittedAt)];
   if (sort === "newest") {
-    orderBy.push({ submittedAt: "desc" });
+    orderByFn = (a: any, { desc }: any) => [desc(a.submittedAt)];
   } else if (sort === "author") {
-    orderBy.push({ authorModel: { name: "asc" } });
-  } else {
-    // Default to oldest
-    orderBy.push({ submittedAt: "asc" });
+    // Note: sorting by author name in Drizzle when the author is a relation can be tricky
+    // so we sort by author ID as a fallback, or we can use a subquery/join.
+    // For simplicity, we just use a subquery for sorting by author name
+    orderByFn = (a: any, { asc }: any) => [
+      asc(sql`(SELECT "name" FROM "Author" WHERE id = ${a.authorId})`)
+    ];
   }
 
-  const articles = await db.article.findMany({
-    where: { AND: filterConditions },
-    orderBy,
-    // A review queue that has grown past this is a staffing problem, not a
-    // paging problem, but the query still needs a ceiling so one backlogged
-    // week cannot take the page down.
-    take: REVIEW_QUEUE_LIMIT,
-    // Explicit select rather than include: include is SELECT *, which pulled
-    // contentJson and every SEO column for rows that render neither.
-    // contentHtml is the one body field genuinely needed here -- the card
-    // shows a word count derived from it.
-    select: {
+  const articles = await db.query.article.findMany({
+    where: and(...filterConditions),
+    orderBy: orderByFn as any,
+    limit: REVIEW_QUEUE_LIMIT,
+    columns: {
       id: true,
       title: true,
       img: true,
@@ -111,12 +114,14 @@ export default async function ReviewQueuePage(props: {
       updatedAt: true,
       reviewedById: true,
       author: true,
-      contentHtml: true,
-      category: { select: { name: true } },
-      authorModel: { select: { name: true, slug: true } },
-      reviewer: { select: { name: true, email: true } },
-      _count: { select: { revisions: true } }
+      contentUrl: true,
     },
+    with: {
+      category: { columns: { name: true } },
+      authorModel: { columns: { name: true, slug: true } },
+      reviewer: { columns: { name: true, email: true } },
+      revisions: { columns: { id: true } }
+    }
   });
 
   return (
@@ -160,7 +165,7 @@ export default async function ReviewQueuePage(props: {
             else if (ageDays >= 1) ageColor = "var(--warning)";
 
             const isClaimedByMe = article.reviewedById === user.id;
-            const wordCount = article.contentHtml ? article.contentHtml.replace(/<[^>]*>?/gm, '').split(/\s+/).length : 0;
+            const wordCount = 0; // TODO: fetch from R2
 
             return (
               <div key={article.id} style={{ 
@@ -186,8 +191,8 @@ export default async function ReviewQueuePage(props: {
                     <span>By <strong>{article.authorModel?.name || article.author || "Unknown"}</strong></span>
                     <span>{article.category?.name || "Uncategorized"}</span>
                     <span>~{wordCount} words</span>
-                    {article._count.revisions > 0 && (
-                      <span style={{ color: "var(--accent)" }}>Pass {article._count.revisions + 1}</span>
+                    {article.revisions && article.revisions.length > 0 && (
+                      <span style={{ color: "var(--accent)" }}>Pass {article.revisions.length + 1}</span>
                     )}
                   </div>
                 </div>

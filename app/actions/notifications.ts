@@ -2,7 +2,10 @@
 
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/revalidate";
+import { notification } from "@/lib/db/schema";
+import { eq, and, desc, sql } from "drizzle-orm";
+
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Notification read actions
@@ -17,15 +20,14 @@ import { revalidatePath } from "next/cache";
 
 export async function createNotification(userId: string, message: string, type: string, link?: string) {
   try {
-    const notification = await db.notification.create({
-      data: {
-        userId,
-        message,
-        type,
-        link,
-      } as any,
-    });
-    return { success: true, notification };
+    const [created] = await db.insert(notification).values({
+      id: crypto.randomUUID(),
+      userId,
+      message,
+      type,
+      link,
+    }).returning();
+    return { success: true, notification: created };
   } catch (error: any) {
     console.error("Failed to create notification:", error);
     return { success: false, error: error.message };
@@ -51,21 +53,24 @@ export async function getNotifications(): Promise<{
   if (!user) return { items: [], unreadCount: 0 };
 
   try {
-    const [items, unreadCount] = await Promise.all([
-      db.notification.findMany({
-        where: { userId: user.id },
-        orderBy: { createdAt: "desc" },
-        take: MAX_ITEMS,
-        select: {
-          id: true,
-          message: true,
-          link: true,
-          isRead: true,
-          createdAt: true,
-        },
-      }),
-      db.notification.count({ where: { userId: user.id, isRead: false } }),
-    ]);
+    const itemsPromise = db.query.notification.findMany({
+      where: eq(notification.userId, user.id),
+      orderBy: [desc(notification.createdAt)],
+      limit: MAX_ITEMS,
+      columns: {
+        id: true,
+        message: true,
+        link: true,
+        isRead: true,
+        createdAt: true,
+      },
+    });
+    
+    const countPromise = db.select({ count: sql<number>`count(*)::int` })
+      .from(notification)
+      .where(and(eq(notification.userId, user.id), eq(notification.isRead, false)));
+
+    const [items, [{ count: unreadCount }]] = await Promise.all([itemsPromise, countPromise]);
 
     return { items, unreadCount };
   } catch (error) {
@@ -84,10 +89,9 @@ export async function markNotificationRead(id: string): Promise<{ ok: boolean }>
     // updateMany, not update: it takes a where clause, so ownership is enforced
     // by the query itself. A forged id belonging to another user matches zero
     // rows instead of updating someone else's notification.
-    await db.notification.updateMany({
-      where: { id, userId: user.id },
-      data: { isRead: true },
-    });
+    await db.update(notification)
+      .set({ isRead: true })
+      .where(and(eq(notification.id, id), eq(notification.userId, user.id)));
     revalidatePath("/admin", "layout");
     return { ok: true };
   } catch (error) {
@@ -101,10 +105,9 @@ export async function markAllNotificationsRead(): Promise<{ ok: boolean }> {
   if (!user) return { ok: false };
 
   try {
-    await db.notification.updateMany({
-      where: { userId: user.id, isRead: false },
-      data: { isRead: true },
-    });
+    await db.update(notification)
+      .set({ isRead: true })
+      .where(and(eq(notification.userId, user.id), eq(notification.isRead, false)));
     revalidatePath("/admin", "layout");
     return { ok: true };
   } catch (error) {

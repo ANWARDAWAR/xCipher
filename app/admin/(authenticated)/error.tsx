@@ -1,5 +1,6 @@
 "use client";
 
+export const runtime = 'edge';
 import { useEffect } from "react";
 import Link from "next/link";
 
@@ -39,13 +40,13 @@ export default function AdminError({
           : "An unexpected error occurred while loading this page."}
       </p>
 
-      {isDbError && (
-        <div className="bg-surface-2 p-4 rounded-lg text-sm text-left border border-line mb-8 w-full overflow-auto max-h-40">
-          <code className="text-muted whitespace-pre-wrap font-mono">
-            {error.message}
-          </code>
-        </div>
-      )}
+      <div className="bg-surface-2 p-4 rounded-lg text-sm text-left border border-line mb-8 w-full overflow-auto max-h-64">
+        <code className="text-muted whitespace-pre-wrap font-mono">
+          {error.name}: {error.message}
+          {"\n\nStack:\n"}
+          {error.stack}
+        </code>
+      </div>
 
       <div className="flex gap-4">
         <button

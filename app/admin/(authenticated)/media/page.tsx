@@ -1,10 +1,13 @@
+export const runtime = 'edge';
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { Role } from "@prisma/client";
 import { authorize, buildArticleScope, Actor } from "@/lib/capabilities";
-import { ALLOWED_MEDIA_DOMAINS } from "@/lib/sanitize";
+import { eq, and, isNotNull } from "drizzle-orm";
+import { user as userTable, article as articleTable } from "@/lib/db/schema";
+import { getAllowedMediaDomains } from "@/lib/sanitize";
 import MediaLibraryClient, { type MediaItem } from "./MediaLibraryClient";
+import { Role } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -41,9 +44,10 @@ export default async function MediaPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/admin/login");
 
-  const dbUser = await db.user.findUnique({
-    where: { id: user.id },
-    include: { authorProfile: true },
+  const [dbUser] = await db.query.user.findMany({
+    where: eq(userTable.id, user.id),
+    with: { authorProfile: true },
+    limit: 1,
   });
   if (!dbUser) redirect("/admin/login");
 
@@ -60,19 +64,17 @@ export default async function MediaPage() {
   // image can give away an unannounced story as readily as its headline.
   const scope = buildArticleScope(actor);
 
-  const articles = await db.article.findMany({
-    where: { AND: [{ img: { not: null } }, scope] },
-    select: {
+  const articles = await db.query.article.findMany({
+    where: and(isNotNull(articleTable.img), scope),
+    columns: {
       id: true,
       title: true,
       img: true,
       status: true,
       updatedAt: true,
     },
-    orderBy: { updatedAt: "desc" },
-    // Bounded like every other list in the console. A newsroom with 50k
-    // articles should not stream 50k rows into a grid.
-    take: 500,
+    orderBy: (a, { desc }) => [desc(a.updatedAt)],
+    limit: 500,
   });
 
   // Group by URL. The same image genuinely does get reused across articles, and
@@ -93,7 +95,7 @@ export default async function MediaPage() {
       // A null host means the string does not parse as a URL at all -- a
       // relative path or a typo. Treated as unapproved, since it is certainly
       // not on the allowlist.
-      approved: host ? ALLOWED_MEDIA_DOMAINS.includes(host) : false,
+      approved: host ? getAllowedMediaDomains().includes(host) : false,
       lastUsed: a.updatedAt.toISOString(),
       usages: [{ id: a.id, title: a.title, status: a.status }],
     });

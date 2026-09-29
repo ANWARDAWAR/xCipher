@@ -1,10 +1,13 @@
+export const runtime = 'edge';
 import { db } from "@/lib/db";
+import { sql } from "drizzle-orm";
+import { user as userTable } from "@/lib/db/schema";
 import { redirect } from "next/navigation";
 import SetupForm from "./SetupForm";
 import Logo from "@/components/common/Logo";
 
 export default async function SetupPage() {
-  const userCount = await db.user.count();
+  const userCount = await db.select({ count: sql`count(*)`.mapWith(Number) }).from(userTable).then(res => res[0]?.count || 0);
 
   if (userCount > 0) {
     redirect("/admin/login");

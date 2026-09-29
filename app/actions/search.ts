@@ -1,6 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { article, category, _articleToTag, tag } from "@/lib/db/schema";
+import { eq, or, and, ilike, exists, sql, desc } from "drizzle-orm";
 
 export type LiveSearchResult = {
   id: string;
@@ -17,26 +19,33 @@ export async function getLiveSearchResults(query: string): Promise<LiveSearchRes
 
   const cleanQuery = query.trim();
 
-  const results = await db.article.findMany({
-    where: {
-      status: "PUBLISHED",
-      OR: [
-        { title: { contains: cleanQuery, mode: "insensitive" } },
-        { deck: { contains: cleanQuery, mode: "insensitive" } },
-        { tags: { some: { name: { contains: cleanQuery, mode: "insensitive" } } } }
-      ]
-    },
-    select: {
+  const results = await db.query.article.findMany({
+    where: and(
+      eq(article.status, "PUBLISHED"),
+      or(
+        ilike(article.title, `%${cleanQuery}%`),
+        ilike(article.deck, `%${cleanQuery}%`),
+        exists(
+          db.select({ id: sql`1` })
+            .from(_articleToTag)
+            .innerJoin(tag, eq(tag.id, _articleToTag.B))
+            .where(and(eq(_articleToTag.A, article.id), ilike(tag.name, `%${cleanQuery}%`)))
+        )
+      )
+    ),
+    columns: {
       id: true,
       slug: true,
       title: true,
       publishedAt: true,
+    },
+    with: {
       category: {
-        select: { name: true }
+        columns: { name: true }
       }
     },
-    take: 6,
-    orderBy: { publishedAt: "desc" }
+    limit: 6,
+    orderBy: [desc(article.publishedAt)]
   });
 
   return results;

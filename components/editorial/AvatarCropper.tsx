@@ -109,12 +109,12 @@ async function renderCrop(
   );
 
   const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, "image/jpeg", 0.92)
+    canvas.toBlob(resolve, "image/webp", 0.80)
   );
   if (!blob) throw new Error("The cropped image could not be created.");
 
   const base = fileName.replace(/\.[^.]+$/, "") || "avatar";
-  return new File([blob], `${base}-cropped.jpg`, { type: "image/jpeg" });
+  return new File([blob], `${base}-cropped.webp`, { type: "image/webp" });
 }
 
 export default function AvatarCropper({

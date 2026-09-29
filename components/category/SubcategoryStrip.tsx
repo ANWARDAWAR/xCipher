@@ -11,7 +11,7 @@ interface SubcategoryStripProps {
 
 export default function SubcategoryStrip({ subcategories, parentSlug }: SubcategoryStripProps) {
   const searchParams = useSearchParams();
-  const currentSub = searchParams.get("sub");
+  const currentSub = searchParams?.get("sub");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

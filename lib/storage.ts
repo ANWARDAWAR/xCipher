@@ -1,89 +1,57 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
-import { v2 as cloudinary } from "cloudinary";
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Cloudflare R2 client
 // ─────────────────────────────────────────────────────────────────────────────
-//
-// R2 speaks the S3 API, so the AWS SDK drives it. Only the endpoint and the
-// fixed "auto" region differ.
-//
-// Constructed lazily rather than at module scope. A top-level `new S3Client()`
-// runs the moment anything imports this file -- including during `next build`,
-// where the credentials are usually absent -- and the failure surfaces as an
-// unrelated build error rather than "R2 is not configured". The same mistake
-// already bit this codebase with `new Resend(undefined)`.
-// ─────────────────────────────────────────────────────────────────────────────
-
-let client: S3Client | null = null;
 
 export interface R2Config {
   accountId: string;
   accessKeyId: string;
   secretAccessKey: string;
   bucket: string;
-  /** Public base URL the bucket is served from, e.g. https://media.example.com
-   *  or the r2.dev subdomain. No trailing slash. */
   publicBase: string;
 }
 
-/** Read and validate configuration, or explain precisely what is missing. */
 export function getR2Config(): R2Config | { error: string } {
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-  const bucket = process.env.R2_BUCKET;
-  const publicBase = process.env.NEXT_PUBLIC_R2_PUBLIC_BASE;
+  // Indirect access keeps NEXT_PUBLIC_* from being frozen by the Next.js build.
+  const env = process.env;
+  const accountId = env.R2_ACCOUNT_ID;
+  const accessKeyId = env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = env.R2_SECRET_ACCESS_KEY;
+  const bucket = env.R2_BUCKET;
+  const rawPublicBase = (env.NEXT_PUBLIC_R2_PUBLIC_BASE || "").trim();
 
   const missing = [
     !accountId && "R2_ACCOUNT_ID",
     !accessKeyId && "R2_ACCESS_KEY_ID",
     !secretAccessKey && "R2_SECRET_ACCESS_KEY",
     !bucket && "R2_BUCKET",
-    !publicBase && "NEXT_PUBLIC_R2_PUBLIC_BASE",
+    !rawPublicBase && "NEXT_PUBLIC_R2_PUBLIC_BASE",
   ].filter(Boolean);
 
   if (missing.length) {
-    // Named rather than a generic failure: an operator seeing this in a log
-    // should not have to read the source to find out which variable is unset.
     return { error: `Image uploads are not configured. Missing: ${missing.join(", ")}.` };
   }
+  
+  const publicBase = rawPublicBase.replace(/\/+$/, "");
 
   return {
-    accountId: accountId!,
-    accessKeyId: accessKeyId!,
-    secretAccessKey: secretAccessKey!,
-    bucket: bucket!,
-    publicBase: publicBase!.replace(/\/+$/, ""),
+    accountId: accountId as string,
+    accessKeyId: accessKeyId as string,
+    secretAccessKey: secretAccessKey as string,
+    bucket: bucket as string,
+    publicBase,
   };
 }
 
-export function getR2Client(config: R2Config): S3Client {
-  if (client) return client;
-
-  client = new S3Client({
-    // R2 has no regions; the SDK requires the field, and "auto" is what
-    // Cloudflare documents.
+export async function getR2Client(config: R2Config) {
+  const { AwsClient } = await import("aws4fetch");
+  return new AwsClient({
+    accessKeyId: config.accessKeyId,
+    secretAccessKey: config.secretAccessKey,
+    service: "s3",
     region: "auto",
-    endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId: config.accessKeyId,
-      secretAccessKey: config.secretAccessKey,
-    },
   });
-
-  return client;
 }
 
-/**
- * Object key for an uploaded image.
- *
- * Content-addressed by a random id rather than the original filename. Three
- * reasons: two people uploading "screenshot.png" must not collide; a filename
- * can carry path separators and traversal sequences; and a predictable key
- * would let anyone enumerate the bucket. The date prefix is for humans reading
- * a bucket listing, not for routing.
- */
 export function buildObjectKey(prefix: string, extension: string): string {
   const now = new Date();
   const yyyy = now.getUTCFullYear();
@@ -97,18 +65,85 @@ export async function uploadFileToR2(file: File | Blob, bucket: string, key: str
   if ("error" in config) {
     throw new Error(config.error);
   }
-  const s3 = getR2Client(config);
-  const buffer = Buffer.from(await file.arrayBuffer());
+  
+  const aws = await getR2Client(config);
+  const endpoint = new URL(`https://${config.accountId}.r2.cloudflarestorage.com/${bucket}/${key}`);
+  
+  const buffer = new Uint8Array(await file.arrayBuffer());
   const type = file.type || "application/octet-stream";
   
-  await s3.send(new PutObjectCommand({
-    Bucket: bucket,
-    Key: key,
-    Body: buffer,
-    ContentType: type,
-  }));
+  const res = await aws.fetch(endpoint.toString(), {
+    method: "PUT",
+    body: buffer,
+    headers: {
+      "Content-Type": type,
+    },
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`R2 Upload Failed: ${res.status} ${errText}`);
+  }
   
   return `${config.publicBase}/${key}`;
+}
+
+export async function uploadToR2(key: string, body: string, contentType: string = "application/json"): Promise<string> {
+  const config = getR2Config();
+  if ("error" in config) throw new Error(config.error);
+  
+  const aws = await getR2Client(config);
+  const endpoint = new URL(`https://${config.accountId}.r2.cloudflarestorage.com/${config.bucket}/${key}`);
+  
+  const res = await aws.fetch(endpoint.toString(), {
+    method: "PUT",
+    body: body,
+    headers: {
+      "Content-Type": contentType,
+    },
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`R2 Upload Failed: ${res.status} ${errText}`);
+  }
+  
+  return key; // We store relative path in db
+}
+
+export async function fetchFromR2(key: string | null): Promise<any> {
+  if (!key) return null;
+  const config = getR2Config();
+  if ("error" in config) return null;
+
+  try {
+    const url = `${config.publicBase}/${key}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return null;
+    
+    const contentType = res.headers.get("content-type");
+    if (contentType?.includes("application/json")) {
+      return await res.json();
+    }
+    return await res.text();
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function deleteKeyFromR2(key: string): Promise<void> {
+  if (!key) return;
+  const config = getR2Config();
+  if ("error" in config) return;
+
+  const aws = await getR2Client(config);
+  const endpoint = new URL(`https://${config.accountId}.r2.cloudflarestorage.com/${config.bucket}/${key}`);
+
+  try {
+    await aws.fetch(endpoint.toString(), { method: "DELETE" });
+  } catch (e) {
+    console.error("[storage] Failed to delete key from R2:", e);
+  }
 }
 
 export async function deleteFileFromR2(url: string): Promise<void> {
@@ -119,68 +154,13 @@ export async function deleteFileFromR2(url: string): Promise<void> {
   const key = url.slice(config.publicBase.length).replace(/^\/+/, "");
   if (!key) return;
 
-  const s3 = getR2Client(config);
+  const aws = await getR2Client(config);
+  const endpoint = new URL(`https://${config.accountId}.r2.cloudflarestorage.com/${config.bucket}/${key}`);
+
   try {
-    await s3.send(new DeleteObjectCommand({
-      Bucket: config.bucket,
-      Key: key,
-    }));
+    await aws.fetch(endpoint.toString(), { method: "DELETE" });
   } catch (e) {
     console.error("[storage] Failed to delete file from R2:", e);
   }
 }
 
-export function checkCloudinaryEnv() {
-  const missing = [
-    !process.env.CLOUDINARY_CLOUD_NAME && "CLOUDINARY_CLOUD_NAME",
-    !process.env.CLOUDINARY_API_KEY && "CLOUDINARY_API_KEY",
-    !process.env.CLOUDINARY_API_SECRET && "CLOUDINARY_API_SECRET",
-  ].filter(Boolean);
-  
-  if (missing.length) {
-    throw new Error(`Cloudinary is not configured. Missing: ${missing.join(", ")}`);
-  }
-}
-
-export async function uploadImageToCloudinary(file: File | Blob, folder: string): Promise<string> {
-  checkCloudinaryEnv();
-  
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-  });
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { folder },
-      (error, result) => {
-        if (error) reject(error);
-        else if (result) resolve(result.secure_url);
-        else reject(new Error("No result from Cloudinary"));
-      }
-    );
-    stream.end(buffer);
-  });
-}
-
-export async function deleteImageFromCloudinary(url: string): Promise<void> {
-  try {
-    checkCloudinaryEnv();
-    
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET,
-    });
-
-    const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)\.[a-z0-9]+$/i);
-    if (!match) return;
-    const publicId = match[1];
-
-    await cloudinary.uploader.destroy(publicId);
-  } catch (e) {
-    console.error("[storage] Failed to delete image from Cloudinary:", e);
-  }
-}

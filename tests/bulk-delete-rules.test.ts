@@ -1,8 +1,8 @@
 
 import { describe, it, expect } from "vitest";
 import { authorize } from "@/lib/capabilities";
-import type { Role } from "@prisma/client";
-import type { ArticleStatus } from "@prisma/client";
+import type { ArticleStatus } from "@/lib/types";
+import { Role } from "@/lib/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Bulk delete eligibility

@@ -1,4 +1,6 @@
-import { Role } from "@prisma/client";
+import { inArray, eq, or, and, SQL } from "drizzle-orm";
+import { article } from "@/lib/db/schema";
+import { Role } from "@/lib/types";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Capability — the single source of truth for authorization
@@ -219,7 +221,7 @@ export interface Actor {
 //   STAFF                → no console access (returns impossible filter)
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function buildArticleScope(actor: Actor): Record<string, unknown> {
+export function buildArticleScope(actor: Actor): SQL<unknown> | undefined {
   const role = actor.role;
 
   // Full access roles — no scoping needed
@@ -227,38 +229,32 @@ export function buildArticleScope(actor: Actor): Record<string, unknown> {
     // OWNER, ADMIN, EDITOR: see everything
     // REVIEWER: see everything in review + published + own
     if (role === "REVIEWER") {
-      return {
-        OR: [
-          { status: { in: ["SUBMITTED", "REVISION_REQUESTED", "APPROVED"] } },
-          { status: "PUBLISHED" },
-          { authorId: actor.authorId || "__none__" },
-        ],
-      };
+      return or(
+        inArray(article.status, ["SUBMITTED", "REVISION_REQUESTED", "APPROVED"]),
+        eq(article.status, "PUBLISHED"),
+        eq(article.authorId, actor.authorId || "__none__")
+      );
     }
     // OWNER, ADMIN, EDITOR: no filter
-    return {};
+    return undefined;
   }
 
   // MODERATOR: published + own
   if (role === "MODERATOR") {
-    return {
-      OR: [
-        { status: "PUBLISHED" },
-        { authorId: actor.authorId || "__none__" },
-      ],
-    };
+    return or(
+      eq(article.status, "PUBLISHED"),
+      eq(article.authorId, actor.authorId || "__none__")
+    );
   }
 
   // AUTHOR and EDITOR: strictly their own articles
   if (role === "AUTHOR" || role === "EDITOR") {
-    return {
-      authorId: actor.authorId || "__none__",
-    };
+    return eq(article.authorId, actor.authorId || "__none__");
   }
 
   // STAFF or unknown: no articles visible in the console
   // Return an impossible condition rather than an empty filter
-  return { id: "__access_denied__" };
+  return eq(article.id, "__access_denied__");
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -268,7 +264,7 @@ export function buildArticleScope(actor: Actor): Record<string, unknown> {
 // Never select contentHtml or contentJson in list queries.
 // ──────────────────────────────────────────────────────────────────────────────
 
-export const ARTICLE_LIST_SELECT = {
+export const ARTICLE_LIST_COLUMNS = {
   id: true,
   slug: true,
   title: true,
@@ -282,34 +278,36 @@ export const ARTICLE_LIST_SELECT = {
   updatedAt: true,
   publishedAt: true,
   scheduledFor: true,
-  // Relations — selected fields only
+} as const;
+
+export const ARTICLE_LIST_WITH = {
   authorModel: {
-    select: {
+    columns: {
       id: true,
       name: true,
       slug: true,
       avatar: true,
-    },
+    }
   },
   category: {
-    select: {
+    columns: {
       id: true,
       name: true,
       slug: true,
-      parent: { select: { name: true, slug: true } }
     },
+    with: { parent: { columns: { name: true, slug: true } } }
   },
   tags: {
-    select: {
-      id: true,
-      name: true,
+    with: {
+      tag: {
+        columns: {
+          id: true,
+          name: true,
+        }
+      }
     },
-    take: 3,
+    limit: 3,
   },
-  _count: {
-    select: {
-      revisions: true,
-      comments: true,
-    },
-  },
+  revisions: { columns: { id: true } },
+  comments: { columns: { id: true } }
 } as const;

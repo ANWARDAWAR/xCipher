@@ -6,7 +6,9 @@ import { MessageSquare } from "lucide-react";
 import { getImgSrc, fmtViews, timeAgo } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { getRecentArticleSlugs } from "@/lib/cached-queries";
-import { ARTICLE_CARD_SELECT } from "@/lib/queries";
+import { eq, inArray, not, and, notInArray, or, sql } from "drizzle-orm";
+import { article as articleTable, _articleToTag } from "@/lib/db/schema";
+import { ARTICLE_CARD_COLUMNS, ARTICLE_CARD_WITH } from "@/lib/queries";
 import { constructMetadata, generateNewsArticleJsonLd, siteConfig } from "@/lib/seo";
 import { SocialIcon } from "@/components/author/AuthorProfileView";
 import ArticleBody from "@/components/article/ArticleBody";
@@ -16,9 +18,12 @@ import StoryCard from "@/components/article/StoryCard";
 import CommentsSection from "@/components/article/CommentsSection";
 import ProgressBar from "@/components/article/ProgressBar";
 import ListenButton from "@/components/article/ListenButton";
+import { fetchFromR2 } from "@/lib/storage";
 import ArticleMobileToolbar from "@/components/article/ArticleMobileToolbar";
 import ViewCounter from "@/components/article/ViewCounter";
 import ActiveCategorySetter from "@/components/layout/ActiveCategorySetter";
+
+export const runtime = 'edge';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -26,16 +31,18 @@ interface Props {
 
 export async function generateMetadata({ params }: Props, parent: ResolvingMetadata): Promise<Metadata> {
   const { slug } = await params;
-  const article = await db.article.findUnique({ 
-    where: { 
-      slug, 
-      status: "PUBLISHED",
-    } 
+  const [article] = await db.query.article.findMany({ 
+    where: and(eq(articleTable.slug, slug), eq(articleTable.status, "PUBLISHED")),
+    limit: 1
   });
 
   if (!article) {
-    const historicalArticle = await db.article.findFirst({
-      where: { previousSlugs: { has: slug }, status: "PUBLISHED" }
+    const [historicalArticle] = await db.query.article.findMany({
+      where: and(
+        sql`${slug} = ANY(${articleTable.previousSlugs})`,
+        eq(articleTable.status, "PUBLISHED")
+      ),
+      limit: 1
     });
     if (historicalArticle) return {};
     return {};
@@ -66,43 +73,24 @@ export async function generateMetadata({ params }: Props, parent: ResolvingMetad
 // a view count.
 export const revalidate = 300; // article
 
-/**
- * Pre-render the most recent articles at build time.
- *
- * Bounded at 50 rather than the whole archive: build time would otherwise grow
- * with the number of published stories, and the long tail is not what readers
- * arrive on -- traffic to a news site concentrates hard on the last few days.
- *
- * Anything not in this list still works. Next renders it on first request and
- * caches the result from then on, so the only difference is who pays for that
- * first render. Leaving dynamicParams at its default (true) is what makes that
- * true; setting it false would 404 every older article.
- */
-export async function generateStaticParams() {
-  try {
-    const recent = await getRecentArticleSlugs(50);
-    return recent.map((a: { slug: string }) => ({ slug: a.slug }));
-  } catch {
-    // A build without a reachable database should still succeed. Returning an
-    // empty list means every article renders on demand, which is exactly the
-    // behaviour before this function existed.
-    return [];
-  }
-}
+
 
 export default async function ArticlePage({ params }: Props) {
   const { slug } = await params;
-  const article = await db.article.findUnique({ 
-    where: { 
-      slug, 
-      status: "PUBLISHED",
-    }, 
-    include: { category: { include: { parent: true } }, authorModel: true, tags: true } 
+  const [article] = await db.query.article.findMany({ 
+    where: and(eq(articleTable.slug, slug), eq(articleTable.status, "PUBLISHED")),
+    limit: 1,
+    columns: {
+      id: true, slug: true, title: true, deck: true, img: true, author: true, role: true, views: true, 
+      status: true, createdAt: true, publishedAt: true, updatedAt: true, categoryId: true, contentUrl: true
+    },
+    with: { category: { with: { parent: true } }, authorModel: true, tags: { with: { tag: true } } } 
   });
   
   if (!article) {
-    const historicalArticle = await db.article.findFirst({
-      where: { previousSlugs: { has: slug }, status: "PUBLISHED" }
+    const [historicalArticle] = await db.query.article.findMany({
+      where: and(sql`${slug} = ANY(${articleTable.previousSlugs})`, eq(articleTable.status, "PUBLISHED")),
+      limit: 1
     });
     if (historicalArticle) {
       redirect(`/article/${historicalArticle.slug}`);
@@ -132,35 +120,37 @@ export default async function ArticlePage({ params }: Props) {
     if (Array.isArray(parsed)) socials = parsed.filter(s => s.url?.trim());
   } catch { socials = []; }
 
+  // Fetch actual content from R2
+  const r2Content = await fetchFromR2(article.contentUrl);
+  const articleHtml = typeof r2Content === "object" ? r2Content?.html : r2Content || "<p>Content could not be loaded.</p>";
+
   // Related articles
-  let relatedDb = await db.article.findMany({
-    where: {
-      tags: { some: { id: { in: article.tags.map(t => t.id) } } },
-      id: { not: article.id },
-      status: "PUBLISHED"
-    },
-    orderBy: { publishedAt: "desc" },
-    take: 3,
-    select: ARTICLE_CARD_SELECT,
-  });
+  let relatedDb = article.tags && article.tags.length > 0 ? await db.query.article.findMany({
+    where: and(
+      inArray(articleTable.id, sql`(SELECT "A" FROM "_ArticleToTag" WHERE "B" IN (${sql.join(article.tags.map(t => sql`${t.B}`), sql`, `)}))`),
+      not(eq(articleTable.id, article.id)),
+      eq(articleTable.status, "PUBLISHED")
+    ),
+    orderBy: (a, { desc }) => [desc(a.publishedAt)],
+    limit: 3,
+    columns: ARTICLE_CARD_COLUMNS,
+    with: ARTICLE_CARD_WITH,
+  }) : [];
 
   const mainCatId = mainCat ? mainCat.id : article.categoryId;
 
   if (relatedDb.length < 3) {
-    const fallback = await db.article.findMany({
-      where: {
-        category: mainCatId ? {
-          OR: [
-            { id: mainCatId },
-            { parentId: mainCatId }
-          ]
-        } : undefined,
-        id: { notIn: [article.id, ...relatedDb.map(r => r.id)] },
-        status: "PUBLISHED"
-      },
-      orderBy: { publishedAt: "desc" },
-      take: 3 - relatedDb.length,
-      select: ARTICLE_CARD_SELECT,
+    const relatedIds = relatedDb.length > 0 ? relatedDb.map(r => r.id) : [];
+    const fallback = await db.query.article.findMany({
+      where: and(
+        mainCatId ? sql`${articleTable.categoryId} IN (SELECT id FROM "Category" WHERE id = ${mainCatId} OR "parentId" = ${mainCatId})` : undefined,
+        notInArray(articleTable.id, [article.id, ...relatedIds]),
+        eq(articleTable.status, "PUBLISHED")
+      ),
+      orderBy: (a, { desc }) => [desc(a.publishedAt)],
+      limit: 3 - relatedDb.length,
+      columns: ARTICLE_CARD_COLUMNS,
+      with: ARTICLE_CARD_WITH,
     });
     relatedDb = [...relatedDb, ...fallback];
   }
@@ -173,22 +163,17 @@ export default async function ArticlePage({ params }: Props) {
     alt: a.title
   }));
 
-  const discoverMoreDb = await db.article.findMany({
-    where: {
-      category: mainCatId ? {
-        NOT: {
-          OR: [
-            { id: mainCatId },
-            { parentId: mainCatId }
-          ]
-        }
-      } : undefined,
-      id: { notIn: [article.id, ...relatedDb.map(r => r.id)] },
-      status: "PUBLISHED"
-    },
-    orderBy: { publishedAt: "desc" },
-    take: 4,
-    select: ARTICLE_CARD_SELECT,
+  const relatedIdsForMore = relatedDb.length > 0 ? relatedDb.map(r => r.id) : [];
+  const discoverMoreDb = await db.query.article.findMany({
+    where: and(
+      mainCatId ? sql`${articleTable.categoryId} NOT IN (SELECT id FROM "Category" WHERE id = ${mainCatId} OR "parentId" = ${mainCatId})` : undefined,
+      notInArray(articleTable.id, [article.id, ...relatedIdsForMore]),
+      eq(articleTable.status, "PUBLISHED")
+    ),
+    orderBy: (a, { desc }) => [desc(a.publishedAt)],
+    limit: 4,
+    columns: ARTICLE_CARD_COLUMNS,
+    with: ARTICLE_CARD_WITH,
   });
 
   const discoverMore = discoverMoreDb.map(a => ({
@@ -345,14 +330,14 @@ export default async function ArticlePage({ params }: Props) {
           {/* MAIN ARTICLE BODY & FOOTER */}
           <div className="lg:col-start-2 lg:col-span-10 xl:col-start-2 xl:col-span-8 flex flex-col min-w-0">
             <div className="prose min-w-0 max-w-none w-full" id="prose" itemProp="articleBody">
-              <ArticleBody html={article.contentHtml} />
+              <ArticleBody html={articleHtml} />
             </div>
 
             <div className="art-foot mt-12 pt-8 border-t border-[var(--line)]">
         <div className="tag-row">
           {(article.tags || []).map(t => (
-            <Link key={t.id} className="chip" href={`/tag/${t.slug}`}>
-              {t.name}
+            <Link key={t.B} className="chip" href={`/tag/${t.tag.slug}`}>
+              {t.tag.name}
             </Link>
           ))}
         </div>

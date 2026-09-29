@@ -20,7 +20,7 @@ import {
   Plus,
 } from "lucide-react";
 import { updateProfile } from "@/app/actions/profile";
-import { uploadAvatar } from "@/app/actions/upload-avatar";
+
 import { showToast } from "@/lib/utils";
 import { useEditor, EditorContent } from "@tiptap/react";
 import { EditorToolbar } from "@/components/editorial/EditorToolbar";
@@ -241,7 +241,11 @@ export default function ProfileForm({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const uploadRes = await uploadAvatar(formData);
+      const fetchRes = await fetch("/api/upload/avatar", {
+        method: "POST",
+        body: formData,
+      });
+      const uploadRes = await fetchRes.json();
       if (!uploadRes.ok || !uploadRes.url) {
         showToast(uploadRes.error || "Failed to upload avatar");
         setAvatarError(true);
@@ -683,11 +687,26 @@ export default function ProfileForm({
             ))}
           </div>
           <input
-              type="text"
+            type="text"
             value={beatInput}
-            onChange={(e) => setBeatInput(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val.includes(",")) {
+                const newBeats = val
+                  .split(",")
+                  .map((b) => b.trim())
+                  .filter((b) => b.length > 0 && !expertise.includes(b));
+                if (newBeats.length > 0) {
+                  setExpertise([...expertise, ...newBeats]);
+                }
+                setBeatInput("");
+              } else {
+                setBeatInput(val);
+              }
+            }}
             onKeyDown={addBeat}
-            placeholder="Type a beat (e.g. AI, Cybersecurity) and press Enter or comma..." className="max-w-full w-full max-w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
+            placeholder="Type a beat (e.g. AI, Cybersecurity) and press Enter or comma..."
+            className="w-full bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors placeholder:text-[var(--muted)]/50"
           />
         </div>
 

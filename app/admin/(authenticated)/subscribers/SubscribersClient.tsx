@@ -43,7 +43,7 @@ export default function SubscribersClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [searchQuery, setSearchQuery] = useState(searchParams.get("query") || "");
+  const [searchQuery, setSearchQuery] = useState(searchParams?.get("query") || "");
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   // Broadcast state
@@ -58,7 +58,7 @@ export default function SubscribersClient({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams((searchParams?.toString() || ""));
     if (searchQuery) {
       params.set("query", searchQuery);
     } else {

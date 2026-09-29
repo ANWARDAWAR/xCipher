@@ -1,9 +1,12 @@
+export const runtime = 'edge';
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { canModerateComments } from "@/lib/permissions";
-import { Role, CommentStatus } from "@prisma/client";
 import { db } from "@/lib/db";
+import { eq, or, ilike, and, sql } from "drizzle-orm";
+import { comment as commentTable } from "@/lib/db/schema";
 import CommentsQueueClient from "./CommentsQueueClient";
+import { Role, CommentStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -28,29 +31,33 @@ export default async function CommentsPage(props: {
   const limit = typeof searchParams.limit === 'string' ? parseInt(searchParams.limit, 10) : 20;
   const skip = (Math.max(1, page) - 1) * limit;
 
-  const where: any = {};
+  const filterConditions = [];
 
   if (query) {
-    where.OR = [
-      { displayName: { contains: query, mode: 'insensitive' } },
-      { body: { contains: query, mode: 'insensitive' } },
-    ];
+    filterConditions.push(
+      or(
+        ilike(commentTable.displayName, `%${query}%`),
+        ilike(commentTable.body, `%${query}%`)
+      )
+    );
   }
 
   if (tab !== 'All') {
-    if (tab === 'Pending') where.status = 'PENDING';
-    if (tab === 'Approved') where.status = 'APPROVED';
-    if (tab === 'Spam') where.status = 'SPAM';
-    if (tab === 'Trash') where.status = 'REJECTED';
+    if (tab === 'Pending') filterConditions.push(eq(commentTable.status, 'PENDING'));
+    if (tab === 'Approved') filterConditions.push(eq(commentTable.status, 'APPROVED'));
+    if (tab === 'Spam') filterConditions.push(eq(commentTable.status, 'SPAM'));
+    if (tab === 'Trash') filterConditions.push(eq(commentTable.status, 'REJECTED'));
   }
 
-  const [comments, totalComments, counts] = await Promise.all([
-    db.comment.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: limit,
-      select: {
+  const whereClause = filterConditions.length > 0 ? and(...filterConditions) : undefined;
+
+  const [comments, countResult, counts] = await Promise.all([
+    db.query.comment.findMany({
+      where: whereClause,
+      orderBy: (c, { desc }) => [desc(c.createdAt)],
+      offset: skip,
+      limit: limit,
+      columns: {
         id: true,
         articleSlug: true,
         displayName: true,
@@ -59,15 +66,17 @@ export default async function CommentsPage(props: {
         ipHash: true,
         createdAt: true,
         moderatorNote: true,
-        moderator: { select: { name: true } },
       },
+      with: {
+        moderator: { columns: { name: true } },
+      }
     }),
-    db.comment.count({ where }),
-    db.comment.groupBy({
-      by: ['status'],
-      _count: true,
-    })
+    db.select({ count: sql`count(*)`.mapWith(Number) }).from(commentTable).where(whereClause),
+    db.select({ status: commentTable.status, _count: sql`count(*)`.mapWith(Number) })
+      .from(commentTable)
+      .groupBy(commentTable.status)
   ]);
+  const totalComments = countResult[0]?.count || 0;
 
   const stats = {
     total: 0,
@@ -78,11 +87,12 @@ export default async function CommentsPage(props: {
   };
 
   counts.forEach((c) => {
-    stats.total += c._count;
-    if (c.status === 'PENDING') stats.pending = c._count;
-    if (c.status === 'APPROVED') stats.approved = c._count;
-    if (c.status === 'SPAM') stats.spam = c._count;
-    if (c.status === 'REJECTED') stats.rejected = c._count;
+    const statusCount = Number(c._count);
+    stats.total += statusCount;
+    if (c.status === 'PENDING') stats.pending = statusCount;
+    if (c.status === 'APPROVED') stats.approved = statusCount;
+    if (c.status === 'SPAM') stats.spam = statusCount;
+    if (c.status === 'REJECTED') stats.rejected = statusCount;
   });
 
   const formattedComments = comments.map(c => ({

@@ -1,10 +1,13 @@
+export const runtime = 'edge';
 import { redirect } from "next/navigation";
 import ArticleEditor from "@/components/editorial/ArticleEditor";
 import { getCurrentUser } from "@/lib/auth";
 import { authorize } from "@/lib/capabilities";
 import { db } from "@/lib/db";
 import { getCategories, getTags } from "@/app/actions/taxonomy";
-import { Role } from "@prisma/client";
+import { eq } from "drizzle-orm";
+import { user as userTable } from "@/lib/db/schema";
+import { Role } from "@/lib/types";
 
 export default async function NewStoryPage() {
   const user = await getCurrentUser();
@@ -19,9 +22,9 @@ export default async function NewStoryPage() {
   }
 
   const dbUser = user?.id
-    ? await db.user.findUnique({
-        where: { id: user.id },
-        include: { authorProfile: true },
+    ? await db.query.user.findFirst({
+        where: eq(userTable.id, user.id),
+        with: { authorProfile: true },
       })
     : null;
 
