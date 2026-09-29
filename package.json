@@ -10,7 +10,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "pages:build": "rm -rf .next && npx @cloudflare/next-on-pages 2>&1 || true && rm -rf .vercel/output/functions/_global-error.func && npx @cloudflare/next-on-pages --skip-build"
+    "pages:build": "rm -rf .next && VERCEL_ORG_ID=dummy VERCEL_PROJECT_ID=dummy npx vercel build --yes && rm -rf .vercel/output/functions/_global-error.func && npx @cloudflare/next-on-pages --skip-build"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",
