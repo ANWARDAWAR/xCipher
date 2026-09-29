@@ -10,7 +10,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "pages:build": "rm -rf .next && node scripts/patch-next-on-pages.js && npx @cloudflare/next-on-pages --disable-worker-minification"
+    "pages:build": "rm -rf .next && node scripts/patch-next-on-pages.js && npx @cloudflare/next-on-pages --disable-worker-minification && touch .vercel/output/static/.assetsignore"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",
