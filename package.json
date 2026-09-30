@@ -4,13 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:edge": "npm run pages:build && npx wrangler pages dev .vercel/output/static",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "pages:build": "rm -rf .next && node scripts/patch-next-on-pages.js && npx @cloudflare/next-on-pages && echo '_worker.js' > .vercel/output/static/.assetsignore",
     "build:worker": "opennextjs-cloudflare build",
     "deploy:worker": "opennextjs-cloudflare build && wrangler deploy"
   },
@@ -72,7 +70,6 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
-    "@cloudflare/next-on-pages": "^1.13.16",
     "@cloudflare/workers-types": "^5.20260927.1",
     "@tailwindcss/postcss": "^4",
     "@types/mermaid": "^9.1.0",
