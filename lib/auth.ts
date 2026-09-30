@@ -142,6 +142,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
   pages: {
     signIn: "/admin/login",
   },
+  logger: {
+    error(error) {
+      // Downgrade JWTSessionError (stale cookies) to warning to avoid polluting Cloudflare logs
+      if (error?.name === "JWTSessionError") {
+        console.warn("[auth][warn] Stale or invalid JWT cookie detected. User treated as unauthenticated.");
+      } else {
+        console.error("[auth][error]", error);
+      }
+    },
+    warn(code) {
+      console.warn("[auth][warn]", code);
+    },
+    debug(code, ...message) {
+      console.debug("[auth][debug]", code, ...message);
+    }
+  },
   };
 });
 
