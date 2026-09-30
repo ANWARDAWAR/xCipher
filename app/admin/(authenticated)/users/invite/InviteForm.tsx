@@ -19,7 +19,11 @@ export default function InviteForm() {
     const res = await inviteUser(formData);
 
     if (res.success && res.inviteUrl) {
-      showToast("Invitation generated successfully!");
+      if (res.warning) {
+        showToast("Warning: " + res.warning);
+      } else {
+        showToast("Invitation generated and email sent successfully!");
+      }
       setSuccessLink(res.inviteUrl);
       router.refresh();
     } else {
