@@ -10,7 +10,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "pages:build": "rm -rf .next && node scripts/patch-next-on-pages.js && npx @cloudflare/next-on-pages --disable-worker-minification && touch .vercel/output/static/.assetsignore"
+    "pages:build": "rm -rf .next && node scripts/patch-next-on-pages.js && npx @cloudflare/next-on-pages && echo '_worker.js' > .vercel/output/static/.assetsignore",
+    "build:worker": "opennextjs-cloudflare build",
+    "deploy:worker": "opennextjs-cloudflare build && wrangler deploy"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",
@@ -20,6 +22,7 @@
     "@neon/env": "^1.4.7",
     "@neondatabase/serverless": "^1.1.0",
     "@next-auth/prisma-adapter": "^1.0.7",
+    "@opennextjs/cloudflare": "^1.20.7",
     "@tiptap/extension-character-count": "^3.31.3",
     "@tiptap/extension-code-block-lowlight": "^3.31.3",
     "@tiptap/extension-heading": "^3.31.3",
