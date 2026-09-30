@@ -37,7 +37,11 @@ export async function requestPasswordReset(email: string): Promise<{ success?: s
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
       const resetUrl = `${baseUrl}/admin/reset-password?token=${token}`;
 
-      await sendPasswordResetEmail({ to: email, resetUrl });
+      const emailResult = await sendPasswordResetEmail({ to: email, resetUrl });
+      
+      if (!emailResult.success) {
+        return { error: "Failed to dispatch password reset email. Please contact support or check server configuration." };
+      }
 
       await db.insert(auditLog).values({
         id: crypto.randomUUID(),

@@ -94,8 +94,8 @@ export async function subscribeNewsletter(
           </div>
         `,
       });
-    } catch (emailError) {
-      console.error("[newsletter] Welcome email send failed:", emailError);
+    } catch (emailError: any) {
+      console.error(`[newsletter] Welcome email send failed for ${normalizedEmail}:`, emailError.message || emailError);
       // Fail silently for the user so they are still subscribed in the DB
     }
 
