@@ -13,7 +13,7 @@ import { verifyPassword } from "@/lib/crypto";
 export const { handlers, auth, signIn, signOut } = NextAuth(() => {
   const env = process.env;
   const secureCookies = env.NODE_ENV === "production" &&
-    !(env.NEXTAUTH_URL?.includes("localhost") || env.AUTH_URL?.includes("localhost"));
+    !(env.NEXTAUTH_URL?.includes("localhost") || env.AUTH_URL?.includes("localhost") || env.NEXT_PUBLIC_SITE_URL?.includes("localhost"));
 
   return {
   trustHost: true,

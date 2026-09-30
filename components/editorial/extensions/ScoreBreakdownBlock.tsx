@@ -12,10 +12,10 @@ declare module '@tiptap/core' {
 }
 
 const DEFAULT_SCORES = [
-  { category: 'Design', score: 8 },
-  { category: 'Performance', score: 9 },
-  { category: 'Battery', score: 7 },
-  { category: 'Value', score: 8 }
+  { label: 'Design', score: 8 },
+  { label: 'Performance', score: 9 },
+  { label: 'Battery', score: 7 },
+  { label: 'Value', score: 8 }
 ];
 
 export const ScoreBreakdownBlock = Node.create({
@@ -25,18 +25,18 @@ export const ScoreBreakdownBlock = Node.create({
 
   addAttributes() {
     return {
-      scores: {
+      categories: {
         default: JSON.stringify(DEFAULT_SCORES),
-        parseHTML: (element) => element.getAttribute('data-scores'),
+        parseHTML: (element) => element.getAttribute('data-categories'),
         renderHTML: (attributes) => ({
-          'data-scores': attributes.scores,
+          'data-categories': attributes.categories,
         }),
       },
-      totalScore: {
+      overallScore: {
         default: 8,
-        parseHTML: (element) => Number(element.getAttribute('data-total-score')),
+        parseHTML: (element) => Number(element.getAttribute('data-overall-score')),
         renderHTML: (attributes) => ({
-          'data-total-score': attributes.totalScore,
+          'data-overall-score': attributes.overallScore,
         }),
       }
     };
@@ -66,8 +66,8 @@ export const ScoreBreakdownBlock = Node.create({
 });
 
 function ScoreBreakdownNodeView({ node, updateAttributes }: any) {
-  const scores = JSON.parse(node.attrs.scores || '[]');
-  const totalScore = node.attrs.totalScore || 0;
+  const categories = JSON.parse(node.attrs.categories || '[]');
+  const overallScore = node.attrs.overallScore || 0;
   
   const [newCat, setNewCat] = useState('');
   const [newScore, setNewScore] = useState(5);
@@ -81,10 +81,10 @@ function ScoreBreakdownNodeView({ node, updateAttributes }: any) {
 
   const addCategory = () => {
     if (newCat.trim()) {
-      const next = [...scores, { category: newCat.trim(), score: Number(newScore) }];
+      const next = [...categories, { label: newCat.trim(), score: Number(newScore) }];
       updateAttributes({ 
-        scores: JSON.stringify(next),
-        totalScore: calculateTotal(next)
+        categories: JSON.stringify(next),
+        overallScore: calculateTotal(next)
       });
       setNewCat('');
       setNewScore(5);
@@ -92,27 +92,27 @@ function ScoreBreakdownNodeView({ node, updateAttributes }: any) {
   };
 
   const removeCategory = (index: number) => {
-    const next = [...scores];
+    const next = [...categories];
     next.splice(index, 1);
     updateAttributes({ 
-      scores: JSON.stringify(next),
-      totalScore: calculateTotal(next)
+      categories: JSON.stringify(next),
+      overallScore: calculateTotal(next)
     });
   };
 
   const updateScore = (index: number, val: number) => {
-    const next = [...scores];
+    const next = [...categories];
     next[index].score = val;
     updateAttributes({ 
-      scores: JSON.stringify(next),
-      totalScore: calculateTotal(next)
+      categories: JSON.stringify(next),
+      overallScore: calculateTotal(next)
     });
   };
 
   const updateCategoryName = (index: number, val: string) => {
-    const next = [...scores];
-    next[index].category = val;
-    updateAttributes({ scores: JSON.stringify(next) });
+    const next = [...categories];
+    next[index].label = val;
+    updateAttributes({ categories: JSON.stringify(next) });
   };
 
   return (
@@ -125,18 +125,18 @@ function ScoreBreakdownNodeView({ node, updateAttributes }: any) {
         <div className="flex items-center gap-2">
           <span className="text-[var(--muted)] text-xs">Overall Score</span>
           <span className="bg-[var(--accent)] text-white px-2.5 py-0.5 rounded-full text-sm font-bold">
-            {totalScore.toFixed(1)}
+            {overallScore.toFixed(1)}
           </span>
         </div>
       </div>
       
       <div className="p-4 flex flex-col gap-4">
-        {scores.map((item: any, i: number) => (
+        {categories.map((item: any, i: number) => (
           <div key={i} className="flex items-center gap-4 bg-[var(--surface)] p-3 rounded-md border border-[var(--line)]">
             <div className="w-1/3">
               <input 
                 type="text" 
-                value={item.category} 
+                value={item.label} 
                 onChange={(e) => updateCategoryName(i, e.target.value)}
                 className="w-full bg-transparent text-[var(--ink)] font-medium focus:outline-none"
               />

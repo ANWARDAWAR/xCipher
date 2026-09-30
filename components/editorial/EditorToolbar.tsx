@@ -5,7 +5,8 @@ import {
   Strikethrough, Code, List, ListOrdered, Quote, ImagePlus, Link2,
   FileCode, Minus, Maximize2, RemoveFormatting, MonitorPlay, Table as TableIcon,
   AlignLeft, AlignCenter, AlignRight, Subscript as SubscriptIcon, Superscript as SuperscriptIcon,
-  Lightbulb, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, ScatterChart as ScatterChartIcon, Workflow
+  Lightbulb, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, ScatterChart as ScatterChartIcon, Workflow,
+  ListChecks, ClipboardList, Star
 } from 'lucide-react';
 import { InsertMediaDialog, type MediaKind } from './InsertMediaDialog';
 
@@ -76,6 +77,50 @@ function ChartDropdown({ editor }: { editor: Editor }) {
           <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().convertSelectionToChart('line').run(); setIsOpen(false); }}><LineChartIcon className="w-4 h-4"/> Line Chart</button>
           <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().convertSelectionToChart('pie').run(); setIsOpen(false); }}><PieChartIcon className="w-4 h-4"/> Pie Chart</button>
           <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().convertSelectionToChart('scatter').run(); setIsOpen(false); }}><ScatterChartIcon className="w-4 h-4"/> Scatter Chart</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InsertBlocksDropdown({ editor }: { editor: Editor }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => setIsOpen(!isOpen)}
+        title="Insert blocks"
+        className="px-3 h-11 md:h-8 shrink-0 flex items-center justify-center gap-1 rounded-lg transition-colors text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] text-sm font-medium"
+      >
+        Insert <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-1 bg-[var(--surface)] border border-[var(--line)] shadow-lg rounded-md p-1 flex flex-col z-[100] w-[200px]">
+          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().insertProsCons().run(); setIsOpen(false); }}>
+            <ListChecks className="w-4 h-4"/> Pros & Cons
+          </button>
+          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().insertSpecSheet().run(); setIsOpen(false); }}>
+            <ClipboardList className="w-4 h-4"/> Spec Sheet
+          </button>
+          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().insertScoreBreakdown().run(); setIsOpen(false); }}>
+            <Star className="w-4 h-4"/> Score Breakdown
+          </button>
+          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { 
+            editor.chain().focus().insertContent({
+              type: 'callout',
+              attrs: { type: 'takeaway' },
+              content: [
+                { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: 'Key Takeaways' }] },
+                { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph' }] }] }
+              ]
+            }).run();
+            setIsOpen(false);
+          }}>
+            <Lightbulb className="w-4 h-4"/> Key Takeaways
+          </button>
         </div>
       )}
     </div>
@@ -259,32 +304,7 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
         isActive={editor.isActive('blockquote')}
         title="Blockquote"
       />
-      <ToolbarButton
-        icon={Lightbulb}
-        onClick={() => {
-          editor.chain().focus().insertContent({
-            type: 'callout',
-            attrs: { type: 'takeaway' },
-            content: [
-              {
-                type: 'heading',
-                attrs: { level: 3 },
-                content: [{ type: 'text', text: 'Key Takeaways' }]
-              },
-              {
-                type: 'bulletList',
-                content: [
-                  {
-                    type: 'listItem',
-                    content: [{ type: 'paragraph' }]
-                  }
-                ]
-              }
-            ]
-          }).run()
-        }}
-        title="Key Takeaways"
-      />
+      <InsertBlocksDropdown editor={editor} />
 
       <span className="hidden sm:contents">
         <Divider />

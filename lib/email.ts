@@ -144,7 +144,7 @@ export async function sendNotificationEmail({
     return { success: false, skipped: true as const, error: "RESEND_API_KEY is not set" };
   }
 
-  const base = process.env.NEXTAUTH_URL || "";
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "";
   const absoluteLink = link && base ? `${base}${link}` : null;
   const safeMessage = escapeHtml(message);
   const greeting = recipientName ? `Hello ${escapeHtml(recipientName)},` : "Hello,";

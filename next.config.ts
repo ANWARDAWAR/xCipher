@@ -70,11 +70,7 @@ const nextConfig: any = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  env: {
-    // Provide a fallback NEXTAUTH_URL during Vercel build when it might be missing,
-    // preventing "TypeError: Invalid URL" from next-auth during static prerendering.
-    NEXTAUTH_URL: process.env.NEXTAUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'),
-  },
+  // env block removed because Auth.js infers host dynamically via trustHost
   allowedDevOrigins: localNetworkOrigins(),
   async headers() {
     return [

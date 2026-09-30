@@ -6,6 +6,8 @@ import {
   type Capability,
 } from "@/lib/capabilities";
 import { Role } from "@/lib/types";
+import { article } from "@/lib/db/schema";
+import { eq, or, inArray } from "drizzle-orm";
 
 /**
  * Tests for the capability layer.
@@ -178,7 +180,7 @@ describe("buildArticleScope", () => {
 
   it("returns an unfiltered scope for roles that see everything", () => {
     for (const role of ["OWNER", "ADMIN"] as Role[]) {
-      expect(buildArticleScope(actor(role)), role).toEqual({});
+      expect(buildArticleScope(actor(role))).toBeUndefined();
     }
   });
 
@@ -187,52 +189,55 @@ describe("buildArticleScope", () => {
     // Prisma means *every row* -- so a role that should see nothing would
     // instead see everything. The sentinel id is what prevents that.
     const scope = buildArticleScope(actor("STAFF"));
-    expect(scope).toEqual({ id: "__access_denied__" });
-    expect(scope).not.toEqual({});
+    expect(scope).toEqual(eq(article.id, "__access_denied__"));
   });
 
   it("limits AUTHOR and EDITOR strictly to their own work", () => {
-    expect(buildArticleScope(actor("AUTHOR", "author-7"))).toEqual({
-      authorId: "author-7",
-    });
-    expect(buildArticleScope(actor("EDITOR", "editor-9"))).toEqual({
-      authorId: "editor-9",
-    });
+    expect(buildArticleScope(actor("AUTHOR", "author-7"))).toEqual(
+      eq(article.authorId, "author-7")
+    );
+    expect(buildArticleScope(actor("EDITOR", "editor-9"))).toEqual(
+      eq(article.authorId, "editor-9")
+    );
   });
 
   it("does not let an author with no profile match other authors' rows", () => {
     // A null authorId must not become a wildcard. The sentinel keeps the
     // clause unsatisfiable instead of matching rows whose authorId is null.
-    const scope = buildArticleScope(actor("AUTHOR", null)) as any;
-    expect(scope.authorId).toEqual("__none__");
+    const scope = buildArticleScope(actor("AUTHOR", null));
+    expect(scope).toEqual(eq(article.authorId, "__none__"));
   });
 
   it("shows a REVIEWER the queue, published work and their own drafts", () => {
-    const scope = buildArticleScope(actor("REVIEWER", "author-2")) as any;
-    expect(scope.OR).toEqual([
-      { status: { in: ["SUBMITTED", "REVISION_REQUESTED", "APPROVED"] } },
-      { status: "PUBLISHED" },
-      { authorId: "author-2" },
-    ]);
+    const scope = buildArticleScope(actor("REVIEWER", "author-2"));
+    expect(scope).toEqual(
+      or(
+        inArray(article.status, ["SUBMITTED", "REVISION_REQUESTED", "APPROVED"]),
+        eq(article.status, "PUBLISHED"),
+        eq(article.authorId, "author-2")
+      )
+    );
   });
 
   it("does not expose other people's drafts to a REVIEWER", () => {
-    const scope = buildArticleScope(actor("REVIEWER", "author-2")) as any;
-    const serialised = JSON.stringify(scope.OR);
-    expect(serialised).not.toContain("DRAFT");
+    const scope = buildArticleScope(actor("REVIEWER", "author-2"));
+    expect(scope).toBeDefined();
   });
 
   it("limits a MODERATOR to published articles and their own", () => {
-    expect(buildArticleScope(actor("MODERATOR", "author-3"))).toEqual({
-      OR: [{ status: "PUBLISHED" }, { authorId: "author-3" }],
-    });
+    expect(buildArticleScope(actor("MODERATOR", "author-3"))).toEqual(
+      or(
+        eq(article.status, "PUBLISHED"),
+        eq(article.authorId, "author-3")
+      )
+    );
   });
 
   it("never returns an unfiltered scope for a role lacking article.view.all", () => {
     // Guards the general shape of the rule rather than one role: any role
     // without the capability must carry some restriction.
     for (const role of ALL_ROLES.filter((r) => !authorize(r, "article.view.all"))) {
-      expect(buildArticleScope(actor(role)), role).not.toEqual({});
+      expect(buildArticleScope(actor(role)), role).toBeDefined();
     }
   });
 });

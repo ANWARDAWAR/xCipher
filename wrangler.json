@@ -20,7 +20,6 @@
 		"CLOUDINARY_CLOUD_NAME": "pxbkyfib",
 		"EMAIL_FROM_ADDRESS": "editor@xsypher.com",
 		"NEON_BRANCH": "production",
-		"NEXTAUTH_URL": "https://admin.xsypher.com",
 		"NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME": "pxbkyfib",
 		"NEXT_PUBLIC_R2_PUBLIC_BASE": "https://pub-cb79a088effc4ad3a3636de153e20b63.r2.dev",
 		"NEXT_PUBLIC_SITE_URL": "https://xsypher.com",

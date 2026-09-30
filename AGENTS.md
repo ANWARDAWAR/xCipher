@@ -57,6 +57,9 @@ Do NOT manually compare role strings (e.g., `if (user.role === 'ADMIN')`) when e
 - **Client-Only Loading for Heavy Libraries:** Large packages like `mermaid`, `@tiptap/*`, `highlight.js`, and `recharts` must NEVER be statically imported in server components. Always use `next/dynamic(..., { ssr: false })` or runtime `await import(...)` inside browser-only effects (`useEffect`).
 - **Static Assets:** Static informational pages and assets are pre-rendered and served directly from Cloudflare Assets (`.open-next/assets`), keeping worker invocation overhead minimal.
 
+### G. TipTap Extension Data Persistence (CRITICAL)
+Whenever you create or modify a custom TipTap Node extension that stores its state in `data-*` attributes via `renderHTML` (e.g., `data-pros`, `data-categories`), you **MUST** immediately add those exact attribute names to the `COMMON_ALLOWED_ATTRIBUTES` whitelist in `lib/sanitize.ts`. Failure to do so will result in `DOMPurify` silently stripping the data during the save process, causing the public article page to render empty components.
+
 ## 3. Code Quality & TypeScript
 - **No Regex Replacements:** Never use Python scripts or blind Regex to refactor code. Use native AST transformations or manually edit code safely to prevent broken syntax and dangling imports.
 - **Strict Typing:** Resolve all TypeScript errors properly. Do not use implicit `any`. Define proper interfaces for Drizzle query results when passing them to components.

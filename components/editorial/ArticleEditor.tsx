@@ -515,7 +515,7 @@ export default function ArticleEditor({
       // Cache locally on every change, even while a save is in flight or a
       // conflict is unresolved. This is the copy that survives a crash, so it
       // must keep pace with the keystrokes rather than with the server.
-      cacheDraft(getValues() as Record<string, unknown>, editor?.getHTML() || "");
+      cacheDraft(getValues() as Record<string, unknown>, editor?.getHTML() || "", editor?.getJSON() ? JSON.parse(JSON.stringify(editor.getJSON())) : null);
 
       // Don't autosave if the change is programmatic or if we are actively submitting a transition
       if (isPending || autosaveStatus === "conflict") return;
@@ -628,7 +628,10 @@ export default function ArticleEditor({
     // otherwise react-hook-form would treat it as dirty against the old values
     // and the beforeunload guard would fire on a form the user just restored.
     reset(values as ArticleFormValues);
-    if (recoveredDraft.bodyHtml) {
+    if (recoveredDraft.bodyJson) {
+      editor?.commands.setContent(recoveredDraft.bodyJson);
+      setValue("bodyHtml", recoveredDraft.bodyHtml, { shouldDirty: false });
+    } else if (recoveredDraft.bodyHtml) {
       editor?.commands.setContent(recoveredDraft.bodyHtml);
       setValue("bodyHtml", recoveredDraft.bodyHtml, { shouldDirty: false });
     }

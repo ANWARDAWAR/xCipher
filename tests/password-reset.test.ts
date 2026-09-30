@@ -2,14 +2,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { resetPassword } from "../app/actions/password-reset";
 import { db } from "../lib/db";
 
-const mockLimit = vi.fn();
-const mockWhere = vi.fn(() => ({ limit: mockLimit }));
-const mockFrom = vi.fn(() => ({ where: mockWhere }));
-const mockSelect = vi.fn(() => ({ from: mockFrom }));
-const mockTx = {
-  update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn() })) })),
-  insert: vi.fn(() => ({ values: vi.fn() })),
-};
+const { mockLimit, mockWhere, mockFrom, mockSelect, mockTx } = vi.hoisted(() => {
+  const mockLimit = vi.fn();
+  const mockWhere = vi.fn(() => ({ limit: mockLimit }));
+  const mockFrom = vi.fn(() => ({ where: mockWhere }));
+  const mockSelect = vi.fn(() => ({ from: mockFrom }));
+  const mockTx = {
+    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn() })) })),
+    insert: vi.fn(() => ({ values: vi.fn() })),
+  };
+  return { mockLimit, mockWhere, mockFrom, mockSelect, mockTx };
+});
 
 vi.mock("../lib/db", () => ({
   db: {
@@ -90,7 +93,7 @@ describe("Password Reset Logic", () => {
 
       const result = await resetPassword("sometoken", "validpassword123");
       expect(result.success).toBe(true);
-      expect(db.transaction).toHaveBeenCalled();
+      expect(db.update).toHaveBeenCalled();
     });
   });
 });

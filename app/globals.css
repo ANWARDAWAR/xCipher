@@ -7076,13 +7076,45 @@ body.is-article .prose code {
 .prose table thead th {
     background-color: var(--surface-2) !important;
     font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.06em !important;
+    letter-spacing: 0.04em !important;
     font-family: var(--f-ui, sans-serif) !important;
-    font-size: 0.75rem !important;
+    font-size: 0.8125rem !important;
 }
 
-/* 4. Mobile Responsive Tables */
+/* 4a. First column shading (GSMArena-style) — light mode */
+.prose table tbody td:first-child,
+.tiptap-content table tbody td:first-child {
+    background-color: rgba(0, 0, 0, 0.025) !important;
+    font-weight: 500 !important;
+}
+
+/* 4a. First column shading — dark mode */
+:is(.dark, [data-theme="dark"]) .prose table tbody td:first-child,
+:is(.dark, [data-theme="dark"]) .tiptap-content table tbody td:first-child {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* 4b. Header row shading — light mode */
+.prose table thead tr,
+.tiptap-content table thead tr {
+    background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* 4b. Header row shading — dark mode */
+:is(.dark, [data-theme="dark"]) .prose table thead tr,
+:is(.dark, [data-theme="dark"]) .tiptap-content table thead tr {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* 4c. Dynamic padding — auto-adjust to content density */
+.prose table th,
+.prose table td,
+.tiptap-content table th,
+.tiptap-content table td {
+    padding: 0.625rem 1rem !important;
+}
+
+/* 5. Mobile Responsive Tables */
 @media (max-width: 640px) {
     .prose table, .tiptap table {
         display: block !important;

@@ -41,6 +41,7 @@ export interface CachedDraft {
   savedAt: string;
   values: Record<string, unknown>;
   bodyHtml: string;
+  bodyJson?: Record<string, any> | null;
 }
 
 /**
@@ -134,7 +135,7 @@ export function useDraftCache({ articleId, enabled = true }: UseDraftCacheOption
   const pendingRef = useRef<number | null>(null);
 
   const write = useCallback(
-    (values: Record<string, unknown>, bodyHtml: string) => {
+    (values: Record<string, unknown>, bodyHtml: string, bodyJson?: Record<string, any> | null) => {
       if (typeof window === "undefined") return;
 
       const payload: CachedDraft = {
@@ -143,6 +144,7 @@ export function useDraftCache({ articleId, enabled = true }: UseDraftCacheOption
         savedAt: new Date().toISOString(),
         values,
         bodyHtml,
+        bodyJson,
       };
 
       try {
@@ -161,13 +163,13 @@ export function useDraftCache({ articleId, enabled = true }: UseDraftCacheOption
    * enough main-thread work to be felt while typing.
    */
   const cache = useCallback(
-    (values: Record<string, unknown>, bodyHtml: string) => {
+    (values: Record<string, unknown>, bodyHtml: string, bodyJson?: Record<string, any> | null) => {
       const now = Date.now();
       const elapsed = now - lastWriteRef.current;
 
       if (elapsed >= 1000) {
         lastWriteRef.current = now;
-        write(values, bodyHtml);
+        write(values, bodyHtml, bodyJson);
         return;
       }
 
@@ -177,7 +179,7 @@ export function useDraftCache({ articleId, enabled = true }: UseDraftCacheOption
       pendingRef.current = window.setTimeout(() => {
         lastWriteRef.current = Date.now();
         pendingRef.current = null;
-        write(values, bodyHtml);
+        write(values, bodyHtml, bodyJson);
       }, 1000 - elapsed);
     },
     [write]

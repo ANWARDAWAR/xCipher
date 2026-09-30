@@ -134,22 +134,31 @@ export default function ArticleBody({ html }: Props) {
         }
 
         if (domNode.attribs['data-type'] === 'spec-sheet-block') {
-          const specsAttr = domNode.attribs['data-specs'];
+          const itemsAttr = domNode.attribs['data-items'] || domNode.attribs['data-specs'];
           try {
-            const specs = specsAttr ? JSON.parse(specsAttr) : [];
-            return <SpecSheetViewer specs={specs} />;
+            const rawItems = itemsAttr ? JSON.parse(itemsAttr) : [];
+            const items = rawItems.map((item: any) => ({
+              category: item.category || '',
+              key: item.key || item.label || '',
+              value: item.value || '',
+            }));
+            return <SpecSheetViewer items={items} />;
           } catch (e) {
-            console.error("Failed to parse specs", e);
+            console.error("Failed to parse spec sheet", e);
           }
         }
 
         if (domNode.attribs['data-type'] === 'score-breakdown-block') {
-          const scoresAttr = domNode.attribs['data-scores'];
-          const totalScoreAttr = domNode.attribs['data-total-score'];
+          const categoriesAttr = domNode.attribs['data-categories'] || domNode.attribs['data-scores'];
+          const overallScoreAttr = domNode.attribs['data-overall-score'] || domNode.attribs['data-total-score'];
           try {
-            const scores = scoresAttr ? JSON.parse(scoresAttr) : [];
-            const totalScore = totalScoreAttr ? Number(totalScoreAttr) : 0;
-            return <ScoreBreakdownViewer scores={scores} totalScore={totalScore} />;
+            const rawCategories = categoriesAttr ? JSON.parse(categoriesAttr) : [];
+            const categories = rawCategories.map((c: any) => ({
+              label: c.label || c.name || '',
+              score: typeof c.score === 'number' ? c.score : Number(c.score || 0),
+            }));
+            const overallScore = overallScoreAttr ? Number(overallScoreAttr) : 0;
+            return <ScoreBreakdownViewer categories={categories} overallScore={overallScore} />;
           } catch (e) {
             console.error("Failed to parse score breakdown", e);
           }
