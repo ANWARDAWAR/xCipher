@@ -149,16 +149,13 @@ export default function ArticleBody({ html }: Props) {
         }
 
         if (domNode.attribs['data-type'] === 'score-breakdown-block') {
-          const categoriesAttr = domNode.attribs['data-categories'] || domNode.attribs['data-scores'];
+          const itemsAttr = domNode.attribs['data-items'] || domNode.attribs['data-scores'] || domNode.attribs['data-categories'];
           const overallScoreAttr = domNode.attribs['data-overall-score'] || domNode.attribs['data-total-score'];
           try {
-            const rawCategories = categoriesAttr ? JSON.parse(categoriesAttr) : [];
-            const categories = rawCategories.map((c: any) => ({
-              label: c.label || c.name || '',
-              score: typeof c.score === 'number' ? c.score : Number(c.score || 0),
-            }));
+            const raw = itemsAttr ? JSON.parse(itemsAttr) : [];
+            const items = Array.isArray(raw) ? raw : [];
             const overallScore = overallScoreAttr ? Number(overallScoreAttr) : 0;
-            return <ScoreBreakdownViewer categories={categories} overallScore={overallScore} />;
+            return <ScoreBreakdownViewer items={items} overallScore={overallScore} />;
           } catch (e) {
             console.error("Failed to parse score breakdown", e);
           }

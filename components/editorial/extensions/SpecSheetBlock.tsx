@@ -1,12 +1,14 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 import React, { useState } from 'react';
-import { Plus, X, List } from 'lucide-react';
+import { Plus, X, List, Table } from 'lucide-react';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     specSheet: {
       insertSpecSheet: () => ReturnType;
+      convertTableToSpecSheet: () => ReturnType;
+      convertSpecSheetToTable: (pos?: number) => ReturnType;
     };
   }
 }
@@ -56,11 +58,188 @@ export const SpecSheetBlock = Node.create({
           type: this.name,
         });
       },
+
+      convertTableToSpecSheet: () => ({ state, dispatch, tr }) => {
+        const { $from } = state.selection;
+        let tableNode: any = null;
+        let tablePos = -1;
+
+        const selNode = (state.selection as any).node;
+        if (selNode && selNode.type.name === 'table') {
+          tableNode = selNode;
+          tablePos = state.selection.from;
+        } else {
+          for (let d = $from.depth; d > 0; d--) {
+            if ($from.node(d).type.name === 'table') {
+              tableNode = $from.node(d);
+              tablePos = $from.before(d);
+              break;
+            }
+          }
+        }
+
+        if (!tableNode || tablePos < 0) {
+          return false;
+        }
+
+        const items: { category: string; key: string; value: string }[] = [];
+        let currentCategory = '';
+
+        tableNode.forEach((rowNode: any) => {
+          if (rowNode.type.name !== 'tableRow') return;
+
+          const cells: string[] = [];
+          rowNode.forEach((cellNode: any) => {
+            if (cellNode.type.name === 'tableCell' || cellNode.type.name === 'tableHeader') {
+              cells.push(cellNode.textContent.trim());
+            }
+          });
+
+          if (cells.length === 0) return;
+
+          const rawCategory = cells.length >= 3 ? cells[0] : '';
+          const rawKey = cells.length >= 3 ? cells[1] : cells[0];
+          const rawValue = cells.length >= 3 ? cells[2] : (cells[1] || '');
+
+          // Skip completely empty rows
+          if (!rawCategory && !rawKey && !rawValue) return;
+
+          // Skip recognized header row (e.g. Category / Spec Name / Value)
+          const isHeaderRow =
+            (rawCategory.toLowerCase() === 'category' || rawCategory.toLowerCase() === 'group') &&
+            (rawKey.toLowerCase().includes('spec') || rawKey.toLowerCase().includes('name') || rawKey.toLowerCase() === 'key' || rawKey.toLowerCase().includes('label')) &&
+            (rawValue.toLowerCase().includes('val') || rawValue.toLowerCase().includes('detail') || rawValue.toLowerCase() === 'value');
+          if (isHeaderRow) return;
+
+          // Smart category inheritance:
+          // If Column 1 (Category) in a row is empty, inherit the category string from the previous row
+          if (rawCategory.trim() !== '') {
+            currentCategory = rawCategory.trim();
+          }
+
+          items.push({
+            category: currentCategory,
+            key: rawKey.trim(),
+            value: rawValue.trim(),
+          });
+        });
+
+        if (items.length === 0) {
+          items.push({ category: '', key: '', value: '' });
+        }
+
+        const specSheetType = state.schema.nodes.specSheetBlock;
+        if (!specSheetType) return false;
+
+        const newNode = specSheetType.create({
+          items: JSON.stringify(items),
+        });
+
+        if (dispatch) {
+          const transaction = tr.replaceWith(tablePos, tablePos + tableNode.nodeSize, newNode);
+          dispatch(transaction.scrollIntoView());
+        }
+
+        return true;
+      },
+
+      convertSpecSheetToTable: (pos?: number) => ({ state, dispatch, tr }) => {
+        let targetNode: any = null;
+        let targetPos = -1;
+
+        if (typeof pos === 'number' && pos >= 0) {
+          const nodeAtPos = state.doc.nodeAt(pos);
+          if (nodeAtPos && nodeAtPos.type.name === 'specSheetBlock') {
+            targetNode = nodeAtPos;
+            targetPos = pos;
+          }
+        }
+
+        if (!targetNode) {
+          const selNode = (state.selection as any).node;
+          if (selNode && selNode.type.name === 'specSheetBlock') {
+            targetNode = selNode;
+            targetPos = state.selection.from;
+          }
+        }
+
+        if (!targetNode) {
+          const { $from } = state.selection;
+          for (let d = $from.depth; d >= 0; d--) {
+            if ($from.node(d).type.name === 'specSheetBlock') {
+              targetNode = $from.node(d);
+              targetPos = $from.before(d);
+              break;
+            }
+          }
+        }
+
+        if (!targetNode) {
+          const { $from } = state.selection;
+          if ($from.nodeAfter && $from.nodeAfter.type.name === 'specSheetBlock') {
+            targetNode = $from.nodeAfter;
+            targetPos = $from.pos;
+          } else if ($from.nodeBefore && $from.nodeBefore.type.name === 'specSheetBlock') {
+            targetNode = $from.nodeBefore;
+            targetPos = $from.pos - $from.nodeBefore.nodeSize;
+          }
+        }
+
+        if (!targetNode || targetPos < 0) {
+          return false;
+        }
+
+        let rawItems: any[] = [];
+        try {
+          rawItems = JSON.parse(targetNode.attrs.items || '[]');
+        } catch {
+          rawItems = [];
+        }
+
+        if (!Array.isArray(rawItems) || rawItems.length === 0) {
+          rawItems = [{ category: '', key: '', value: '' }];
+        }
+
+        const { schema } = state;
+        const tableType = schema.nodes.table;
+        const tableRowType = schema.nodes.tableRow;
+        const tableCellType = schema.nodes.tableCell;
+        const pType = schema.nodes.paragraph;
+
+        if (!tableType || !tableRowType || !tableCellType || !pType) {
+          return false;
+        }
+
+        const createCell = (text: string) => {
+          const p = text ? pType.create(null, schema.text(text)) : pType.create();
+          return tableCellType.create(null, p);
+        };
+
+        const rows = rawItems.map((item: any) => {
+          const cat = item.category || '';
+          const key = item.key || item.label || '';
+          const val = item.value || '';
+          return tableRowType.create(null, [
+            createCell(cat),
+            createCell(key),
+            createCell(val),
+          ]);
+        });
+
+        const tableNode = tableType.create(null, rows);
+
+        if (dispatch) {
+          const transaction = tr.replaceWith(targetPos, targetPos + targetNode.nodeSize, tableNode);
+          dispatch(transaction.scrollIntoView());
+        }
+
+        return true;
+      },
     };
   },
 });
 
-function SpecSheetNodeView({ node, updateAttributes }: any) {
+function SpecSheetNodeView({ node, updateAttributes, editor, getPos }: any) {
   const items = JSON.parse(node.attrs.items || '[]');
   const [newCategory, setNewCategory] = useState('');
   const [newKey, setNewKey] = useState('');
@@ -108,9 +287,25 @@ function SpecSheetNodeView({ node, updateAttributes }: any) {
 
   return (
     <NodeViewWrapper className="my-4 rounded-lg border border-[var(--line)] bg-[var(--surface-2)] overflow-hidden font-sans">
-      <div className="bg-[var(--surface-3)] px-4 py-2 text-sm font-semibold text-red-600 dark:text-red-500 border-b border-[var(--line)] flex items-center gap-2">
-        <List className="w-4 h-4 text-red-500" />
-        Specifications (3-Column: Category / Spec / Value)
+      <div className="bg-[var(--surface-3)] px-4 py-2 text-sm font-semibold text-red-600 dark:text-red-500 border-b border-[var(--line)] flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <List className="w-4 h-4 text-red-500" />
+          <span>Specifications (3-Column: Category / Spec / Value)</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            const pos = typeof getPos === 'function' ? getPos() : undefined;
+            if (editor) {
+              (editor.chain().focus() as any).convertSpecSheetToTable(pos).run();
+            }
+          }}
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-[var(--ink)] bg-[var(--surface)] hover:bg-[var(--line)] border border-[var(--line)] rounded shadow-sm transition-colors cursor-pointer"
+          title="Convert to standard editable table"
+        >
+          <Table className="w-3.5 h-3.5 text-[var(--muted)]" />
+          <span>Edit as Table</span>
+        </button>
       </div>
       <div className="p-3 flex flex-col gap-2">
         {/* Column Headers */}

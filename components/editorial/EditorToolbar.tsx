@@ -354,6 +354,40 @@ export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: Editor
         isActive={editor.isActive('table')}
         title="Insert table"
       />
+      {editor.isActive('table') && (
+        <>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => (editor.chain().focus() as any).convertTableToSpecSheet().run()}
+            className="h-11 md:h-8 px-2.5 shrink-0 flex items-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+            title="Convert this 3-column table into a stylized Spec Sheet component"
+          >
+            <ClipboardList className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Convert to Spec Sheet</span>
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => (editor.chain().focus() as any).convertTableToProsCons().run()}
+            className="h-11 md:h-8 px-2.5 shrink-0 flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+            title="Convert this 2-column table into a stylized Pros & Cons component"
+          >
+            <ListChecks className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Convert to Pros & Cons</span>
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => (editor.chain().focus() as any).convertTableToScoreBreakdown().run()}
+            className="h-11 md:h-8 px-2.5 shrink-0 flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+            title="Convert this 6-column table into a Benchmark Score Breakdown"
+          >
+            <BarChart3 className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Convert to Score Breakdown</span>
+          </button>
+        </>
+      )}
       <ChartDropdown editor={editor} />
       <ToolbarButton
         icon={Link2}

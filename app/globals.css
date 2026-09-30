@@ -5762,13 +5762,14 @@ select.ed-rail-input {
     border-radius: var(--r-md);
     box-shadow: var(--shadow-2);
     padding: 3px;
-    max-width: min(94vw, 460px);
+    max-width: min(96vw, 680px);
 }
 
 .eb-row {
     display: flex;
     align-items: center;
     gap: 1px;
+    flex-wrap: wrap;
 }
 
 .eb-btn {
@@ -7079,6 +7080,30 @@ body.is-article .prose code {
     letter-spacing: 0.04em !important;
     font-family: var(--f-ui, sans-serif) !important;
     font-size: 0.8125rem !important;
+}
+
+/* 3b. Tiptap Table Cell Selection */
+.ProseMirror .selectedCell,
+.tiptap table th.selectedCell,
+.tiptap table td.selectedCell {
+    background-color: rgba(230, 0, 0, 0.15) !important;
+    position: relative;
+}
+
+:is(.dark, [data-theme="dark"]) .ProseMirror .selectedCell,
+:is(.dark, [data-theme="dark"]) .tiptap table th.selectedCell,
+:is(.dark, [data-theme="dark"]) .tiptap table td.selectedCell {
+    background-color: rgba(230, 0, 0, 0.25) !important;
+}
+
+.ProseMirror .selectedCell::after,
+.tiptap table .selectedCell::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border: 2px solid var(--accent);
+    z-index: 2;
 }
 
 /* 4a. First column shading (GSMArena-style) — light mode */

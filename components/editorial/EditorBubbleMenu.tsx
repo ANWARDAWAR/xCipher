@@ -16,7 +16,10 @@ import {
   X,
   Subscript as SubscriptIcon,
   Superscript as SuperscriptIcon,
-  ImagePlus
+  ImagePlus,
+  Trash2,
+  Rows2,
+  Columns2,
 } from "lucide-react";
 import { InsertMediaDialog } from "./InsertMediaDialog";
 
@@ -170,6 +173,7 @@ export function EditorBubbleMenu({ editor }: Props) {
         if (ed.isActive("codeBlock")) return false;
         if (ed.isActive("mermaidBlock")) return false;
         if (ed.isActive("figure")) return true;
+        if (ed.isActive("table")) return true;
         if (linkMode) return true;
         return from !== to;
       }}
@@ -225,6 +229,43 @@ export function EditorBubbleMenu({ editor }: Props) {
         </div>
       ) : (
         <div className="eb-row" role="toolbar" aria-label="Text formatting">
+          {/* Contextual Table Controls */}
+          {editor.isActive("table") && (
+            <>
+              <button
+                type="button"
+                onClick={() => editor.chain().focus().deleteTable().run()}
+                title="Delete Table"
+                aria-label="Delete Table"
+                className="eb-btn !w-auto px-2 gap-1.5 text-red-600 dark:text-red-500 hover:!bg-red-50 dark:hover:!bg-red-950/40 font-semibold text-xs transition-colors"
+              >
+                <Trash2 className="w-4 h-4 text-red-600 dark:text-red-500" aria-hidden="true" />
+                <span>Delete Table</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => editor.chain().focus().deleteRow().run()}
+                title="Delete Row"
+                aria-label="Delete Row"
+                className="eb-btn !w-auto px-1.5 gap-1 text-xs text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
+              >
+                <Rows2 className="w-3.5 h-3.5 text-[var(--muted)]" aria-hidden="true" />
+                <span>Delete Row</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => editor.chain().focus().deleteColumn().run()}
+                title="Delete Column"
+                aria-label="Delete Column"
+                className="eb-btn !w-auto px-1.5 gap-1 text-xs text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
+              >
+                <Columns2 className="w-3.5 h-3.5 text-[var(--muted)]" aria-hidden="true" />
+                <span>Delete Column</span>
+              </button>
+              <span className="eb-sep" aria-hidden="true" />
+            </>
+          )}
+
           <MarkButton
             icon={Bold}
             label="Bold"
