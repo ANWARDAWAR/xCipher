@@ -9,6 +9,7 @@ import { UserPlus, ShieldAlert } from "lucide-react";
 import UserDirectoryTable from "./UserDirectoryTable";
 import SyncAuthorsButton from "./SyncAuthorsButton";
 import { Role } from "@/lib/types";
+import SignOutTrigger from "@/components/editorial/SignOutTrigger";
 
 export const metadata = {
   title: "User Management | xSypher",
@@ -46,12 +47,11 @@ export default async function UsersPage() {
           >
             Return to Dashboard
           </Link>
-          <Link
-            href="/api/auth/signout"
+          <SignOutTrigger
             className="px-4 py-2 text-sm font-semibold rounded-lg bg-accent hover:bg-accent-deep text-white transition-colors"
           >
             Switch Account
-          </Link>
+          </SignOutTrigger>
         </div>
       </div>
     );

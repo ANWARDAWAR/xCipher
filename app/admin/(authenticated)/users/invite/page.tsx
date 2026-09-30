@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import InviteForm from "./InviteForm";
 import { Role } from "@/lib/types";
+import SignOutTrigger from "@/components/editorial/SignOutTrigger";
 
 export const metadata = {
   title: "Invite User | xSypher",
@@ -47,9 +48,9 @@ export default async function InvitePage() {
           <Link href="/admin" className="btn-cs">
             Return to Dashboard
           </Link>
-          <Link href="/api/auth/signout" className="btn-cs primary">
+          <SignOutTrigger className="btn-cs primary">
             Switch to Owner / Admin Account
-          </Link>
+          </SignOutTrigger>
         </div>
       </div>
     );
