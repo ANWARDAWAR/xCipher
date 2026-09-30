@@ -3,7 +3,6 @@ import { siteConfig } from "@/lib/seo";
 import { and, eq, lte } from "drizzle-orm";
 import { article as articleTable } from "@/lib/db/schema";
 
-export const runtime = 'edge';
 export const revalidate = 3600;
 export const dynamic = 'force-dynamic';
 

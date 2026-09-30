@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processExternalImage } from "@/app/actions/upload-article-image";
 
-export const runtime = "edge";
-
 export async function POST(req: NextRequest) {
   try {
     const { url } = await req.json();

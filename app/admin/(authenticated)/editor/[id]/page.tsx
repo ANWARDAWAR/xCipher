@@ -1,6 +1,5 @@
-export const runtime = 'edge';
 import { notFound, redirect } from "next/navigation";
-import ArticleEditor from "@/components/editorial/ArticleEditor";
+import ArticleEditor from "@/components/editorial/ArticleEditorClient";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { canEditArticle } from "@/lib/permissions";

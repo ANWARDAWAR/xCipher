@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { canViewAuditLogs } from "@/lib/permissions";

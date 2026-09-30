@@ -45,3 +45,5 @@ repomix-output.xml
 
 test-db.js
 .neon
+.open-next
+.wrangler

@@ -7,8 +7,6 @@ import { user as userTable } from "@/lib/db/schema";
 import { uploadFileToR2, buildObjectKey, getR2Config } from "@/lib/storage";
 import { MAX_UPLOAD_BYTES, formatBytes, sniffImageMime } from "@/lib/upload-constraints";
 
-export const runtime = "edge";
-
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();

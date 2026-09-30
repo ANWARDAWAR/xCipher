@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { eq, ilike, and, or, sql } from "drizzle-orm";

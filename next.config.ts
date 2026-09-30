@@ -67,9 +67,6 @@ function r2RemotePattern(): NonNullable<NonNullable<NextConfig["images"]>["remot
 }
 
 const nextConfig: any = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -117,9 +114,6 @@ const nextConfig: any = {
       { protocol: 'https', hostname: '**' },
       { protocol: 'http', hostname: '**' },
     ],
-  },
-  serverActions: {
-    bodySizeLimit: "5mb",
   },
   experimental: {
     serverActions: {

@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 import ResetPasswordForm from "./ResetPasswordForm";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";

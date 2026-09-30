@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 import Link from "next/link";
 import { fmtViews } from "@/lib/utils";
 import { db } from "@/lib/db";

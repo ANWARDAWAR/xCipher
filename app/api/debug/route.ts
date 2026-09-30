@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "edge";
-
 export function GET(req: NextRequest) {
   const env = process.env;
   const secureCookies = env.NODE_ENV === "production" &&

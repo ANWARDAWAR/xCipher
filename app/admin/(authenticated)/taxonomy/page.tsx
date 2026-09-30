@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 import { getCategories, getTags } from "@/app/actions/taxonomy";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";

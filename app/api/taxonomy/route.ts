@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSubcategories, createSubcategory } from "@/app/actions/taxonomy";
 
-export const runtime = "edge";
-
 export async function POST(req: NextRequest) {
   try {
     const data = await req.json();

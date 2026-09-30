@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { canModerateComments } from "@/lib/permissions";

@@ -16,6 +16,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
     !(env.NEXTAUTH_URL?.includes("localhost") || env.AUTH_URL?.includes("localhost"));
 
   return {
+  trustHost: true,
   secret: env.NEXTAUTH_SECRET || env.AUTH_SECRET,
   adapter: DrizzleAdapter(db, { usersTable: userTable, accountsTable: account, sessionsTable: session, verificationTokensTable: verificationToken } as any) as any,
   providers: [

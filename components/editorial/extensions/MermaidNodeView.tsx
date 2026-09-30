@@ -1,6 +1,5 @@
 import { NodeViewWrapper } from '@tiptap/react';
 import React, { useEffect, useState, useRef } from 'react';
-import mermaid from 'mermaid';
 import { useTheme } from 'next-themes';
 
 /** Decode HTML entities that the sanitizer injects into attribute values. */
@@ -61,53 +60,66 @@ export const MermaidNodeView = (props: any) => {
   }, [isResizing, containerWidth, updateAttributes]);
 
   useEffect(() => {
+    let cancelled = false;
     const isDark = theme === 'dark';
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: 'base',
-      themeVariables: {
-        primaryColor: isDark ? '#1a1a1a' : '#f2f2f2', // var(--surface-2)
-        primaryBorderColor: isDark ? '#2d2d2d' : '#e6e6e6', // var(--line)
-        primaryTextColor: isDark ? '#ffffff' : '#111111',
-        lineColor: isDark ? '#e0e0e0' : '#333333',
-        edgeLabelBackground: 'transparent',
-      },
-      themeCSS: `
-        .node rect, .node circle, .node ellipse, .node polygon, .node path, .cluster rect { 
-          filter: none !important; 
-          box-shadow: none !important; 
-        }
-        .edgeLabel rect {
-          fill: transparent !important;
-        }
-        .edgeLabel text {
-          fill: var(--ink, #111111) !important;
-          font-weight: 500 !important;
-        }
-        .edgePath path, .flowchart-link {
-          stroke: var(--ink, #333333) !important;
-        }
-      `,
-      fontFamily: 'inherit',
-      flowchart: {
-        htmlLabels: false,
-        padding: 20
-      }
-    });
 
     const renderMermaid = async () => {
       try {
+        const { default: mermaid } = await import('mermaid');
+        if (cancelled) return;
+
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: 'base',
+          themeVariables: {
+            primaryColor: isDark ? '#1a1a1a' : '#f2f2f2', // var(--surface-2)
+            primaryBorderColor: isDark ? '#2d2d2d' : '#e6e6e6', // var(--line)
+            primaryTextColor: isDark ? '#ffffff' : '#111111',
+            lineColor: isDark ? '#e0e0e0' : '#333333',
+            edgeLabelBackground: 'transparent',
+          },
+          themeCSS: `
+            .node rect, .node circle, .node ellipse, .node polygon, .node path, .cluster rect { 
+              filter: none !important; 
+              box-shadow: none !important; 
+            }
+            .edgeLabel rect {
+              fill: transparent !important;
+            }
+            .edgeLabel text {
+              fill: var(--ink, #111111) !important;
+              font-weight: 500 !important;
+            }
+            .edgePath path, .flowchart-link {
+              stroke: var(--ink, #333333) !important;
+            }
+          `,
+          fontFamily: 'inherit',
+          flowchart: {
+            htmlLabels: false,
+            padding: 20
+          }
+        });
+
         const id = `mermaid-svg-${Math.random().toString(36).substr(2, 9)}`;
         const { svg } = await mermaid.render(id, graphDefinition);
-        setSvgContent(svg);
+        if (!cancelled) {
+          setSvgContent(svg);
+        }
       } catch (err) {
-        setSvgContent(`<div class="text-red-500">Syntax error in Mermaid graph</div>`);
+        if (!cancelled) {
+          setSvgContent(`<div class="text-red-500">Syntax error in Mermaid graph</div>`);
+        }
       }
     };
 
     if (!isEditing) {
       renderMermaid();
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [graphDefinition, theme, isEditing]);
 
   const handleBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {

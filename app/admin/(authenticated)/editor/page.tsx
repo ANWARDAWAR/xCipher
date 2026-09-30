@@ -1,7 +1,6 @@
-export const runtime = 'edge';
 import { redirect } from "next/navigation";
-import ArticleEditor from "@/components/editorial/ArticleEditor";
 import { getCurrentUser } from "@/lib/auth";
+import ArticleEditor from "@/components/editorial/ArticleEditorClient";
 import { authorize } from "@/lib/capabilities";
 import { db } from "@/lib/db";
 import { getCategories, getTags } from "@/app/actions/taxonomy";

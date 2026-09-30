@@ -1,13 +1,35 @@
 {
-    "$schema": "node_modules/wrangler/config-schema.json",
-    "name": "xsypher",
-    "main": ".vercel/output/static/_worker.js/index.js",
-    "compatibility_date": "2024-09-23",
-    "compatibility_flags": [
-        "nodejs_compat"
-    ],
-    "assets": {
-        "directory": ".vercel/output/static",
-        "binding": "ASSETS"
-    }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "xsypher",
+	"main": ".open-next/worker.js",
+	"compatibility_date": "2024-09-23",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"vars": {
+		"AUTH_TRUST_HOST": "true",
+		"CLOUDINARY_CLOUD_NAME": "pxbkyfib",
+		"EMAIL_FROM_ADDRESS": "editor@xsypher.com",
+		"NEON_BRANCH": "production",
+		"NEXTAUTH_URL": "https://xsypher.anwariqbalhurmaz.workers.dev",
+		"NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME": "pxbkyfib",
+		"NEXT_PUBLIC_R2_PUBLIC_BASE": "https://pub-cb79a088effc4ad3a3636de153e20b63.r2.dev",
+		"NEXT_PUBLIC_SITE_URL": "https://xsypher.anwariqbalhurmaz.workers.dev",
+		"NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_Jjm4E7RBERUFRPu6fuAX-Q_mkv4abwd",
+		"NEXT_PUBLIC_SUPABASE_URL": "https://xkzcepwwtyypujrkaych.supabase.co",
+		"R2_ACCOUNT_ID": "befc729dc8bfc6ec6456d2d4d068e53c",
+		"R2_BUCKET": "xsypher"
+	},
+	"observability": {
+		"logs": {
+			"enabled": true
+		},
+		"traces": {
+			"enabled": true
+		}
+	}
 }

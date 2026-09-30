@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { uploadAvatar } from "@/app/actions/upload-avatar";
 
-export const runtime = "edge";
-
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();

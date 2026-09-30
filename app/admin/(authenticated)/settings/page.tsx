@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 import { SessionProvider } from "next-auth/react";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";

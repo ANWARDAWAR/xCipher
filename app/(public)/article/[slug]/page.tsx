@@ -23,8 +23,6 @@ import ArticleMobileToolbar from "@/components/article/ArticleMobileToolbar";
 import ViewCounter from "@/components/article/ViewCounter";
 import ActiveCategorySetter from "@/components/layout/ActiveCategorySetter";
 
-export const runtime = 'edge';
-
 interface Props {
   params: Promise<{ slug: string }>;
 }

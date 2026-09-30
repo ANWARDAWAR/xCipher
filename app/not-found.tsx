@@ -4,8 +4,6 @@ import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 import ScrollReveal from "@/components/common/ScrollReveal";
 
-export const runtime = 'edge';
-
 export default function GlobalNotFound() {
   return (
     <>

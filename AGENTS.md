@@ -13,21 +13,21 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 Welcome to the **xSypher** codebase. You are an autonomous AI coding assistant pair-programming with the lead developer. This document outlines the critical project constraints, architectural guidelines, and styling preferences that you **must strictly adhere to** when generating, modifying, or auditing code in this repository.
 
 ## 1. Tech Stack & Environment
-- **Framework:** Next.js (App Router)
-- **Deployment Target:** Cloudflare Pages (Edge Workers)
+- **Framework:** Next.js (App Router, Turbopack)
+- **Deployment Target:** Cloudflare Workers via `@opennextjs/cloudflare`
 - **Database:** Supabase (PostgreSQL)
-- **ORM:** Drizzle ORM (Specifically configured for Edge compatibility)
-- **Authentication:** NextAuth (v5 / Auth.js) with `@auth/drizzle-adapter`
+- **ORM:** Drizzle ORM (Configured with edge/serverless HTTP/WebSocket drivers)
+- **Authentication:** NextAuth (v5 / Auth.js) with `@auth/drizzle-adapter` & `trustHost: true`
 - **Styling:** Tailwind CSS + Vanilla CSS Variables (Dark mode, modern glassmorphism, dynamic animations)
 - **Language:** TypeScript (Strict mode)
 
 ## 2. Architectural Constraints (CRITICAL)
 
-### A. Cloudflare Edge Compatibility
-This application is strictly built for **Cloudflare Edge**. 
-- **NO Node.js Built-ins:** Do not use `fs`, `path`, `child_process`, `crypto` (use Web Crypto API instead), or any other Node-specific APIs in API routes or Server Actions.
+### A. Cloudflare Workers & OpenNext Compatibility
+This application is deployed on **Cloudflare Workers** using `@opennextjs/cloudflare` and `nodejs_compat`.
+- **NO `export const runtime = 'edge'` in Next.js Routes:** Do NOT declare `export const runtime = 'edge'` in any route, page, layout, or handler. OpenNext runs Next.js in Node.js mode (`compatibility_flags: ["nodejs_compat"]`). Declaring `runtime = 'edge'` causes Next.js to omit default route exports, resulting in runtime `TypeError: Cannot read properties of undefined (reading 'default')`.
+- **Edge-Safe Libraries:** Keep database drivers and cryptographic operations compatible with Cloudflare Workers' `nodejs_compat` standard.
 - **NO Rust Binaries:** Prisma has been completely removed in favor of Drizzle ORM. Do not reintroduce Prisma dependencies or syntax.
-- Ensure all packages and database drivers used are Edge-compatible (e.g., using HTTP/WebSocket drivers for Postgres).
 
 ### B. Drizzle ORM Guidelines
 We have fully migrated from Prisma to Drizzle ORM. When writing database queries:
@@ -47,12 +47,15 @@ Do NOT manually compare role strings (e.g., `if (user.role === 'ADMIN')`) when e
 - **1:1 Functional Migration:** We are currently stabilizing the Drizzle/Edge migration. Do not implement new features like Gemini AI integrations, multi-language translation, or Cloudflare R2 JSON generation unless explicitly instructed.
 - **Metadata:** Comments, Authors, and Metadata stay in Supabase PostgreSQL.
 
-### E. Local Development & Build Workflow
-- **`app/global-error.tsx` Workaround:** This file has a known bug where `@cloudflare/next-on-pages` ignores its `runtime = 'edge'` export. The file MUST exist (with `runtime = 'edge'`), but its compiled `.func` directory must be removed between `vercel build` and `next-on-pages --skip-build`. The `pages:build` npm script handles this automatically — never delete or recreate this file.
-- **Dynamic Routes:** Any route using `export const dynamic = 'force-dynamic'` or runtime data fetching (e.g., `sitemap.ts`, `feed.xml/route.ts`) MUST also export `export const runtime = 'edge'` alongside it, or `@cloudflare/next-on-pages` will reject the build.
-- **Server Actions on Edge:** Never call Server Actions with FormData from client components on dynamic routes. Use dedicated `/api/*` routes with `fetch()` instead. Server Actions with multipart payloads fail silently on the Edge runtime.
-- **Wrangler Dev Command:** When testing locally, always instruct the user to run `npm run dev:edge` instead of chaining manual build and wrangler commands (`npm run build && npx @cloudflare/next-on-pages && npx wrangler ...` will fail). This script guarantees the Edge worker `_worker.js` is compiled correctly before starting the server. If Wrangler logs `No Functions. Shimming...`, the build failed and dynamic routes will 404.
-- **Port Conflicts:** If wrangler fails with `Address already in use (os error 98)`, kill stale workerd processes with `pkill -9 -f workerd` before retrying.
+### E. Build & Deployment Workflow (@opennextjs/cloudflare)
+- **Unified Worker Bundle:** We migrated away from `@cloudflare/next-on-pages` (which split routes into 52 separate `.func` bundles exceeding 88 MiB) to `@opennextjs/cloudflare`. OpenNext compiles the entire application into a single unified worker at `.open-next/worker.js` with assets in `.open-next/assets`.
+- **Build Command:** Run `npm run build:worker` (`opennextjs-cloudflare build`) to build the application and worker bundle.
+- **Deploy Command:** Run `npm run deploy:worker` (`opennextjs-cloudflare build && wrangler deploy`) to build and deploy directly to Cloudflare Workers.
+- **Auth Trust Host:** Auth.js requires `trustHost: true` in `lib/auth.ts` and `AUTH_TRUST_HOST: "true"` in `wrangler.json` `vars` to prevent `UntrustedHost` loopback errors on Cloudflare Workers.
+
+### F. Bundle Optimization & Client-Only Heavy Libraries
+- **Client-Only Loading for Heavy Libraries:** Large packages like `mermaid`, `@tiptap/*`, `highlight.js`, and `recharts` must NEVER be statically imported in server components. Always use `next/dynamic(..., { ssr: false })` or runtime `await import(...)` inside browser-only effects (`useEffect`).
+- **Static Assets:** Static informational pages and assets are pre-rendered and served directly from Cloudflare Assets (`.open-next/assets`), keeping worker invocation overhead minimal.
 
 ## 3. Code Quality & TypeScript
 - **No Regex Replacements:** Never use Python scripts or blind Regex to refactor code. Use native AST transformations or manually edit code safely to prevent broken syntax and dangling imports.

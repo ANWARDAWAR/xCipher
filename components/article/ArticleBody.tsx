@@ -2,11 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import { sanitizeArticleHtml } from "@/lib/sanitize";
-import hljs from 'highlight.js/lib/common';
+import dynamic from "next/dynamic";
 import CodeBlockEnhancer from "./CodeBlockEnhancer";
 import parse, { DOMNode, Element } from 'html-react-parser';
-import DynamicChart from './DynamicChart';
-import FrontendMermaidViewer from './FrontendMermaidViewer';
+
+const DynamicChart = dynamic(() => import('./DynamicChart'), { ssr: false });
+const FrontendMermaidViewer = dynamic(() => import('./FrontendMermaidViewer'), { ssr: false });
 
 interface Props {
   html?: string | null;
@@ -23,36 +24,46 @@ export default function ArticleBody({ html }: Props) {
     const container = containerRef.current;
     if (!container) return;
 
-    const codeBlocks = container.querySelectorAll("pre");
-    codeBlocks.forEach((pre) => {
-      // Skip if already has a copy button
-      if (pre.querySelector('.code-copy-btn')) return;
+    let cancelled = false;
 
-      // Create wrapper for relative positioning
-      pre.style.position = 'relative';
+    async function highlightBlocks() {
+      const codeBlocks = container?.querySelectorAll("pre") || [];
+      if (!codeBlocks.length) return;
 
-      // Detect language from class
-      const codeEl = pre.querySelector('code');
-      const langMatch = codeEl?.className?.match(/language-([\w-]+)/);
-      const language = langMatch?.[1] || '';
+      const { default: hljs } = await import('highlight.js/lib/common');
+      if (cancelled) return;
 
-      // Highlight every code block, including blocks without an explicit language.
-      if (codeEl) {
-        codeEl.classList.add('hljs');
-        try {
-          hljs.highlightElement(codeEl);
-        } catch {
-          // Fall back to automatic detection for stale/unsupported language names.
+      codeBlocks.forEach((pre) => {
+        // Skip if already has a copy button
+        if (pre.querySelector('.code-copy-btn')) return;
+
+        // Create wrapper for relative positioning
+        pre.style.position = 'relative';
+
+        // Detect language from class
+        const codeEl = pre.querySelector('code');
+        const langMatch = codeEl?.className?.match(/language-([\w-]+)/);
+        const language = langMatch?.[1] || '';
+
+        // Highlight every code block, including blocks without an explicit language.
+        if (codeEl) {
+          codeEl.classList.add('hljs');
           try {
-            const highlighted = hljs.highlightAuto(codeEl.textContent || '');
-            codeEl.innerHTML = highlighted.value;
+            hljs.highlightElement(codeEl);
           } catch {
-            // Keep the original code readable if detection cannot determine a language.
+            // Fall back to automatic detection for stale/unsupported language names.
+            try {
+              const highlighted = hljs.highlightAuto(codeEl.textContent || '');
+              codeEl.innerHTML = highlighted.value;
+            } catch {
+              // Keep the original code readable if detection cannot determine a language.
+            }
           }
         }
-      }
+      });
+    }
 
-    });
+    highlightBlocks();
 
     // Make tables fully responsive on mobile
     const tables = container.querySelectorAll("table");
@@ -76,6 +87,10 @@ export default function ArticleBody({ html }: Props) {
         wrapper.appendChild(table);
       }
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, [safeHtml]);
 
   const options = {

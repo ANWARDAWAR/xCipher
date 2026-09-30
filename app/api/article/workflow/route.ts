@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { submitArticle, publishArticle, rejectArticle, requestChanges, claimReview, releaseReview, takeOverReview } from "@/app/actions/workflow";
 
-export const runtime = "edge";
-
 export async function POST(req: NextRequest) {
   try {
     const { action, articleId, category, notes } = await req.json();
