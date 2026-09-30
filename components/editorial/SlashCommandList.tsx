@@ -270,6 +270,30 @@ export const getSuggestionItems = ({ query }: { query: string }): SlashCommandIt
         editor.chain().focus().deleteRange(range).setHorizontalRule().run()
       },
     },
+    {
+      title: 'Pros & Cons',
+      description: 'Insert a pros and cons comparison block',
+      icon: '⚖️',
+      command: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).insertContent({ type: 'prosConsBlock' }).run()
+      },
+    },
+    {
+      title: 'Spec Sheet',
+      description: 'Insert a product specifications builder',
+      icon: '📋',
+      command: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).insertContent({ type: 'specSheetBlock' }).run()
+      },
+    },
+    {
+      title: 'Score Breakdown',
+      description: 'Insert an interactive review score widget',
+      icon: '⭐',
+      command: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).insertContent({ type: 'scoreBreakdownBlock' }).run()
+      },
+    },
   ]
 
   // Filter by matching anywhere in title (not just prefix)

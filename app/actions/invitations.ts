@@ -70,7 +70,10 @@ export async function inviteUser(formData: FormData) {
       }
     }).returning();
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
+    let baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
+    if (!baseUrl.startsWith("http")) {
+      baseUrl = `https://${baseUrl}`;
+    }
     const inviteUrl = `${baseUrl}/invite/${token}`;
 
     const emailResult = await sendInvitationEmail({ to: email, role, inviteUrl });

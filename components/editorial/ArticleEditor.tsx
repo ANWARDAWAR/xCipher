@@ -40,6 +40,9 @@ import { SlashMenu } from "./extensions/SlashMenu";
 import { CodeBlockLowlight } from "./extensions/CodeBlockLowlight";
 import { MermaidBlock } from "./extensions/MermaidBlock";
 import { YouTubeEmbed } from "./extensions/YouTubeEmbed";
+import { ProsConsBlock } from "./extensions/ProsConsBlock";
+import { SpecSheetBlock } from "./extensions/SpecSheetBlock";
+import { ScoreBreakdownBlock } from "./extensions/ScoreBreakdownBlock";
 import { SlashCommandList, getSuggestionItems } from "./SlashCommandList";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import ImageDropzone from "./ImageDropzone";
@@ -367,6 +370,9 @@ export default function ArticleEditor({
       // for, so the editor and the article would disagree.
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       YouTubeEmbed,
+      ProsConsBlock,
+      SpecSheetBlock,
+      ScoreBreakdownBlock,
       Table.configure({ resizable: true }),
       TableRow,
       TableCell,

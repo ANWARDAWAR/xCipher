@@ -8,6 +8,9 @@ import parse, { DOMNode, Element } from 'html-react-parser';
 
 const DynamicChart = dynamic(() => import('./DynamicChart'), { ssr: false });
 const FrontendMermaidViewer = dynamic(() => import('./FrontendMermaidViewer'), { ssr: false });
+import ProsConsViewer from './ProsConsViewer';
+import SpecSheetViewer from './SpecSheetViewer';
+import ScoreBreakdownViewer from './ScoreBreakdownViewer';
 
 interface Props {
   html?: string | null;
@@ -115,6 +118,40 @@ export default function ArticleBody({ html }: Props) {
           const containerWidth = domNode.attribs['data-container-width'] || '100%';
           if (graphDef) {
             return <FrontendMermaidViewer graphDefinition={graphDef} containerWidth={containerWidth} />;
+          }
+        }
+        
+        if (domNode.attribs['data-type'] === 'pros-cons-block') {
+          const prosAttr = domNode.attribs['data-pros'];
+          const consAttr = domNode.attribs['data-cons'];
+          try {
+            const pros = prosAttr ? JSON.parse(prosAttr) : [];
+            const cons = consAttr ? JSON.parse(consAttr) : [];
+            return <ProsConsViewer pros={pros} cons={cons} />;
+          } catch (e) {
+            console.error("Failed to parse pros/cons", e);
+          }
+        }
+
+        if (domNode.attribs['data-type'] === 'spec-sheet-block') {
+          const specsAttr = domNode.attribs['data-specs'];
+          try {
+            const specs = specsAttr ? JSON.parse(specsAttr) : [];
+            return <SpecSheetViewer specs={specs} />;
+          } catch (e) {
+            console.error("Failed to parse specs", e);
+          }
+        }
+
+        if (domNode.attribs['data-type'] === 'score-breakdown-block') {
+          const scoresAttr = domNode.attribs['data-scores'];
+          const totalScoreAttr = domNode.attribs['data-total-score'];
+          try {
+            const scores = scoresAttr ? JSON.parse(scoresAttr) : [];
+            const totalScore = totalScoreAttr ? Number(totalScoreAttr) : 0;
+            return <ScoreBreakdownViewer scores={scores} totalScore={totalScore} />;
+          } catch (e) {
+            console.error("Failed to parse score breakdown", e);
           }
         }
       }
