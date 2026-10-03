@@ -1,445 +1,131 @@
-import React, { useCallback, useState } from 'react';
-import { Editor } from '@tiptap/react';
-import {
-  Undo, Redo, Heading1, Heading2, Heading3, Type, Bold, Italic, Underline,
-  Strikethrough, Code, List, ListOrdered, Quote, ImagePlus, Link2,
-  FileCode, Minus, Maximize2, RemoveFormatting, MonitorPlay, Table as TableIcon,
-  AlignLeft, AlignCenter, AlignRight, Subscript as SubscriptIcon, Superscript as SuperscriptIcon,
-  Lightbulb, BarChart3, PieChart as PieChartIcon, LineChart as LineChartIcon, ScatterChart as ScatterChartIcon, Workflow,
-  ListChecks, ClipboardList, Star
-} from 'lucide-react';
+"use client";
+
+import { useEffect, useRef, useState, type ElementType, type ReactNode } from 'react';
+import { type Editor, useEditorState } from '@tiptap/react';
+import { Undo, Redo, Bold, Italic, Underline, Strikethrough, Code, List, ListOrdered, Quote, ImagePlus, Link2, FileCode, Minus, Maximize2, Minimize2, RemoveFormatting, MonitorPlay, Table as TableIcon, AlignLeft, AlignCenter, AlignRight, Subscript, Superscript, Highlighter, Search, ChevronDown, BarChart3, Workflow, ListChecks, ClipboardList, Star, Download, PanelLeft } from 'lucide-react';
 import { InsertMediaDialog, type MediaKind } from './InsertMediaDialog';
+import { BLOCK_LABELS, type BlockKind } from '@/lib/editorial-blocks';
+import type { CalloutType } from './extensions/Callout';
+import FindReplace from './FindReplace';
+import { getEditorFormattingState } from '@/lib/editor/document-state';
 
 interface EditorToolbarProps {
   editor: Editor;
   isFullscreen?: boolean;
   toggleFullscreen?: () => void;
+  onToggleOutline?: () => void;
+  outlineOpen?: boolean;
 }
 
-// Declared at module scope on purpose.
-//
-// These used to live inside EditorToolbar's render body, which gave them a new
-// component identity on every render. Because the toolbar re-renders on each
-// editor transaction -- that is, on every keystroke -- React was unmounting and
-// remounting all thirty-odd buttons continuously, discarding their DOM nodes
-// and any focus on them. Hoisting makes the identity stable so React can
-// reconcile the buttons instead of rebuilding them.
-
-interface ToolbarButtonProps {
-  isActive?: boolean;
-  onClick: () => void;
-  disabled?: boolean;
-  icon: React.ElementType;
-  title: string;
+function Tool({ icon: Icon, title, onClick, active = false, disabled = false }: { icon: ElementType; title: string; onClick: () => void; active?: boolean; disabled?: boolean }) {
+  return <button type="button" className={`studio-tool ${active ? 'is-active' : ''}`} title={title} aria-label={title} aria-pressed={active} disabled={disabled} onMouseDown={event => event.preventDefault()} onClick={onClick}><Icon size={16} /></button>;
+}
+function Menu({ title, children }: { title: string; children: ReactNode }) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const outside = (event: PointerEvent) => { if (!ref.current?.contains(event.target as globalThis.Node)) ref.current?.removeAttribute('open'); };
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape' && ref.current?.open) { ref.current.removeAttribute('open'); ref.current.querySelector('summary')?.focus(); } };
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); };
+  }, []);
+  return <details ref={ref} className="studio-menu"><summary>{title}<ChevronDown size={12} /></summary><div className="studio-menu-panel" onClick={event => { if ((event.target as HTMLElement).closest('button')) ref.current?.removeAttribute('open'); }}>{children}</div></details>;
+}
+function Item({ children, onClick, disabled = false }: { children: ReactNode; onClick: () => void; disabled?: boolean }) {
+  return <button type="button" disabled={disabled} onMouseDown={event => event.preventDefault()} onClick={onClick}>{children}</button>;
 }
 
-function ToolbarButton({ isActive = false, onClick, disabled = false, icon: Icon, title }: ToolbarButtonProps) {
-  return (
-    <button
-      type="button"
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      // Tooltips are not exposed reliably to assistive tech, so the accessible
-      // name is carried explicitly rather than inferred from title.
-      aria-label={title}
-      aria-pressed={isActive}
-      className={`w-11 h-11 md:w-8 md:h-8 shrink-0 flex items-center justify-center rounded-lg transition-colors ${
-        isActive
-          ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold shadow-sm'
-          : 'text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)]'
-      } ${disabled ? 'opacity-50 cursor-not-allowed hover:bg-transparent hover:text-[var(--muted)]' : ''}`}
-    >
-      <Icon className="w-4 h-4" aria-hidden="true" />
-    </button>
-  );
-}
-
-function Divider() {
-  return <div className="h-4 w-[1px] bg-[var(--line)] mx-1" aria-hidden="true" />;
-}
-
-function ChartDropdown({ editor }: { editor: Editor }) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="relative">
-      <ToolbarButton
-        icon={BarChart3}
-        onClick={() => setIsOpen(!isOpen)}
-        title="Insert Chart"
-      />
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-1 bg-[var(--surface)] border border-[var(--line)] shadow-lg rounded-md p-1 flex flex-col z-[100] w-[180px]">
-          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().convertSelectionToChart('bar').run(); setIsOpen(false); }}><BarChart3 className="w-4 h-4"/> Bar Chart</button>
-          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().convertSelectionToChart('horizontal-bar').run(); setIsOpen(false); }}><AlignLeft className="w-4 h-4"/> Horizontal Bar</button>
-          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().convertSelectionToChart('line').run(); setIsOpen(false); }}><LineChartIcon className="w-4 h-4"/> Line Chart</button>
-          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().convertSelectionToChart('pie').run(); setIsOpen(false); }}><PieChartIcon className="w-4 h-4"/> Pie Chart</button>
-          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().convertSelectionToChart('scatter').run(); setIsOpen(false); }}><ScatterChartIcon className="w-4 h-4"/> Scatter Chart</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function InsertBlocksDropdown({ editor }: { editor: Editor }) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => setIsOpen(!isOpen)}
-        title="Insert blocks"
-        className="px-3 h-11 md:h-8 shrink-0 flex items-center justify-center gap-1 rounded-lg transition-colors text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] text-sm font-medium"
-      >
-        Insert <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-      </button>
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-1 bg-[var(--surface)] border border-[var(--line)] shadow-lg rounded-md p-1 flex flex-col z-[100] w-[200px]">
-          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().insertProsCons().run(); setIsOpen(false); }}>
-            <ListChecks className="w-4 h-4"/> Pros & Cons
-          </button>
-          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().insertSpecSheet().run(); setIsOpen(false); }}>
-            <ClipboardList className="w-4 h-4"/> Spec Sheet
-          </button>
-          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { editor.chain().focus().insertScoreBreakdown().run(); setIsOpen(false); }}>
-            <Star className="w-4 h-4"/> Score Breakdown
-          </button>
-          <button className="text-left px-3 py-2 hover:bg-[var(--surface-2)] text-[var(--ink)] text-sm rounded-sm flex items-center gap-2" onClick={() => { 
-            editor.chain().focus().insertContent({
-              type: 'callout',
-              attrs: { type: 'takeaway' },
-              content: [
-                { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: 'Key Takeaways' }] },
-                { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph' }] }] }
-              ]
-            }).run();
-            setIsOpen(false);
-          }}>
-            <Lightbulb className="w-4 h-4"/> Key Takeaways
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export function EditorToolbar({ editor, isFullscreen, toggleFullscreen }: EditorToolbarProps) {
-  const setLink = useCallback(() => {
-    const previousUrl = editor.getAttributes("link").href;
-    const url = window.prompt("URL", previousUrl);
-    if (url === null) {
-      return;
-    }
-    if (url === "") {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
-    }
-    try {
-      const parsed = new URL(url);
-      if (!['http:', 'https:', 'mailto:'].includes(parsed.protocol)) {
-        alert('Only http, https, and mailto links are allowed.');
-        return;
-      }
-    } catch {
-      alert('Please enter a valid URL.');
-      return;
-    }
-    
-    if (editor.state.selection.empty) {
-      editor.chain().focus().insertContent('<a href="' + url + '" target="_blank">' + url + '</a> ').run();
-    } else {
-      editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
-    }
-  }, [editor]);
-
-  // Media insertion moved out of window.prompt and into a real dialog: the
-  // prompt chain could not be cancelled partway, validated nothing, showed no
-  // preview, and was unusable on touch.
+export function EditorToolbar({ editor, isFullscreen, toggleFullscreen, onToggleOutline, outlineOpen }: EditorToolbarProps) {
+  useEditorState({ editor, selector: ({ editor }) => getEditorFormattingState(editor) });
+  const [tab, setTab] = useState<'write' | 'insert'>('write');
+  const [findOpen, setFindOpen] = useState(false);
   const [mediaKind, setMediaKind] = useState<MediaKind | null>(null);
-  const [initialMedia, setInitialMedia] = useState<any>(null);
-  // Bumped each time the dialog opens so it remounts with empty fields. This is
-  // what lets InsertMediaDialog drop its reset-on-open effect: React discards
-  // the previous instance's state instead of the component clearing it by hand
-  // and forcing an extra render.
   const [mediaSession, setMediaSession] = useState(0);
-
-  const openMedia = (kind: MediaKind, currentAttrs?: any) => {
-    setMediaSession((n) => n + 1);
-    setMediaKind(kind);
-    setInitialMedia(currentAttrs || null);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkError, setLinkError] = useState('');
+  const linkDialog = useRef<HTMLDialogElement>(null);
+  const linkSelection = useRef<{ from: number; to: number } | null>(null);
+  const openLink = () => {
+    const { from, to } = editor.state.selection;
+    linkSelection.current = { from, to };
+    setLinkUrl(String(editor.getAttributes('link').href || ''));
+    setLinkError('');
+    linkDialog.current?.showModal();
   };
-
-  const insertImage = useCallback(
-    (v: { src: string; alt: string; caption: string; credit: string }) => {
-      (editor.chain().focus() as any).setFigure(v).run();
-    },
-    [editor]
-  );
-
-  const insertVideo = useCallback(
-    (v: { src: string }) => {
-      // setYouTubeVideo returns false for anything it cannot parse, so a bad
-      // URL leaves the document untouched rather than inserting a dead block.
-      editor.chain().focus().setYouTubeVideo({ src: v.src }).run();
-    },
-    [editor]
-  );
-
-  return (
-    <div 
-      className="py-2 mx-auto w-full md:max-w-3xl px-2 md:px-0"
-      role="toolbar" 
-      aria-label="Formatting"
-    >
-      <div className="flex md:flex-wrap items-center gap-1 w-full overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-      {/* Group 1: History */}
-      <ToolbarButton
-        icon={Undo}
-        onClick={() => editor.chain().focus().undo().run()}
-        disabled={!editor.can().undo()}
-        title="Undo (Ctrl+Z)"
-      />
-      <ToolbarButton
-        icon={Redo}
-        onClick={() => editor.chain().focus().redo().run()}
-        disabled={!editor.can().redo()}
-        title="Redo (Ctrl+Shift+Z)"
-      />
-      
-      <Divider />
-
-      {/* Group 2: Hierarchy & Style */}
-      <ToolbarButton
-        icon={Heading1}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-        isActive={editor.isActive('heading', { level: 1 })}
-        title="Heading 1"
-      />
-      <ToolbarButton
-        icon={Heading2}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-        isActive={editor.isActive('heading', { level: 2 })}
-        title="Heading 2"
-      />
-      <ToolbarButton
-        icon={Heading3}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-        isActive={editor.isActive('heading', { level: 3 })}
-        title="Heading 3"
-      />
-      <ToolbarButton
-        icon={Type}
-        onClick={() => editor.chain().focus().setParagraph().run()}
-        isActive={editor.isActive('paragraph')}
-        title="Paragraph"
-      />
-      
-      <Divider />
-
-      <ToolbarButton
-        icon={Bold}
-        onClick={() => editor.chain().focus().toggleBold().run()}
-        isActive={editor.isActive('bold')}
-        title="Bold (Ctrl+B)"
-      />
-      <ToolbarButton
-        icon={Italic}
-        onClick={() => editor.chain().focus().toggleItalic().run()}
-        isActive={editor.isActive('italic')}
-        title="Italic (Ctrl+I)"
-      />
-      <ToolbarButton
-        icon={Underline}
-        onClick={() => editor.chain().focus().toggleUnderline().run()}
-        isActive={editor.isActive('underline')}
-        title="Underline (Ctrl+U)"
-      />
-      <ToolbarButton
-        icon={Strikethrough}
-        onClick={() => editor.chain().focus().toggleStrike().run()}
-        isActive={editor.isActive('strike')}
-        title="Strikethrough"
-      />
-      <ToolbarButton
-        icon={SubscriptIcon}
-        onClick={() => editor.chain().focus().toggleSubscript().run()}
-        isActive={editor.isActive('subscript')}
-        title="Subscript"
-      />
-      <ToolbarButton
-        icon={SuperscriptIcon}
-        onClick={() => editor.chain().focus().toggleSuperscript().run()}
-        isActive={editor.isActive('superscript')}
-        title="Superscript"
-      />
-      <ToolbarButton
-        icon={Code}
-        onClick={() => editor.chain().focus().toggleCode().run()}
-        isActive={editor.isActive('code')}
-        title="Inline Code"
-      />
-
-      <Divider />
-
-      {/* Group 3: Lists & Quotes */}
-      <ToolbarButton
-        icon={List}
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
-        isActive={editor.isActive('bulletList')}
-        title="Bullet List"
-      />
-      <ToolbarButton
-        icon={ListOrdered}
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        isActive={editor.isActive('orderedList')}
-        title="Ordered List"
-      />
-      <ToolbarButton
-        icon={Quote}
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        isActive={editor.isActive('blockquote')}
-        title="Blockquote"
-      />
-      <InsertBlocksDropdown editor={editor} />
-
-      <span className="hidden sm:contents">
-        <Divider />
-        <ToolbarButton
-          icon={AlignLeft}
-          onClick={() => editor.chain().focus().setTextAlign('left').run()}
-          isActive={editor.isActive({ textAlign: 'left' })}
-          title="Align left"
-        />
-        <ToolbarButton
-          icon={AlignCenter}
-          onClick={() => editor.chain().focus().setTextAlign('center').run()}
-          isActive={editor.isActive({ textAlign: 'center' })}
-          title="Align centre"
-        />
-        <ToolbarButton
-          icon={AlignRight}
-          onClick={() => editor.chain().focus().setTextAlign('right').run()}
-          isActive={editor.isActive({ textAlign: 'right' })}
-          title="Align right"
-        />
-      </span>
-
-      <Divider />
-
-      {/* Group 4: Media & Embeds */}
-      <ToolbarButton
-        icon={ImagePlus}
-        onClick={() => {
-          if (editor.isActive('figure')) {
-            openMedia('image', editor.getAttributes('figure'));
-          } else {
-            openMedia('image');
-          }
-        }}
-        isActive={editor.isActive('figure')}
-        title={editor.isActive('figure') ? "Update image" : "Insert image"}
-      />
-      <ToolbarButton
-        icon={MonitorPlay}
-        onClick={() => openMedia('video')}
-        title="Insert YouTube video"
-      />
-      <ToolbarButton
-        icon={TableIcon}
-        onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-        isActive={editor.isActive('table')}
-        title="Insert table"
-      />
-      {editor.isActive('table') && (
-        <>
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => (editor.chain().focus() as any).convertTableToSpecSheet().run()}
-            className="h-11 md:h-8 px-2.5 shrink-0 flex items-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer"
-            title="Convert this 3-column table into a stylized Spec Sheet component"
-          >
-            <ClipboardList className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Convert to Spec Sheet</span>
-          </button>
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => (editor.chain().focus() as any).convertTableToProsCons().run()}
-            className="h-11 md:h-8 px-2.5 shrink-0 flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer"
-            title="Convert this 2-column table into a stylized Pros & Cons component"
-          >
-            <ListChecks className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Convert to Pros & Cons</span>
-          </button>
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => (editor.chain().focus() as any).convertTableToScoreBreakdown().run()}
-            className="h-11 md:h-8 px-2.5 shrink-0 flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer"
-            title="Convert this 6-column table into a Benchmark Score Breakdown"
-          >
-            <BarChart3 className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Convert to Score Breakdown</span>
-          </button>
-        </>
-      )}
-      <ChartDropdown editor={editor} />
-      <ToolbarButton
-        icon={Link2}
-        onClick={setLink}
-        isActive={editor.isActive('link')}
-        title="Insert Link"
-      />
-      <ToolbarButton
-        icon={FileCode}
-        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-        isActive={editor.isActive('codeBlock')}
-        title="Code Block"
-      />
-      <ToolbarButton
-        icon={Workflow}
-        onClick={() => editor.chain().focus().convertSelectionToMermaid().run()}
-        isActive={editor.isActive('mermaidBlock')}
-        title="Mermaid Diagram"
-      />
-      <ToolbarButton
-        icon={Minus}
-        onClick={() => editor.chain().focus().setHorizontalRule().run()}
-        title="Horizontal Rule"
-      />
-
-      <Divider />
-
-      {/* Group 5: View / Utilities */}
-      <ToolbarButton
-        icon={RemoveFormatting}
-        onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
-        title="Clear Formatting"
-      />
-      {toggleFullscreen && (
-        <ToolbarButton
-          icon={Maximize2}
-          onClick={toggleFullscreen}
-          isActive={isFullscreen}
-          title="Toggle Fullscreen"
-        />
-      )}
-
-      </div>
-      <InsertMediaDialog
-        key={mediaSession}
-        kind={mediaKind ?? 'image'}
-        initialImage={initialMedia}
-        open={mediaKind !== null}
-        onClose={() => setMediaKind(null)}
-        onInsertImage={insertImage}
-        onInsertVideo={insertVideo}
-      />
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const root = editor.view.dom.closest('.editor-studio');
+      if (!root?.contains(document.activeElement)) return;
+      if (event.key.toLowerCase() === 'f') { event.preventDefault(); setFindOpen(true); }
+      if (event.key.toLowerCase() === 'k') { event.preventDefault(); openLink(); }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  });
+  const applyLink = () => {
+    const value = linkUrl.trim();
+    const selection = linkSelection.current;
+    const chain = editor.chain().focus();
+    if (selection) chain.setTextSelection(selection);
+    if (!value) { chain.extendMarkRange('link').unsetLink().run(); linkDialog.current?.close(); return; }
+    try { if (!['https:', 'http:', 'mailto:'].includes(new URL(value).protocol)) throw new Error(); }
+    catch { setLinkError('Enter an http, https, or mailto URL.'); return; }
+    if (selection && selection.from !== selection.to) {
+      chain.extendMarkRange('link').setLink({ href: value }).run();
+    } else if (editor.state.selection.empty && !editor.isActive('link')) {
+      editor.chain().focus().insertContent({ type: 'text', text: value, marks: [{ type: 'link', attrs: { href: value } }] }).run();
+    } else {
+      chain.extendMarkRange('link').setLink({ href: value }).run();
+    }
+    linkDialog.current?.close();
+  };
+  const removeLink = () => {
+    const selection = linkSelection.current;
+    const chain = editor.chain().focus();
+    if (selection) chain.setTextSelection(selection);
+    chain.extendMarkRange('link').unsetLink().run();
+    linkDialog.current?.close();
+  };
+  const openMedia = (kind: MediaKind) => { setMediaSession(value => value + 1); setMediaKind(kind); };
+  const exportDocument = () => {
+    const blob = new Blob([JSON.stringify(editor.getJSON(), null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'article-document.json'; anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const callout = (type: CalloutType) => editor.chain().focus().toggleCallout({ type }).run();
+  return <div className="studio-toolbar">
+    <div className="studio-menu-row">
+      <div className="studio-tabs" role="group" aria-label="Toolbar sections"><button type="button" aria-pressed={tab === 'write'} onClick={() => setTab('write')}>Write</button><button type="button" aria-pressed={tab === 'insert'} onClick={() => setTab('insert')}>Insert</button></div>
+      <Menu title="Document"><Item onClick={exportDocument}><Download size={15} /> Export document JSON</Item><Item onClick={() => setFindOpen(true)}><Search size={15} /> Find and replace</Item>{onToggleOutline && <Item onClick={onToggleOutline}><PanelLeft size={15} /> {outlineOpen ? 'Hide' : 'Show'} outline</Item>}{toggleFullscreen && <Item onClick={toggleFullscreen}><Maximize2 size={15} /> {isFullscreen ? 'Exit' : 'Enter'} focus mode</Item>}</Menu>
+      <span className="studio-toolbar-hint">{tab === 'write' ? 'A space for your next great story' : 'Build a richer story'}</span>
     </div>
-  );
+    <div className="studio-ribbon" role="toolbar" aria-label={tab === 'write' ? 'Text formatting' : 'Insert content'}>
+      <div className="studio-tool-group"><Tool icon={Undo} title="Undo (Ctrl+Z)" disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()} /><Tool icon={Redo} title="Redo (Ctrl+Shift+Z)" disabled={!editor.can().redo()} onClick={() => editor.chain().focus().redo().run()} /></div>
+      {tab === 'write' ? <>
+        <div className="studio-tool-group"><select className="studio-style-select" aria-label="Paragraph style" value={editor.isActive('heading') ? String(editor.getAttributes('heading').level) : 'paragraph'} onChange={event => { if (event.target.value === 'paragraph') editor.chain().focus().setParagraph().run(); else editor.chain().focus().setHeading({ level: Number(event.target.value) as 1 | 2 | 3 | 4 }).run(); }}><option value="paragraph">Normal text</option><option value="1">Heading 1</option><option value="2">Heading 2</option><option value="3">Heading 3</option><option value="4">Heading 4</option></select></div>
+        <div className="studio-tool-group"><Tool icon={Bold} title="Bold (Ctrl+B)" active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} /><Tool icon={Italic} title="Italic (Ctrl+I)" active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()} /><Tool icon={Underline} title="Underline (Ctrl+U)" active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()} /><Tool icon={Highlighter} title="Highlight" active={editor.isActive('highlight')} onClick={() => editor.chain().focus().toggleHighlight().run()} /><Menu title="More"><Item onClick={() => editor.chain().focus().toggleStrike().run()}><Strikethrough size={15} /> Strikethrough</Item><Item onClick={() => editor.chain().focus().toggleSubscript().run()}><Subscript size={15} /> Subscript</Item><Item onClick={() => editor.chain().focus().toggleSuperscript().run()}><Superscript size={15} /> Superscript</Item><Item onClick={() => editor.chain().focus().toggleCode().run()}><Code size={15} /> Inline code</Item><Item onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}><RemoveFormatting size={15} /> Clear formatting</Item></Menu></div>
+        <div className="studio-tool-group"><Tool icon={AlignLeft} title="Align left" active={editor.isActive({ textAlign: 'left' })} onClick={() => editor.chain().focus().setTextAlign('left').run()} /><Tool icon={AlignCenter} title="Align center" active={editor.isActive({ textAlign: 'center' })} onClick={() => editor.chain().focus().setTextAlign('center').run()} /><Tool icon={AlignRight} title="Align right" active={editor.isActive({ textAlign: 'right' })} onClick={() => editor.chain().focus().setTextAlign('right').run()} /></div>
+        <div className="studio-tool-group"><Tool icon={List} title="Bullet list" active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()} /><Tool icon={ListOrdered} title="Numbered list" active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()} /><Tool icon={Quote} title="Blockquote" active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()} /></div>
+        <div className="studio-tool-group"><Tool icon={Link2} title="Insert or edit link (Ctrl+K)" active={editor.isActive('link')} onClick={openLink} /><Tool icon={ImagePlus} title="Insert image" onClick={() => openMedia('image')} /><Tool icon={Search} title="Find and replace (Ctrl+F)" active={findOpen} onClick={() => setFindOpen(!findOpen)} /></div>
+      </> : <>
+        <div className="studio-tool-group"><Tool icon={ImagePlus} title="Insert image" onClick={() => openMedia('image')} /><Tool icon={MonitorPlay} title="YouTube video" onClick={() => openMedia('video')} /><Menu title="Review blocks">{(Object.keys(BLOCK_LABELS) as BlockKind[]).map(kind => <Item key={kind} onClick={() => editor.chain().focus().insertEditorialBlock(kind).run()}>{BLOCK_LABELS[kind]}</Item>)}<Item onClick={() => editor.chain().focus().insertProsCons().run()}><ListChecks size={15} /> Pros and cons</Item><Item onClick={() => editor.chain().focus().insertSpecSheet().run()}><ClipboardList size={15} /> Specification sheet</Item><Item onClick={() => editor.chain().focus().insertScoreBreakdown().run()}><Star size={15} /> Score breakdown</Item></Menu></div>
+        <div className="studio-tool-group"><Menu title="Callout">{(['info', 'takeaway', 'quote', 'warning', 'editor-note', 'update', 'pro-tip'] as const).map(type => <Item key={type} onClick={() => callout(type)}>{({ info: 'Information', takeaway: 'Key takeaway', quote: 'Pull quote', warning: 'Warning', 'editor-note': 'Editor’s note', update: 'Update', 'pro-tip': 'Pro tip' })[type]}</Item>)}</Menu><Menu title="Chart">{(['bar', 'horizontal-bar', 'line', 'pie', 'scatter'] as const).map(type => <Item key={type} onClick={() => editor.chain().focus().convertSelectionToChart(type).run()}><BarChart3 size={15} /> {type}</Item>)}</Menu><Tool icon={Workflow} title="Diagram from selection" onClick={() => editor.chain().focus().convertSelectionToMermaid().run()} /><Tool icon={FileCode} title="Code block" onClick={() => editor.chain().focus().toggleCodeBlock().run()} /><Tool icon={Minus} title="Divider" onClick={() => editor.chain().focus().setHorizontalRule().run()} /></div>
+      </>}
+      <Menu title="Table"><Item onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}><TableIcon size={15} /> Insert 3 × 3 table</Item>{editor.isActive('table') && <>
+        <Item onClick={() => editor.chain().focus().addRowBefore().run()}>Add row above</Item><Item onClick={() => editor.chain().focus().addRowAfter().run()}>Add row below</Item><Item onClick={() => editor.chain().focus().addColumnBefore().run()}>Add column before</Item><Item onClick={() => editor.chain().focus().addColumnAfter().run()}>Add column after</Item><Item onClick={() => editor.chain().focus().toggleHeaderRow().run()}>Toggle header row</Item><Item disabled={!editor.can().mergeCells()} onClick={() => editor.chain().focus().mergeCells().run()}>Merge selected cells</Item><Item disabled={!editor.can().splitCell()} onClick={() => editor.chain().focus().splitCell().run()}>Split cell</Item><Item onClick={() => editor.chain().focus().deleteRow().run()}>Delete row</Item><Item onClick={() => editor.chain().focus().deleteColumn().run()}>Delete column</Item><Item onClick={() => editor.chain().focus().deleteTable().run()}>Delete table</Item><Item onClick={() => editor.chain().focus().convertTableToSpecSheet().run()}>Convert to specification sheet</Item><Item onClick={() => editor.chain().focus().convertTableToProsCons().run()}>Convert to pros and cons</Item><Item onClick={() => editor.chain().focus().convertTableToScoreBreakdown().run()}>Convert to score breakdown</Item>
+      </>}</Menu>
+      {toggleFullscreen && <Tool icon={isFullscreen ? Minimize2 : Maximize2} title={isFullscreen ? 'Exit focus mode' : 'Focus mode'} active={isFullscreen} onClick={toggleFullscreen} />}
+    </div>
+    {findOpen && <FindReplace editor={editor} close={() => setFindOpen(false)} />}
+    <dialog ref={linkDialog} className="studio-dialog" aria-label="Insert or edit link"><h2>Insert link</h2><p>Link the selected text to a source.</p><label>URL<input autoFocus type="url" value={linkUrl} onChange={event => setLinkUrl(event.target.value)} placeholder="https://" onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); applyLink(); } }} /></label>{linkError && <p role="alert">{linkError}</p>}<div><button type="button" onClick={() => linkDialog.current?.close()}>Cancel</button><button type="button" onClick={removeLink}>Remove link</button><button type="button" className="studio-primary" onClick={applyLink}>Apply</button></div></dialog>
+    <InsertMediaDialog key={mediaSession} kind={mediaKind || 'image'} open={mediaKind !== null} onClose={() => setMediaKind(null)} onInsertImage={value => {
+      if (editor.isActive('figure') || editor.isActive('image')) {
+        editor.chain().focus().updateAttributes('figure', value).run();
+      } else {
+        (editor.chain().focus() as any).setFigure(value).run();
+      }
+    }} onInsertVideo={value => editor.chain().focus().setYouTubeVideo(value).run()} />
+  </div>;
 }

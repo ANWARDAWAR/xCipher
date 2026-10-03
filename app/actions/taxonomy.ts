@@ -108,30 +108,22 @@ export async function createSubcategory(name: string, parentSlug: string) {
   
   const trimmedName = name.trim();
   if (!trimmedName) return { success: false, error: "Name is required" };
-  const slug = slugify(trimmedName);
+  const nameSlug = slugify(trimmedName);
 
   try {
-    // Upsert the parent category just in case it doesn't exist yet (for hardcoded frontend categories)
-    const parentName = parentSlug.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-    
-    const [parent] = await db.insert(categoryTable).values({
-      id: crypto.randomUUID(),
-      slug: parentSlug,
-      name: parentName,
-    }).onConflictDoUpdate({
-      target: categoryTable.slug,
-      set: { slug: parentSlug } // no-op basically
-    }).returning();
+    const [parent] = await db.select().from(categoryTable)
+      .where(eq(categoryTable.slug, parentSlug))
+      .limit(1);
+    if (!parent) {
+      return { success: false, error: "Select an existing parent category before creating a subcategory." };
+    }
 
-    // Check if subcategory already exists
-    const [existing] = await db.select().from(categoryTable).where(eq(categoryTable.slug, slug)).limit(1);
-    if (existing) {
-      if (existing.parentId !== parent.id) {
-        // If it exists but under a different parent, we just update it or return an error?
-        // Let's just return it for now so the UI can proceed, or return an error to prevent moving categories by accident.
-        return { success: false, error: `Category "${trimmedName}" already exists under a different parent.` };
-      }
-      return { success: true, category: existing };
+    const slug = `${slugify(parent.slug)}-${nameSlug}`;
+    const [sameParent] = await db.select().from(categoryTable)
+      .where(and(eq(categoryTable.slug, slug), eq(categoryTable.parentId, parent.id)))
+      .limit(1);
+    if (sameParent) {
+      return { success: true, category: sameParent };
     }
 
     const [category] = await db.insert(categoryTable).values({

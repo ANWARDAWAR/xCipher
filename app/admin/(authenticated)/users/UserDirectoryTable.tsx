@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { 
   ShieldCheck, 
   Shield, 
@@ -119,10 +120,12 @@ function UserAvatar({ user }: { user: UserProfile }) {
   if (avatarUrl && !imgError) {
     return (
       <div className="relative shrink-0">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={avatarUrl}
           alt={user.name || user.email || "User Avatar"}
+          width={40}
+          height={40}
+          sizes="40px"
           className="w-10 h-10 shrink-0 aspect-square rounded-full object-cover border border-line ring-1 ring-black/5 dark:ring-white/10"
           onError={() => setImgError(true)}
         />

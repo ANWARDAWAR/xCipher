@@ -8,6 +8,7 @@ import { REVIEW_QUEUE_LIMIT } from "@/lib/queries";
 import Link from "next/link";
 import Image from "next/image";
 import { Role } from "@/lib/types";
+import StatusChip from "@/components/console/StatusChip";
 
 export const metadata = {
   title: "Review Queue · xSypher",
@@ -136,7 +137,7 @@ export default async function ReviewQueuePage(props: {
 
       <div style={{ display: "flex", gap: "16px", marginBottom: "24px", flexWrap: "wrap", fontSize: "13px" }}>
         {/* Filters */}
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ color: "var(--muted)" }}>Claim:</span>
           <Link href={`/admin/review?claim=me&sort=${sort}`} className={`btn-cs ${claim === "me" ? "primary" : ""}`}>My Claims</Link>
           <Link href={`/admin/review?claim=unclaimed&sort=${sort}`} className={`btn-cs ${claim === "unclaimed" ? "primary" : ""}`}>Unclaimed</Link>
@@ -164,10 +165,9 @@ export default async function ReviewQueuePage(props: {
             else if (ageDays >= 1) ageColor = "var(--warning)";
 
             const isClaimedByMe = article.reviewedById === user.id;
-            const wordCount = 0; // TODO: fetch from R2
 
             return (
-              <div key={article.id} style={{ 
+              <div key={article.id} className="console-review-card" style={{ 
                 display: "flex", 
                 padding: "16px", 
                 borderBottom: "1px solid var(--line)",
@@ -189,7 +189,7 @@ export default async function ReviewQueuePage(props: {
                   <div style={{ fontSize: "12px", color: "var(--ink-muted)", display: "flex", gap: "12px", flexWrap: "wrap" }}>
                     <span>By <strong>{article.authorModel?.name || article.author || "Unknown"}</strong></span>
                     <span>{article.category?.name || "Uncategorized"}</span>
-                    <span>~{wordCount} words</span>
+                    <StatusChip status="SUBMITTED" />
                     {article.revisions && article.revisions.length > 0 && (
                       <span style={{ color: "var(--accent)" }}>Pass {article.revisions.length + 1}</span>
                     )}

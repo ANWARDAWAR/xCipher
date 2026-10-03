@@ -118,7 +118,7 @@ export async function fetchFromR2(key: string | null): Promise<any> {
 
   try {
     const url = `${config.publicBase}/${key}`;
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(url, { next: { revalidate: 300 } });
     if (!res.ok) return null;
     
     const contentType = res.headers.get("content-type");

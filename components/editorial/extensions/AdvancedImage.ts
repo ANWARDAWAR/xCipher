@@ -1,4 +1,6 @@
 import { mergeAttributes, Node } from '@tiptap/core'
+import { ReactNodeViewRenderer } from '@tiptap/react'
+import FigureBlock from './FigureBlock'
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -29,6 +31,10 @@ export const Figure = Node.create({
         default: null,
         parseHTML: element => element.querySelector('img')?.getAttribute('title'),
       },
+      caption: {
+        default: null,
+        parseHTML: element => element.querySelector('figcaption')?.textContent?.trim() || null,
+      },
       credit: {
         default: null,
         parseHTML: element => element.getAttribute('data-credit'),
@@ -55,6 +61,10 @@ export const Figure = Node.create({
         },
       }
     ]
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(FigureBlock)
   },
 
   renderHTML({ HTMLAttributes }) {

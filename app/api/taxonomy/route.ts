@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
       const result = await getSubcategories(data.parentId);
       return NextResponse.json(result);
     } else if (action === "createSubcategory") {
-      const result = await createSubcategory(data.parentId, data.name);
+      const result = await createSubcategory(data.name, data.parentId);
       return NextResponse.json(result);
     }
 

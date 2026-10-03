@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -8,7 +9,7 @@ import SignOutButton from "@/components/editorial/SignOutButton";
 import AdminNavLinks from "@/components/editorial/AdminNavLinks";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 import NotificationBell from "@/components/console/NotificationBell";
-import ConsoleNavDrawer from "@/components/console/ConsoleNavDrawer";
+import AdminShell from "@/components/console/AdminShell";
 import { getNotifications } from "@/app/actions/notifications";
 import { canViewReviewQueue, canViewUsersList, canViewAuditLogs, canModerateComments, canViewSubscribers, canViewTaxonomy } from "@/lib/permissions";
 import { authorize } from "@/lib/capabilities";
@@ -61,23 +62,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const { items: notifications, unreadCount } = await getNotifications();
 
-  // The wrapper below was role="dialog" aria-modal="true". That is a factual
-  // misdescription: this is the whole console, not a modal over something
-  // else. aria-modal tells assistive tech that everything outside this node is
-  // inert, so a screen reader hides the rest of the document -- and it implies
-  // an escape route back to an underlying page that does not exist here.
-  // Removing it lets the landmarks (nav, main) be reached normally.
-  return (
-    <div className="console open" id="console" aria-label="xSypher editorial console" style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
-      <a href="#csMain" className="skip-link">
-        Skip to content
-      </a>
-      <div className="cs-top">
-        <Link href="/admin" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-          <Logo variant="brand" className="text-[19px]" />
-        </Link>
-        <span className="cs-tag hidden sm:inline-flex">Editorial Console</span>
-        <span className="spacer"></span>
+  const actions = (
         <div className="flex items-center gap-2 sm:gap-4">
           <NotificationBell items={notifications} unreadCount={unreadCount} />
           <ThemeToggle />
@@ -97,9 +82,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </a>
           <SignOutButton />
         </div>
-      </div>
-      <div className="cs-body">
-        <ConsoleNavDrawer>
+  );
+  const sidebar = (
         <nav className="cs-nav h-full" aria-label="Console sections">
 
           {/* ── Profile Card ─────────────────────── */}
@@ -111,9 +95,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             {/* Avatar */}
             <div className="cs-profile-avatar">
               {avatarUrl ? (
-                <img
+                <Image
                   src={avatarUrl}
                   alt={displayName}
+                  width={36}
+                  height={36}
+                  sizes="36px"
                   className="cs-profile-img"
                 />
               ) : (
@@ -145,16 +132,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             pendingCommentsCount={pendingCommentsCount}
           />
         </nav>
-        </ConsoleNavDrawer>
-        {/*
-          Was a plain <div>. The console's only landmark was the <nav>, so a
-          screen-reader user had no way to jump to the actual page content --
-          and the skip link above needs a focusable target to land on.
-        */}
-        <main className="cs-main" id="csMain" tabIndex={-1}>
-          {children}
-        </main>
-      </div>
-    </div>
+  );
+  return (
+    <AdminShell
+      brand={<Link href="/admin" className="console-brand flex items-center gap-2.5 hover:opacity-90 transition-opacity"><Logo variant="brand" className="text-[19px]" /></Link>}
+      actions={actions}
+      sidebar={sidebar}
+      avatar={avatarUrl ? <Image src={avatarUrl} alt="" width={32} height={32} sizes="32px" className="w-8 h-8 rounded-full object-cover" /> : <span className="console-avatar-initial">{initial}</span>}
+      displayName={displayName}
+      canCreate={authorize(userRole as Role, 'article.create')}
+    >
+      {children}
+    </AdminShell>
   );
 }

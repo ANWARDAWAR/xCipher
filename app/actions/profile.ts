@@ -3,7 +3,8 @@
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { authorize } from "@/lib/capabilities";
-import { revalidatePath } from "@/lib/revalidate";
+import { revalidatePath, revalidateTag } from "@/lib/revalidate";
+import { CACHE_TAGS, authorTag } from "@/lib/cache-tags";
 import { eq, sql, inArray, isNull } from "drizzle-orm";
 import { user as userTable, author as authorTable, article } from "@/lib/db/schema";
 
@@ -157,12 +158,20 @@ export async function updateProfile(data: any) {
     }
 
     // Cascade update to denormalized author name on all articles
-    await db.update(article).set({ author: name }).where(eq(article.authorId, author.id));
+    const affectedArticles = await db.update(article).set({ author: name })
+      .where(eq(article.authorId, author.id)).returning({ slug: article.slug });
 
-    revalidatePath('/', 'layout');
-    revalidatePath('/admin/settings');
-    revalidatePath('/admin');
-    revalidatePath(`/author/${author.slug}`);
+    const authorSlugs = new Set([author.slug, ...updatedPreviousSlugs]);
+    await Promise.all([
+      revalidateTag(CACHE_TAGS.articles, { expire: 0 }),
+      ...Array.from(authorSlugs, slug => revalidateTag(authorTag(slug), { expire: 0 })),
+      ...Array.from(authorSlugs, slug => revalidatePath(`/author/${slug}`)),
+      ...affectedArticles.map(item => revalidatePath(`/article/${item.slug}`)),
+      revalidatePath('/sitemap.xml'),
+      revalidatePath('/feed.xml'),
+      revalidatePath('/admin/settings'),
+      revalidatePath('/admin'),
+    ]);
 
     return { success: true, slug: author.slug };
   } catch (error: any) {

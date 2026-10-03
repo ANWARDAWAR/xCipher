@@ -131,6 +131,7 @@ export const article = pgTable('Article', {
   img: text('img'),
   seoTitle: text('seoTitle'),
   seoDesc: text('seoDesc'),
+  textContent: text('textContent'),
   createdAt: timestamp('createdAt', { mode: 'date', precision: 3 }).defaultNow().notNull(),
   updatedAt: timestamp('updatedAt', { mode: 'date', precision: 3 }).defaultNow().notNull(),
   authorId: text('authorId'),
@@ -145,6 +146,14 @@ export const article = pgTable('Article', {
   reviewedById: text('reviewedById'),
   submittedAt: timestamp('submittedAt', { mode: 'date', precision: 3 }),
   submittedById: text('submittedById'),
+  metaTitle: text('metaTitle'),
+  metaDescription: text('metaDescription'),
+  ogImage: text('ogImage'),
+  focusKeyword: text('focusKeyword'),
+  canonicalUrl: text('canonicalUrl'),
+  featuredImageAlt: text('featuredImageAlt'),
+  featuredImageCaption: text('featuredImageCaption'),
+  featuredImageCredit: text('featuredImageCredit'),
 }, (table) => {
   return {
     statusUpdatedAtIdx: index('Article_status_updatedAt_idx').on(table.status, table.updatedAt),
@@ -153,6 +162,7 @@ export const article = pgTable('Article', {
     categoryIdStatusPublishedAtIdx: index('Article_categoryId_status_publishedAt_idx').on(table.categoryId, table.status, table.publishedAt),
     publishedAtIdx: index('Article_publishedAt_idx').on(table.publishedAt),
     scheduledForIdx: index('Article_scheduledFor_idx').on(table.scheduledFor),
+    searchIdx: index('Article_search_idx').using('gin', sql`to_tsvector('english', coalesce(${table.title}, '') || ' ' || coalesce(${table.deck}, '') || ' ' || coalesce(${table.textContent}, ''))`),
   }
 });
 
@@ -263,6 +273,21 @@ export const rateLimit = pgTable('RateLimit', {
   actionKey: text('actionKey').notNull().unique(),
   count: integer('count').notNull(),
   resetAt: timestamp('resetAt', { mode: 'date', precision: 3 }).notNull(),
+});
+
+export const benchmarkLeaderboard = pgTable('BenchmarkLeaderboard', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  category: text('category').notNull(),
+  subCategory: text('subCategory').notNull(),
+  metric: text('metric').notNull(),
+  topScore: integer('topScore').notNull(),
+  deviceName: text('deviceName').notNull(),
+  articleId: text('articleId').references(() => article.id, { onDelete: 'cascade' }),
+  updatedAt: timestamp('updatedAt', { mode: 'date', precision: 3 }).defaultNow().notNull(),
+}, (table) => {
+  return {
+    compoundKey: unique('BenchmarkLeaderboard_unique').on(table.category, table.subCategory, table.metric)
+  };
 });
 
 export const _articleToTag = pgTable('_ArticleToTag', {

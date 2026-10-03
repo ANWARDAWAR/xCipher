@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { Mail } from "lucide-react";
 import { subscribeNewsletter } from "@/app/actions/newsletter";
 import { showToast } from "@/lib/utils";
@@ -8,6 +8,15 @@ import { showToast } from "@/lib/utils";
 export default function NewsletterPageForm() {
   const [email, setEmail] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (window.location.hash === "#subscribe") {
+      const el = document.getElementById("subscribe");
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: "smooth" }), 300);
+      }
+    }
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +40,7 @@ export default function NewsletterPageForm() {
   };
 
   return (
-    <div className="my-8 bg-[var(--surface-2)] border border-[var(--line)] rounded-2xl p-8 sm:p-10 text-center relative overflow-hidden shadow-sm">
+    <div id="subscribe" className="scroll-mt-24 my-8 bg-[var(--surface-2)] border border-[var(--line)] rounded-2xl p-8 sm:p-10 text-center relative overflow-hidden shadow-sm">
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent opacity-50"></div>
       <div className="w-14 h-14 rounded-full bg-[var(--surface)] border border-[var(--line)] flex items-center justify-center text-[var(--accent)] mx-auto mb-5 shadow-sm">
         <Mail className="w-7 h-7" />

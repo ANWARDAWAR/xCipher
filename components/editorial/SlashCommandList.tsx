@@ -1,4 +1,5 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
+import { BLOCK_LABELS, type BlockKind } from '@/lib/editorial-blocks'
 
 interface SlashCommandItem {
   title: string
@@ -69,6 +70,7 @@ export const SlashCommandList = forwardRef((props: any, ref) => {
       {props.items.length > 0 ? (
         props.items.map((item: SlashCommandItem, index: number) => (
           <button
+            type="button"
             role="option"
             aria-selected={index === selectedIndex}
             style={{ 
@@ -125,6 +127,18 @@ SlashCommandList.displayName = 'SlashCommandList'
 
 export const getSuggestionItems = ({ query }: { query: string }): SlashCommandItem[] => {
   const items: SlashCommandItem[] = [
+    ...(Object.keys(BLOCK_LABELS) as BlockKind[]).map(kind => ({
+      title: BLOCK_LABELS[kind],
+      description: 'Insert an editable publication block',
+      icon: '＋',
+      command: ({ editor, range }: Parameters<SlashCommandItem['command']>[0]) => editor.chain().focus().deleteRange(range).insertEditorialBlock(kind).run(),
+    })),
+    ...(['editor-note', 'update', 'pro-tip'] as const).map(type => ({
+      title: { 'editor-note': 'Editor’s note', update: 'Update', 'pro-tip': 'Pro tip' }[type],
+      description: 'Add editorial context',
+      icon: '✎',
+      command: ({ editor, range }: Parameters<SlashCommandItem['command']>[0]) => editor.chain().focus().deleteRange(range).insertContent({ type: 'callout', attrs: { type }, content: [{ type: 'paragraph' }] }).run(),
+    })),
     {
       title: 'Heading 1',
       description: 'Major section heading',

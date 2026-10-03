@@ -228,14 +228,14 @@ export default async function PreviewPage({ params }: Props) {
                   {authorSlug ? (
                     <Link href={`/author/${authorSlug}`} className="shrink-0">
                       {article.authorModel?.avatar ? (
-                        <Image src={article.authorModel.avatar} alt={authorName} width={40} height={40} className="w-10 h-10 rounded-full shrink-0 object-cover" />
+                        <Image src={article.authorModel.avatar} alt={authorName} width={40} height={40} sizes="40px" className="w-10 h-10 rounded-full shrink-0 object-cover" />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold shrink-0">{authorName.charAt(0)}</div>
                       )}
                     </Link>
                   ) : (
                     article.authorModel?.avatar ? (
-                      <Image src={article.authorModel.avatar} alt={authorName} width={40} height={40} className="w-10 h-10 rounded-full shrink-0 object-cover" />
+                      <Image src={article.authorModel.avatar} alt={authorName} width={40} height={40} sizes="40px" className="w-10 h-10 rounded-full shrink-0 object-cover" />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold shrink-0">{authorName.charAt(0)}</div>
                     )
@@ -255,8 +255,6 @@ export default async function PreviewPage({ params }: Props) {
                   <span>Updated <b>{article.updatedAt.toLocaleDateString("en-US")}</b></span>
                   <span className="hidden sm:inline">·</span>
                   <span><b>{(article as any).readingTime || 1} min</b> read</span>
-                  <span className="hidden sm:inline">·</span>
-                  <span><b>{fmtViews(article.views || 0)}</b> reads</span>
                 </div>
               </div>
               
@@ -300,7 +298,7 @@ export default async function PreviewPage({ params }: Props) {
           {/* MAIN ARTICLE BODY & FOOTER */}
           <div className="lg:col-start-2 lg:col-span-10 xl:col-start-2 xl:col-span-8 flex flex-col min-w-0">
             <div className="prose min-w-0 max-w-none w-full" id="prose" itemProp="articleBody">
-              <ArticleBody html={articleHtml} />
+              <ArticleBody html={articleHtml} globalLeaderboard={{}} deviceName={article.title} />
             </div>
 
             <div className="art-foot mt-12 pt-8 border-t border-[var(--line)]">
@@ -329,14 +327,14 @@ export default async function PreviewPage({ params }: Props) {
                     {authorSlug ? (
                       <Link href={`/author/${authorSlug}`} className="block">
                         {article.authorModel?.avatar ? (
-                          <img src={article.authorModel.avatar} alt={authorName} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]" />
+                          <Image src={article.authorModel.avatar} alt={authorName} width={80} height={80} sizes="(min-width: 640px) 80px, 64px" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]" />
                         ) : (
                           <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold text-xl sm:text-2xl shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]">{authorName.charAt(0)}</div>
                         )}
                       </Link>
                     ) : (
                       article.authorModel?.avatar ? (
-                        <img src={article.authorModel.avatar} alt={authorName} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]" />
+                        <Image src={article.authorModel.avatar} alt={authorName} width={80} height={80} sizes="(min-width: 640px) 80px, 64px" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]" />
                       ) : (
                         <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold text-xl sm:text-2xl shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]">{authorName.charAt(0)}</div>
                       )

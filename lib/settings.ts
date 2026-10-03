@@ -1,4 +1,6 @@
 import { db } from "@/lib/db";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { eq } from "drizzle-orm";
 import { publicationSettings } from "@/lib/db/schema";
 import {
@@ -37,9 +39,18 @@ function nullable(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
+const getSettingsRow = unstable_cache(
+  async () => {
+    const [row] = await db.select().from(publicationSettings).where(eq(publicationSettings.id, SETTINGS_ID)).limit(1);
+    return row ?? null;
+  },
+  ["publication-settings"],
+  { tags: [CACHE_TAGS.settings], revalidate: 3600 },
+);
+
 export async function getPublicationSettings(): Promise<ResolvedSettings> {
   try {
-    const [row] = await db.select().from(publicationSettings).where(eq(publicationSettings.id, SETTINGS_ID)).limit(1);
+    const row = await getSettingsRow();
 
     if (!row) return FALLBACK;
 

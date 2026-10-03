@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ExternalLink, Search, BadgeCheck, UserX } from "lucide-react";
 
 interface AuthorRow {
@@ -146,10 +147,12 @@ function AuthorRowItem({ a, currentUser }: { a: AuthorRow; currentUser: { id: st
     <div className="grid grid-cols-1 md:grid-cols-[2.5fr_1fr_1fr_1fr_auto] gap-2 md:gap-4 px-4 py-3.5 items-center hover:bg-surface-2/40 transition-colors">
       <div className="flex items-center gap-3 min-w-0">
         {a.avatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={a.avatar}
                       alt=""
+                      width={36}
+                      height={36}
+                      sizes="36px"
                       className="w-9 h-9 rounded-full object-cover border border-line shrink-0"
                     />
                   ) : (

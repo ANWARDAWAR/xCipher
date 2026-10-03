@@ -234,7 +234,7 @@ export default function BulkActionBar({
   return (
     <>
       <div
-        className="fixed bottom-0 left-0 w-full sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 z-50 sm:w-max sm:max-w-[calc(100%-2rem)] bg-[var(--surface)] sm:bg-transparent rounded-t-2xl sm:rounded-none p-3 sm:p-0 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] sm:shadow-none border-t border-line sm:border-0"
+        className="console-bulk-bar fixed bottom-0 left-0 w-full sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 z-50 sm:w-max sm:max-w-[calc(100%-2rem)] bg-[var(--surface)] sm:bg-transparent rounded-t-2xl sm:rounded-none p-3 sm:p-0 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] sm:shadow-none border-t border-line sm:border-0"
         role="region"
         aria-label="Bulk actions for selected articles"
       >

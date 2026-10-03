@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { article, category, _articleToTag, tag } from "@/lib/db/schema";
 import { eq, or, and, ilike, exists, sql, desc } from "drizzle-orm";
+import { escapeLikePattern } from "@/lib/search-pattern";
 
 export type LiveSearchResult = {
   id: string;
@@ -18,18 +19,18 @@ export async function getLiveSearchResults(query: string): Promise<LiveSearchRes
   }
 
   const cleanQuery = query.trim();
+  const pattern = `%${escapeLikePattern(cleanQuery)}%`;
 
   const results = await db.query.article.findMany({
     where: and(
       eq(article.status, "PUBLISHED"),
       or(
-        ilike(article.title, `%${cleanQuery}%`),
-        ilike(article.deck, `%${cleanQuery}%`),
+        sql`to_tsvector('english', coalesce(${article.title}, '') || ' ' || coalesce(${article.deck}, '') || ' ' || coalesce(${article.textContent}, '')) @@ plainto_tsquery('english', ${cleanQuery})`,
         exists(
           db.select({ id: sql`1` })
             .from(_articleToTag)
             .innerJoin(tag, eq(tag.id, _articleToTag.B))
-            .where(and(eq(_articleToTag.A, article.id), ilike(tag.name, `%${cleanQuery}%`)))
+            .where(and(eq(_articleToTag.A, article.id), ilike(tag.name, pattern)))
         )
       )
     ),

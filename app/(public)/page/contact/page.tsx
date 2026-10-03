@@ -451,7 +451,7 @@ export default function ContactPage() {
 
             {/* Link 4: Privacy Policy */}
             <Link
-              href="/page/privacy"
+              href="/page/privacy-policy"
               className="p-5 rounded-xl bg-[var(--surface-2)] border border-[var(--line)] hover:border-[var(--accent)] transition-all flex flex-col justify-between group"
             >
               <div>

@@ -5,6 +5,7 @@ import { article as articleTable, category as categoryTable, user as userTable, 
 import { ARTICLE_CARD_COLUMNS, ARTICLE_CARD_WITH_TAGS_WITH } from "@/lib/queries";
 import StoryRow from "@/components/article/StoryRow";
 import Sidebar from "@/components/layout/Sidebar";
+import { escapeLikePattern } from "@/lib/search-pattern";
 
 interface Props {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -37,17 +38,18 @@ export default async function SearchPage({ searchParams }: Props) {
   let totalCount = 0;
   
   if (q || cat) {
+    const pattern = `%${escapeLikePattern(q)}%`;
     const whereClause = and(
       eq(articleTable.status, "PUBLISHED"),
       cat ? sql`${articleTable.categoryId} IN (SELECT id FROM "Category" WHERE slug = ${cat})` : undefined,
       q ? or(
-        ilike(articleTable.title, `%${q}%`),
-        ilike(articleTable.deck, `%${q}%`),
-        ilike(articleTable.author, `%${q}%`),
-        sql`${articleTable.authorId} IN (SELECT id FROM "User" WHERE "name" ILIKE ${`%${q}%`})`,
+        ilike(articleTable.title, pattern),
+        ilike(articleTable.deck, pattern),
+        ilike(articleTable.author, pattern),
+        sql`${articleTable.authorId} IN (SELECT id FROM "User" WHERE "name" ILIKE ${pattern})`,
         sql`${q} = ANY(${articleTable.legacyTags})`,
-        sql`${articleTable.id} IN (SELECT "A" FROM "_ArticleToTag" WHERE "B" IN (SELECT id FROM "Tag" WHERE "name" ILIKE ${`%${q}%`}))`,
-        sql`${articleTable.categoryId} IN (SELECT id FROM "Category" WHERE "name" ILIKE ${`%${q}%`})`
+        sql`${articleTable.id} IN (SELECT "A" FROM "_ArticleToTag" WHERE "B" IN (SELECT id FROM "Tag" WHERE "name" ILIKE ${pattern}))`,
+        sql`${articleTable.categoryId} IN (SELECT id FROM "Category" WHERE "name" ILIKE ${pattern})`
       ) : undefined
     );
 

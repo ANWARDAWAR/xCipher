@@ -116,7 +116,7 @@ export default async function ReviewScreen({ params }: ReviewScreenProps) {
             )}
             
             <div className="story-content" style={{ fontSize: "18px", lineHeight: 1.6, color: "var(--ink)" }}>
-              <ArticleBody html={articleHtml || "<p>No content provided.</p>"} />
+              <ArticleBody html={articleHtml || "<p>No content provided.</p>"} globalLeaderboard={{}} deviceName={article.title} />
             </div>
           </div>
         </div>

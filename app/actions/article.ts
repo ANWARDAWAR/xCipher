@@ -1,9 +1,9 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { article, auditLog, category, articleRevision, _articleToTag, user, author, tag } from "@/lib/db/schema";
+import { article, auditLog, category, articleRevision, _articleToTag, user, author, tag, benchmarkLeaderboard } from "@/lib/db/schema";
 import { eq, inArray, or, and, not, sql } from "drizzle-orm";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "@/lib/revalidate";
 import { articleMutationTags } from "@/lib/cache-tags";
 import { getCurrentUser } from "@/lib/auth";
 import { canEditArticle, canPublishArticle, canDeleteArticle } from "@/lib/permissions";
@@ -13,7 +13,7 @@ import { authorize } from "@/lib/capabilities";
 import { handleServerError } from "@/lib/errors";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import { headers } from "next/headers";
-import { uploadToR2 } from "@/lib/storage";
+import { uploadToR2, deleteKeyFromR2 } from "@/lib/storage";
 
 import { Role } from "@/lib/types";
 
@@ -136,17 +136,27 @@ export async function upsertArticle(data: any) {
       status: data.status || "DRAFT",
       deck: data.deck || null,
       contentUrl,
+      textContent: typeof sanitizedBodyHtml === 'string' ? sanitizedBodyHtml.replace(/<[^>]*>?/gm, ' ') : null,
       author: data.author?.trim() || userSession.name || "xSypher Staff",
       role: data.role?.trim() || userSession.role || null,
       featured: typeof data.featured === "boolean" ? data.featured : deriveIsFeatured(data.homepagePlacement || null),
       img: data.img || null,
       seoTitle: data.seoTitle || null,
       seoDesc: data.seoDesc || null,
+      metaTitle: data.metaTitle || null,
+      metaDescription: data.metaDescription || null,
+      ogImage: data.ogImage || null,
+      focusKeyword: data.focusKeyword || null,
+      canonicalUrl: data.canonicalUrl || null,
+      featuredImageAlt: data.featuredImageAlt || null,
+      featuredImageCaption: data.featuredImageCaption || null,
+      featuredImageCredit: data.featuredImageCredit || null,
       homepagePlacement: data.homepagePlacement || null,
       categoryId: catRecord.id,
       scheduledFor,
       readingTime: calculateReadTime(sanitizedBodyHtml || data.bodyHtml),
       updatedAt: new Date(),
+      ...(data.authorId ? { authorId: data.authorId } : {}),
       ...(data.status === "PUBLISHED" && (!existingArticle || existingArticle.status !== "PUBLISHED") 
           ? { publishedAt: new Date() } 
           : {}),
@@ -169,12 +179,15 @@ export async function upsertArticle(data: any) {
 
     const tagsData = Array.isArray(data.tags) ? data.tags.filter(Boolean).map((s: string) => ({ slug: s })) : [];
 
-      // 1. Ensure tags exist
+    try {
+      // neon-http is a one-shot driver and does not support interactive
+      // transactions. Keep these writes ordered and remove the newly uploaded
+      // R2 object if any database step fails.
       for (const t of tagsData) {
         await db.insert(tag).values({ id: crypto.randomUUID(), slug: t.slug, name: t.slug }).onConflictDoNothing({ target: tag.slug });
       }
-      
-      const tagRecs = tagsData.length > 0 
+
+      const tagRecs = tagsData.length > 0
         ? await db.select({ id: tag.id }).from(tag).where(inArray(tag.slug, tagsData.map((t: any) => t.slug)))
         : [];
 
@@ -196,24 +209,22 @@ export async function upsertArticle(data: any) {
           previousSlugs: updatedPreviousSlugs,
         }).where(eq(article.id, data.id)).returning();
 
-        // Manage Many-to-Many
         await db.delete(_articleToTag).where(eq(_articleToTag.A, updated.id));
         if (tagRecs.length > 0) {
           await db.insert(_articleToTag).values(tagRecs.map(tr => ({ A: updated.id, B: tr.id })));
         }
-        
+
         finalArticle = updated;
         actionType = finalStatusUpdate ? `DEMOTED_TO_${finalStatusUpdate}` : `UPDATE_ARTICLE_${updated.status}`;
       } else {
         const resolvedAuthorId = dbUser.role === "AUTHOR" ? userWithAuth.authorId : (data.authorId || userWithAuth.authorId || null);
-        
+
         const [created] = await db.insert(article).values({
           id: articleId,
           ...payload,
           authorId: resolvedAuthorId,
         }).returning();
 
-        // Manage Many-to-Many
         if (tagRecs.length > 0) {
           await db.insert(_articleToTag).values(tagRecs.map(tr => ({ A: created.id, B: tr.id })));
         }
@@ -235,17 +246,74 @@ export async function upsertArticle(data: any) {
           createdAt: new Date(),
         });
       }
+    } catch (dbErr) {
+      if (contentUrl && contentUrl !== existingArticle?.contentUrl) {
+        await deleteKeyFromR2(contentUrl).catch(console.error);
+      }
+      throw dbErr;
+    }
 
     await logAudit(actionType, "Article", finalArticle.id, { title: finalArticle.title, status: finalArticle.status });
 
-    try {
-      revalidatePath("/", "layout");
-      revalidatePath("/admin", "layout");
-      revalidatePath(`/article/${finalArticle.slug}`, "page");
-      revalidatePath("/sitemap.xml");
-    } catch (revalError) {
-      console.warn(">>> [SERVER] Revalidation error:", revalError);
+    if (finalArticle.status === "PUBLISHED" && data.bodyJson) {
+      try {
+        const bodyObj = typeof data.bodyJson === "string" ? JSON.parse(data.bodyJson) : data.bodyJson;
+        const metricsToUpsert: any[] = [];
+        const extractScores = (node: any) => {
+          if (node.type === "scoreBreakdownBlock" && node.attrs?.items) {
+            try {
+              const items = typeof node.attrs.items === "string" ? JSON.parse(node.attrs.items) : node.attrs.items;
+              for (const item of items) {
+                if (item.tab && item.subCategory && item.metric && typeof item.score === "number") {
+                  metricsToUpsert.push({
+                    id: crypto.randomUUID(),
+                    category: item.tab,
+                    subCategory: item.subCategory,
+                    metric: item.metric,
+                    topScore: item.score,
+                    deviceName: finalArticle.title,
+                    articleId: finalArticle.id,
+                    updatedAt: new Date()
+                  });
+                }
+              }
+            } catch (e) {
+              console.error("Failed to parse items in scoreBreakdownBlock", e);
+            }
+          }
+          if (node.content && Array.isArray(node.content)) {
+            node.content.forEach(extractScores);
+          }
+        };
+        extractScores(bodyObj);
+
+        if (metricsToUpsert.length > 0) {
+          for (const metric of metricsToUpsert) {
+            await db.insert(benchmarkLeaderboard).values(metric).onConflictDoUpdate({
+              target: [benchmarkLeaderboard.category, benchmarkLeaderboard.subCategory, benchmarkLeaderboard.metric],
+              set: {
+                topScore: metric.topScore,
+                deviceName: metric.deviceName,
+                articleId: metric.articleId,
+                updatedAt: metric.updatedAt,
+              },
+              where: sql`${benchmarkLeaderboard.topScore} < ${metric.topScore}`,
+            });
+          }
+          revalidateTag('benchmark-leaderboard', 'max');
+        }
+      } catch (err) {
+        console.error("Error processing benchmark leaderboard", err);
+      }
     }
+
+    await Promise.all([
+      ...articleMutationTags({ slug: finalArticle.slug }).map(tag => revalidateTag(tag, 'max')),
+      revalidatePath("/", "layout"),
+      revalidatePath("/admin", "layout"),
+      revalidatePath(`/article/${finalArticle.slug}`, "page"),
+      revalidatePath("/sitemap.xml"),
+    ]);
 
     return { success: true, article: finalArticle };
   } catch (error: any) {

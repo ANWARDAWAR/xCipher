@@ -4,7 +4,6 @@ import { and, eq, lte } from "drizzle-orm";
 import { article as articleTable } from "@/lib/db/schema";
 
 export const revalidate = 3600;
-export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
@@ -33,7 +32,7 @@ export async function GET() {
 
     const rssItems = articles
       .map((article) => {
-        const url = `${siteUrl}/${article.slug}`;
+        const url = escapeXml(`${siteUrl}/article/${article.slug}`);
         const title = escapeXml(article.title);
         const description = escapeXml(article.deck || "");
         const pubDate = article.publishedAt 

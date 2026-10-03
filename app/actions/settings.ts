@@ -7,7 +7,8 @@ import { publicationSettings, auditLog } from "@/lib/db/schema";
 import { authorize } from "@/lib/capabilities";
 import { isValidSafeUrl, getAllowedMediaDomains } from "@/lib/sanitize";
 import { SETTINGS_ID } from "@/lib/settings";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { handleServerError } from "@/lib/errors";
 import { Role } from "@/lib/types";
 
@@ -89,9 +90,7 @@ export async function updatePublicationSettings(input: PublicationSettingsInput)
       details: { siteName: data.siteName, tagline: data.tagline },
     });
 
-    // These values appear in the root layout's metadata and in the footer on
-    // every page, so the whole tree is stale, not one route.
-    revalidatePath("/", "layout");
+    revalidateTag(CACHE_TAGS.settings, { expire: 0 });
     revalidatePath("/admin/settings");
 
     return { success: true };

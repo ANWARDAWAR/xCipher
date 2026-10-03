@@ -110,12 +110,12 @@ export default async function SettingsPage(props: { searchParams: Promise<{ tab?
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", borderBottom: "1px solid var(--line)", paddingBottom: "16px" }}>
+      <div className="console-settings-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", borderBottom: "1px solid var(--line)", paddingBottom: "16px" }}>
         <div>
           <h1>Settings</h1>
           <p className="cs-sub">Manage your public identity and account security.</p>
         </div>
-        <div style={{ display: "flex", gap: "12px" }}>
+        <div className="console-settings-tabs" style={{ display: "flex", gap: "12px" }}>
           <Link href="/admin/settings?tab=profile" className={`btn-cs ${currentTab === "profile" ? "primary" : ""}`} style={{ borderRadius: "6px" }}>
             Public Profile
           </Link>

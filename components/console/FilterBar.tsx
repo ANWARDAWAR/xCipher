@@ -146,7 +146,7 @@ export default function FilterBar({
   return (
     <div className="space-y-3 mt-4">
       {/* ── Tier 1: Segmented Status Navigation Bar ─────────────────── */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+      <div className="console-filter-tabs flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         {statusTabs.map((tab) => {
           const isSelected = tab.id === null 
             ? activeStatuses.length === 0 

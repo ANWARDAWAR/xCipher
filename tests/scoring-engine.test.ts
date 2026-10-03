@@ -114,4 +114,61 @@ describe("xSypher Tabbed Scoring Engine", () => {
     const ultraRes = calculateXSypherScore(ultraItems);
     expect(ultraRes.scaleMax).toBe(260);
   });
+
+  it("gracefully omits 'N/A' strings from weighted calculations without returning NaN", () => {
+    const itemsWithNA = [
+      { tab: "Battery", subCategory: "Longevity", metric: "Active Use", score: 180, topScore: 190, weight: 1.0 },
+      // Wireless Charging is N/A - MUST NOT factor into weighted average
+      { tab: "Battery", subCategory: "Charging", metric: "Wireless Charging", score: "N/A", topScore: "N/A", weight: 1.0 },
+      { tab: "Battery", subCategory: "Charging", metric: "Wired Charging", score: 160, topScore: 170, weight: 1.0 },
+    ];
+
+    const res = calculateXSypherScore(itemsWithNA, "Battery");
+    expect(res.overallScore).not.toBeNaN();
+    expect(res.overallTopScore).not.toBeNaN();
+
+    const batteryTab = res.tabs["Battery"];
+    expect(batteryTab).toBeDefined();
+
+    const chargingSub = batteryTab.subCategories.find(s => s.name === "Charging");
+    expect(chargingSub).toBeDefined();
+    // Only Wired Charging (160) was valid, Wireless Charging ("N/A") was omitted
+    expect(chargingSub?.score).toBe(160);
+    expect(chargingSub?.topScore).toBe(170);
+
+    const wirelessMetric = chargingSub?.metrics.find(m => m.metric === "Wireless Charging");
+    expect(wirelessMetric?.isNA).toBe(true);
+
+    // Overall Battery score: Longevity (180, weight 1.0) and Charging (160, weight 1.0) -> (180 + 160) / 2 = 170
+    expect(batteryTab.score).toBe(170);
+  });
+
+  it("supports multi-category simultaneous benchmark computation for Bento Grid", () => {
+    const multiCatItems = [
+      { tab: "Camera", subCategory: "Photo", metric: "Main", score: 165, topScore: 170 },
+      { tab: "Display", subCategory: "Screen", metric: "Brightness", score: 155, topScore: 160 },
+      { tab: "Performance", subCategory: "SoC", metric: "CPU", score: 175, topScore: 180 },
+      { tab: "Battery", subCategory: "Endurance", metric: "Hours", score: 150, topScore: 160 },
+      { tab: "Charging", subCategory: "Speed", metric: "Watts", score: 160, topScore: 170 },
+      { tab: "Software", subCategory: "OS", metric: "Fluidity", score: 165, topScore: 170 },
+      { tab: "Design", subCategory: "Build", metric: "Materials", score: 170, topScore: 175 },
+      { tab: "Audio", subCategory: "Speakers", metric: "Clarity", score: 140, topScore: 150 },
+      { tab: "Connectivity", subCategory: "Modem", metric: "5G", score: 160, topScore: 165 },
+      { tab: "Value", subCategory: "Index", metric: "Price/Perf", score: 145, topScore: 155 },
+    ];
+
+    const res = calculateXSypherScore(multiCatItems);
+    const categoryKeys = Object.keys(res.groupedData);
+    expect(categoryKeys).toHaveLength(10);
+    expect(categoryKeys).toContain("Camera");
+    expect(categoryKeys).toContain("Display");
+    expect(categoryKeys).toContain("Performance");
+    expect(categoryKeys).toContain("Battery");
+    expect(categoryKeys).toContain("Charging");
+    expect(categoryKeys).toContain("Software");
+    expect(categoryKeys).toContain("Design");
+    expect(categoryKeys).toContain("Audio");
+    expect(categoryKeys).toContain("Connectivity");
+    expect(categoryKeys).toContain("Value");
+  });
 });

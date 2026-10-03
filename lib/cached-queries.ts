@@ -1,8 +1,9 @@
 import { unstable_cache } from "next/cache";
 import { db } from "./db";
 import { CACHE_TAGS, categoryTag, authorTag } from "./cache-tags";
-import { eq, desc, and } from "drizzle-orm";
-import { article as articleTable } from "@/lib/db/schema";
+import { publicFeedWhere, queryPublicFeed } from "./feed";
+import { eq, and, or, ne, lte, isNull, inArray, notInArray, sql } from "drizzle-orm";
+import { article as articleTable, benchmarkLeaderboard } from "@/lib/db/schema";
 import {
   ARTICLE_CARD_COLUMNS,
   ARTICLE_CARD_WITH,
@@ -45,7 +46,7 @@ export const getHomeArticles = unstable_cache(
   async () => {
     try {
       return await db.query.article.findMany({
-        where: eq(articleTable.status, "PUBLISHED"),
+        where: and(eq(articleTable.status, "PUBLISHED"), or(isNull(articleTable.publishedAt), lte(articleTable.publishedAt, new Date()))),
         orderBy: (a, { desc }) => [desc(a.publishedAt)],
         limit: HOME_ARTICLE_LIMIT,
         columns: ARTICLE_CARD_COLUMNS,
@@ -60,26 +61,57 @@ export const getHomeArticles = unstable_cache(
   // but it must still be distinct per query or two different listings would
   // share one cache entry.
   ["home-articles"],
-  { tags: [CACHE_TAGS.articles], revalidate: 300 }
+  { tags: [CACHE_TAGS.articles, CACHE_TAGS.homepage], revalidate: 300 }
+);
+
+/** Featured stories can be older than the bounded home listing. */
+export const getHomeHeroArticle = unstable_cache(
+  async () => {
+    const [hero] = await db.query.article.findMany({
+      where: and(
+        eq(articleTable.status, "PUBLISHED"),
+        or(isNull(articleTable.publishedAt), lte(articleTable.publishedAt, new Date())),
+        or(eq(articleTable.featured, true), eq(articleTable.homepagePlacement, "featured")),
+      ),
+      orderBy: (a, { desc }) => [desc(a.publishedAt)],
+      limit: 1,
+      columns: ARTICLE_CARD_COLUMNS,
+      with: ARTICLE_CARD_WITH,
+    });
+    return hero ?? null;
+  },
+  ["home-hero"],
+  { tags: [CACHE_TAGS.articles, CACHE_TAGS.homepage], revalidate: 300 },
+);
+
+/** The hero ID participates in the cache key through the function arguments. */
+export const getHomeBriefing = unstable_cache(
+  async (heroId: string) => db.query.article.findMany({
+    where: and(
+      eq(articleTable.status, "PUBLISHED"),
+      or(isNull(articleTable.publishedAt), lte(articleTable.publishedAt, new Date())),
+      ne(articleTable.id, heroId),
+    ),
+    orderBy: (a, { desc }) => [desc(a.publishedAt)],
+    limit: 4,
+    columns: ARTICLE_CARD_COLUMNS,
+    with: ARTICLE_CARD_WITH,
+  }),
+  ["home-briefing"],
+  { tags: [CACHE_TAGS.articles, CACHE_TAGS.homepage], revalidate: 300 },
 );
 
 /** The /latest wire, newest first. */
 export const getLatestArticles = unstable_cache(
   async () => {
     try {
-      return await db.query.article.findMany({
-        where: eq(articleTable.status, "PUBLISHED"),
-        orderBy: (a, { desc }) => [desc(a.publishedAt)],
-        limit: LATEST_ARTICLE_LIMIT,
-        columns: ARTICLE_CARD_COLUMNS,
-        with: ARTICLE_CARD_WITH,
-      });
+      return await queryPublicFeed(0, LATEST_ARTICLE_LIMIT);
     } catch (error) {
       console.warn("[cached-queries] Failed to fetch latest articles:", error);
       return [];
     }
   },
-  ["latest-articles"],
+  ["latest-articles-v2"],
   { tags: [CACHE_TAGS.articles], revalidate: 180 }
 );
 
@@ -94,22 +126,13 @@ export function getCategoryArticles(slug: string, subSlug?: string) {
   return unstable_cache(
     async () => {
       try {
-        return await db.query.article.findMany({
-          where: (a, { eq, and, or, sql }) => and(
-            eq(a.status, "PUBLISHED"),
-            sql`${a.categoryId} IN (SELECT id FROM "Category" WHERE slug = ${subSlug || slug} OR "parentId" IN (SELECT id FROM "Category" WHERE slug = ${slug}))`
-          ),
-          orderBy: (a, { desc }) => [desc(a.publishedAt)],
-          limit: LISTING_ARTICLE_LIMIT,
-          columns: ARTICLE_CARD_COLUMNS,
-          with: ARTICLE_CARD_WITH,
-        });
+        return await queryPublicFeed(0, LISTING_ARTICLE_LIMIT, { categorySlug: slug, subcategorySlug: subSlug });
       } catch (error) {
         console.warn(`[cached-queries] Failed to fetch category articles for ${slug}:`, error);
         return [];
       }
     },
-    ["category-articles", slug, subSlug || "all"],
+    ["category-articles-v2", slug, subSlug || "all"],
     { tags: [CACHE_TAGS.articles, categoryTag(slug), ...(subSlug ? [categoryTag(subSlug)] : [])], revalidate: 300 }
   )();
 }
@@ -119,19 +142,13 @@ export function getAuthorArticles(authorId: string, authorSlug: string) {
   return unstable_cache(
     async () => {
       try {
-        return await db.query.article.findMany({
-          where: and(eq(articleTable.status, "PUBLISHED"), eq(articleTable.authorId, authorId)),
-          orderBy: (a, { desc }) => [desc(a.publishedAt)],
-          limit: LISTING_ARTICLE_LIMIT,
-          columns: ARTICLE_CARD_COLUMNS,
-          with: ARTICLE_CARD_WITH,
-        });
+        return await queryPublicFeed(0, LISTING_ARTICLE_LIMIT, { authorId });
       } catch (error) {
         console.warn(`[cached-queries] Failed to fetch author articles for ${authorId}:`, error);
         return [];
       }
     },
-    ["author-articles", authorId],
+    ["author-articles-v2", authorId],
     { tags: [CACHE_TAGS.articles, authorTag(authorSlug)], revalidate: 600 }
   )();
 }
@@ -160,4 +177,73 @@ export const getRecentArticleSlugs = unstable_cache(
   },
   ["recent-article-slugs"],
   { tags: [CACHE_TAGS.articles], revalidate: 3600 }
+);
+
+/** Cache the whole recommendation set so fallback and exclusions stay consistent. */
+export function getArticleRecommendations(articleId: string, tagIds: string[], mainCategoryId: string | null, categorySlug: string) {
+  return unstable_cache(
+    async (id: string, tags: string[], categoryId: string | null) => {
+      let related = tags.length > 0 ? await db.query.article.findMany({
+        where: and(
+          publicFeedWhere(),
+          ne(articleTable.id, id),
+          inArray(articleTable.id, sql`(SELECT "A" FROM "_ArticleToTag" WHERE "B" IN (${sql.join(tags.map(tagId => sql`${tagId}`), sql`, `)}))`),
+        ),
+        orderBy: (a, { desc }) => [desc(a.publishedAt), desc(a.id)],
+        limit: 3,
+        columns: ARTICLE_CARD_COLUMNS,
+        with: ARTICLE_CARD_WITH,
+      }) : [];
+
+      if (related.length < 3) {
+        const fallback = await db.query.article.findMany({
+          where: and(
+            publicFeedWhere(),
+            categoryId ? sql`${articleTable.categoryId} IN (SELECT id FROM "Category" WHERE id = ${categoryId} OR "parentId" = ${categoryId})` : undefined,
+            notInArray(articleTable.id, [id, ...related.map(article => article.id)]),
+          ),
+          orderBy: (a, { desc }) => [desc(a.publishedAt), desc(a.id)],
+          limit: 3 - related.length,
+          columns: ARTICLE_CARD_COLUMNS,
+          with: ARTICLE_CARD_WITH,
+        });
+        related = [...related, ...fallback];
+      }
+
+      const discoverMore = await db.query.article.findMany({
+        where: and(
+          publicFeedWhere(),
+          categoryId ? sql`${articleTable.categoryId} NOT IN (SELECT id FROM "Category" WHERE id = ${categoryId} OR "parentId" = ${categoryId})` : undefined,
+          notInArray(articleTable.id, [id, ...related.map(article => article.id)]),
+        ),
+        orderBy: (a, { desc }) => [desc(a.publishedAt), desc(a.id)],
+        limit: 4,
+        columns: ARTICLE_CARD_COLUMNS,
+        with: ARTICLE_CARD_WITH,
+      });
+
+      return { related, discoverMore };
+    },
+    ["article-recommendations", categorySlug],
+    { tags: [CACHE_TAGS.articles, categoryTag(categorySlug)], revalidate: 3600 },
+  )(articleId, [...new Set(tagIds)].sort(), mainCategoryId);
+}
+
+export const getBenchmarkLeaderboard = unstable_cache(
+  async () => {
+    try {
+      const records = await db.select().from(benchmarkLeaderboard);
+      const dict: Record<string, { topScore: number, deviceName: string }> = {};
+      records.forEach(r => {
+        const key = `${r.category}-${r.subCategory}-${r.metric}`;
+        dict[key] = { topScore: r.topScore, deviceName: r.deviceName };
+      });
+      return dict;
+    } catch (error) {
+      console.error("[cached-queries] Failed to fetch benchmark leaderboard:", error);
+      return {};
+    }
+  },
+  ["benchmark-leaderboard"],
+  { tags: ["benchmark-leaderboard"], revalidate: 3600 }
 );

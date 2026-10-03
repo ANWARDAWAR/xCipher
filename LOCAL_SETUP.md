@@ -98,6 +98,11 @@ Baaki **optional** hain:
 - `CRON_SECRET` — sirf scheduled publishing endpoint ke liye.
   Na ho to `/api/cron/publish-scheduled` har request reject karega.
 - `NEXT_PUBLIC_SUPABASE_*` — sirf tab jab Supabase use kar rahe hon.
+- `NEXT_PUBLIC_ADSENSE_CLIENT_ID` — AdSense publisher client ID (`ca-pub-…`).
+- `NEXT_PUBLIC_ADSENSE_SLOT_ID` — default responsive display ad unit's numeric slot ID.
+  Individual placements can override it with the `AdUnit` component's `slotId` prop.
+  Ads remain hidden until both IDs are configured and optional cookies are accepted.
+  Set these public variables before building; restart development or rebuild the Worker after changes.
 
 ---
 

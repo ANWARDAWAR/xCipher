@@ -452,7 +452,7 @@ export default function AboutPage() {
                 {/* Social & Contact Buttons */}
                 <div className="flex items-center gap-3 mt-4 lg:mt-4 relative z-10">
                   <a 
-                    href="https://github.com" 
+                    href="https://github.com/anwariqbaldawar/AnwarIqbaldawar" 
                     target="_blank" 
                     rel="noopener noreferrer" 
                     aria-label="Anwar Iqbal Dawar on GitHub"
@@ -461,7 +461,7 @@ export default function AboutPage() {
                     <SocialIcon platform="github" />
                   </a>
                   <a 
-                    href="https://twitter.com" 
+                    href="https://x.com/engr_anwardawar" 
                     target="_blank" 
                     rel="noopener noreferrer" 
                     aria-label="Anwar Iqbal Dawar on X"
@@ -470,7 +470,7 @@ export default function AboutPage() {
                     <SocialIcon platform="x" />
                   </a>
                   <a 
-                    href="https://linkedin.com" 
+                    href="https://www.linkedin.com/in/anwar-iqbal-dawar-6564ba37a" 
                     target="_blank" 
                     rel="noopener noreferrer" 
                     aria-label="Anwar Iqbal Dawar on LinkedIn"
@@ -479,7 +479,7 @@ export default function AboutPage() {
                     <SocialIcon platform="linkedin" />
                   </a>
                   <a 
-                    href="mailto:anwar@xsypher.news" 
+                    href="mailto:anwariqbalhurmaz@gmai.com" 
                     aria-label="Email Anwar Iqbal Dawar"
                     className="p-2 rounded-lg bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--ink)] border border-[var(--line)] transition-colors"
                   >

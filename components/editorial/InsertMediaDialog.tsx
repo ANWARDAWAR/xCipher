@@ -69,6 +69,17 @@ export function InsertMediaDialog({ kind, open, onClose, onInsertImage, onInsert
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
 
+  useEffect(() => {
+    if (!open) return;
+    setSrc(initialImage?.src || "");
+    setAlt(initialImage?.alt || "");
+    setCaption(initialImage?.caption || "");
+    setCredit(initialImage?.credit || "");
+    setError(null);
+    setTouched(false);
+    setTab(initialImage?.src ? "url" : "upload");
+  }, [open, initialImage]);
+
   // Focus handling only. The fields are no longer cleared here: this component
   // is mounted with a key that changes per opening, so React discards the old
   // state and the form starts empty by construction. Clearing six pieces of

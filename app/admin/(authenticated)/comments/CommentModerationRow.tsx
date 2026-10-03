@@ -52,7 +52,7 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
   return (
     <tr className="hover:bg-paper/80 dark:hover:bg-surface/5 transition-colors group">
       {/* Commenter (20%) */}
-      <td className="py-4 px-4 align-top w-[20%]">
+      <td className="py-4 px-4 align-top w-[20%]" data-label="Commenter">
         <div className="flex flex-col">
           <span className="text-sm font-medium text-ink truncate">{comment.displayName}</span>
           <span className="inline-block mt-1">
@@ -64,7 +64,7 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
       </td>
 
       {/* Content (45%) */}
-      <td className="py-4 px-4 align-top w-[45%]">
+      <td className="py-4 px-4 align-top w-[45%]" data-label="Comment">
         <div className="text-sm text-ink-2 break-words mb-1 leading-relaxed">
           {expanded || comment.body.length <= 150 ? comment.body : `${comment.body.slice(0, 150)}...`}
           {comment.body.length > 150 && (
@@ -90,7 +90,7 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
       </td>
 
       {/* Date & Time (15%) */}
-      <td className="py-4 px-4 align-top w-[15%]">
+      <td className="py-4 px-4 align-top w-[15%]" data-label="Date">
         <div className="text-sm text-ink">
           {new Date(comment.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
         </div>
@@ -100,12 +100,12 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
       </td>
 
       {/* Status (10%) */}
-      <td className="py-4 px-4 align-top w-[10%]">
+      <td className="py-4 px-4 align-top w-[10%]" data-label="Status">
         {getStatusBadge(comment.status)}
       </td>
 
       {/* Actions (10%) */}
-      <td className="py-4 px-4 align-top text-right w-[10%]">
+      <td className="py-4 px-4 align-top text-right w-[10%]" data-label="Actions">
         <div className="flex items-center justify-end gap-1 relative">
           {comment.status === "PENDING" ? (
             <div className="flex flex-col items-end gap-2 relative group/actions">
@@ -141,10 +141,11 @@ export default function CommentModerationRow({ comment, onUpdate }: { comment: C
               <input
                 type="text"
                 placeholder="Add note..."
+                aria-label="Moderation note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 maxLength={200}
-                className="opacity-0 group-hover/actions:opacity-100 focus:opacity-100 absolute top-full right-0 mt-1 w-32 p-1.5 text-xs bg-surface border border-line rounded shadow-sm z-10 transition-opacity focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent text-ink"
+                className="comment-moderator-note opacity-0 group-hover/actions:opacity-100 focus:opacity-100 absolute top-full right-0 mt-1 w-32 p-1.5 text-xs bg-surface border border-line rounded shadow-sm z-10 transition-opacity focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent text-ink"
               />
             </div>
           ) : (

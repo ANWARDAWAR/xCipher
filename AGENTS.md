@@ -47,6 +47,12 @@ Do NOT manually compare role strings (e.g., `if (user.role === 'ADMIN')`) when e
 - **1:1 Functional Migration:** We are currently stabilizing the Drizzle/Edge migration. Do not implement new features like Gemini AI integrations, multi-language translation, or Cloudflare R2 JSON generation unless explicitly instructed.
 - **Metadata:** Comments, Authors, and Metadata stay in Supabase PostgreSQL.
 
+### H. Hybrid Storage Model (Article Data Flow)
+- **Neon Database (Drizzle ORM):** Stores all structured metadata (`id`, `title`, `deck`, `status`, `views`, `categoryId`), taxonomy (Tags via `_ArticleToTag`), and relational user data (Comments, Authors).
+- **Cloudflare R2:** Stores the heavy article content (the sanitized HTML and raw TipTap JSON).
+- **The Link:** The Neon database stores the R2 object path in the `article.contentUrl` column.
+- **Data Fetching:** Articles must be fetched in two steps: query the DB metadata first to retrieve the `contentUrl`, then fetch the content payload from R2 using `fetchFromR2`. Do not attempt to query article body text via SQL, as it does not exist in the database.
+
 ### E. Build & Deployment Workflow (@opennextjs/cloudflare)
 - **Unified Worker Bundle:** We migrated away from `@cloudflare/next-on-pages` (which split routes into 52 separate `.func` bundles exceeding 88 MiB) to `@opennextjs/cloudflare`. OpenNext compiles the entire application into a single unified worker at `.open-next/worker.js` with assets in `.open-next/assets`.
 - **Build Command:** Run `npm run build:worker` (`opennextjs-cloudflare build`) to build the application and worker bundle.

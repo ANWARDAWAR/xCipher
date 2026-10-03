@@ -2,11 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getImgSrc, fmtViews } from "@/lib/utils";
 import RelativeTime from "@/components/common/RelativeTime";
-import { getHomeArticles } from "@/lib/cached-queries";
-import { ARTICLE_CARD_COLUMNS, ARTICLE_CARD_WITH } from "@/lib/queries";
-import { db } from "@/lib/db";
-import { eq, ne, or } from "drizzle-orm";
-import { article as articleTable } from "@/lib/db/schema";
+import { getHomeArticles, getHomeHeroArticle, getHomeBriefing } from "@/lib/cached-queries";
 import StoryCard from "@/components/article/StoryCard";
 import StoryRow from "@/components/article/StoryRow";
 import BreakingTicker from "@/components/home/BreakingTicker";
@@ -53,48 +49,20 @@ export default async function Home() {
     // to everyone in that window. The absolute createdAt is passed through and
     // <RelativeTime> does the arithmetic in the browser.
     age: 0,
-    mins: 5,
+    mins: a.readingTime || 1,
     alt: a.title,
     breaking: a.homepagePlacement === "featured",
     pick: a.homepagePlacement === "picks",
   }));
 
-  let [dbHeroArticle] = await db.query.article.findMany({
-    where: or(
-      eq(articleTable.featured, true),
-      eq(articleTable.homepagePlacement, "featured")
-    ),
-    orderBy: (a, { desc }) => [desc(a.publishedAt)],
-    limit: 1,
-    columns: ARTICLE_CARD_COLUMNS,
-    with: ARTICLE_CARD_WITH,
-  });
-  
-  if (!dbHeroArticle) {
-    const [fallback] = await db.query.article.findMany({
-      where: eq(articleTable.status, "PUBLISHED"),
-      orderBy: (a, { desc }) => [desc(a.publishedAt)],
-      limit: 1,
-      columns: ARTICLE_CARD_COLUMNS,
-      with: ARTICLE_CARD_WITH,
-    });
-    dbHeroArticle = fallback;
-  }
-
+  const dbHeroArticle = await getHomeHeroArticle();
   const heroArticle = dbHeroArticle || dbArticles[0];
-
-  const dbBriefingRaw = await db.query.article.findMany({
-    where: ne(articleTable.id, heroArticle.id),
-    orderBy: (a, { desc }) => [desc(a.publishedAt)],
-    limit: 4,
-    columns: ARTICLE_CARD_COLUMNS,
-    with: ARTICLE_CARD_WITH,
-  });
+  const dbBriefingRaw = await getHomeBriefing(heroArticle.id);
 
   const lead = {
     ...heroArticle,
     age: 0,
-    mins: 5,
+    mins: heroArticle.readingTime || 1,
     alt: heroArticle.title,
     breaking: heroArticle.homepagePlacement === "featured",
     pick: heroArticle.homepagePlacement === "picks",
@@ -103,7 +71,7 @@ export default async function Home() {
   const briefing = dbBriefingRaw.map(a => ({
     ...a,
     age: 0,
-    mins: 5,
+    mins: a.readingTime || 1,
     alt: a.title,
     breaking: a.homepagePlacement === "featured",
     pick: a.homepagePlacement === "picks",
@@ -159,6 +127,7 @@ export default async function Home() {
                 src={getImgSrc(lead.img || "", 1280, 720)} 
                 alt={lead.alt || lead.title} 
                 fill
+                sizes="(max-width: 900px) 100vw, 66vw"
                 priority 
                 className="object-cover"
               />
@@ -174,7 +143,7 @@ export default async function Home() {
           <p className="story-deck">{lead.deck}</p>
           <div className="byline">
             {lead.authorModel?.avatar ? (
-              <img src={lead.authorModel.avatar} alt={lead.authorModel.name || lead.author || ""} className="ava lg object-cover rounded-full" />
+              <Image src={lead.authorModel.avatar} alt={lead.authorModel.name || lead.author || ""} width={56} height={56} sizes="56px" className="ava lg object-cover rounded-full" />
             ) : (
               <div className="ava lg">{(lead.author || "xSypher").charAt(0)}</div>
             )}
@@ -228,7 +197,7 @@ export default async function Home() {
                         <span className="hlink">{a.title}</span>
                       </Link>
                     </h3>
-                    <span className="mr-cat">{a.category?.name || "News"} · {fmtViews(a.views)} reads</span>
+                    <span className="mr-cat">{a.category?.name || "News"}</span>
                   </div>
                 </li>
               ))}
@@ -348,6 +317,7 @@ export default async function Home() {
                     src={getImgSrc(pickFeat.img || "", 900, 506)} 
                     alt={pickFeat.alt || pickFeat.title} 
                     fill 
+                    sizes="(max-width: 900px) 100vw, 50vw"
                     className="object-cover"
                   />
                 </Link>
@@ -362,7 +332,7 @@ export default async function Home() {
                 <p className="story-deck">{pickFeat.deck}</p>
                 <div className="byline">
                   {pickFeat.authorModel?.avatar ? (
-                    <img src={pickFeat.authorModel.avatar} alt={pickFeat.authorModel.name || pickFeat.author || ""} className="ava object-cover rounded-full" />
+                    <Image src={pickFeat.authorModel.avatar} alt={pickFeat.authorModel.name || pickFeat.author || ""} width={34} height={34} sizes="34px" className="ava object-cover rounded-full" />
                   ) : (
                     <div className="ava">{(pickFeat.author || "xSypher").charAt(0)}</div>
                   )}
@@ -423,6 +393,7 @@ function CatSplit({ cat, articles, reverse = false }: { cat: string, articles: a
                 src={getImgSrc(feat.img || "", 960, 540)} 
                 alt={feat.alt || feat.title} 
                 fill 
+                sizes="(max-width: 900px) 100vw, 50vw"
                 className="object-cover"
               />
             </Link>
@@ -438,9 +409,9 @@ function CatSplit({ cat, articles, reverse = false }: { cat: string, articles: a
               <p className="story-deck">{feat.deck}</p>
               <div className="byline" style={{ marginTop: "12px" }}>
                 {feat.authorModel?.avatar ? (
-                  <img src={feat.authorModel.avatar} alt={feat.authorModel.name || feat.author || ""} className="ava sm object-cover rounded-full" />
+                  <Image src={feat.authorModel.avatar} alt={feat.authorModel.name || feat.author || ""} width={26} height={26} sizes="26px" className="ava sm object-cover rounded-full" />
                 ) : (
-                  <div className="ava sm">{feat.author.charAt(0)}</div>
+                  <div className="ava sm">{(feat.author || "xSypher Staff").charAt(0)}</div>
                 )}
                 <span><b>{feat.author}</b> <span className="dot">·</span> {<RelativeTime dateTime={new Date(feat.createdAt).toISOString()} />} <span className="dot">·</span> {feat.mins} min read</span>
               </div>

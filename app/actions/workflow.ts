@@ -203,7 +203,7 @@ function revalidateArticleRoutes(article: {
   // cached.
   for (const tag of articleMutationTags(article)) {
     // @ts-ignore
-    revalidateTag(tag);
+    revalidateTag(tag, 'max');
   }
 
   // The article's own route is still invalidated by path. Its page component
@@ -1007,10 +1007,10 @@ async function runBulkTransition(
   // whole site.
   if (publishedAffected) {
     // @ts-ignore
-    revalidateTag(CACHE_TAGS.articles);
+    revalidateTag(CACHE_TAGS.articles, 'max');
     for (const slug of touchedSlugs) {
       // @ts-ignore
-      revalidateTag(articleTag(slug));
+      revalidateTag(articleTag(slug), 'max');
       revalidatePath(`/article/${slug}`, "page");
     }
   }

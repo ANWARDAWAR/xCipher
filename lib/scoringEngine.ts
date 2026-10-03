@@ -1,13 +1,15 @@
 export interface ScoreItem {
-  tab?: string; // "Camera" | "Selfie" | "Display" | "Performance" | "Battery" | "Audio" | string
+  tab?: string; // "Camera" | "Display" | "Performance" | "Battery" | "Charging" | "Software" | "Design" | "Audio" | "Connectivity" | "Value" | string
   subCategory?: string; // e.g. "Photo", "Video"
   group?: string; // alias/fallback for subCategory
-  metric: string; // e.g. "Main Lens", "Telephoto", "Exposure"
-  score: number;
-  topScore?: number;
+  metric: string; // e.g. "Main Lens", "Wireless Charging"
+  rawValue?: string; // real-world native units e.g. "18h 30m", "4500 nits", "120W"
+  score: number | string; // 0-200 or "N/A"
+  topScore?: number | string; // 0-200 or "N/A"
   weight?: number;
   isUseCase?: boolean;
   useCaseDescription?: string;
+  isNA?: boolean;
 }
 
 export interface GroupScoreResult {
@@ -52,19 +54,43 @@ export interface CalculatedBreakdown {
   subCategories: SubCategoryResult[];
   useCases: UseCaseScoreResult[];
   tabs: Record<string, TabBreakdownResult>;
+  categories: Record<string, TabBreakdownResult>;
+  groupedData: Record<string, TabBreakdownResult>;
   availableTabs: string[];
 }
 
 export const BENCHMARK_TABS = [
   'Camera',
-  'Selfie',
   'Display',
   'Performance',
   'Battery',
+  'Charging',
+  'Software',
+  'Design',
   'Audio',
+  'Connectivity',
+  'Value',
+  'Selfie',
 ] as const;
 
-export type BenchmarkTab = (typeof BENCHMARK_TABS)[number];
+export type BenchmarkTab = (typeof BENCHMARK_TABS)[number] | string;
+
+export function isNAScore(val: any): boolean {
+  if (val === null || val === undefined) return true;
+  if (typeof val === 'string') {
+    const trimmed = val.trim().toLowerCase();
+    if (
+      trimmed === 'n/a' ||
+      trimmed === 'na' ||
+      trimmed === '-' ||
+      trimmed === 'none' ||
+      trimmed === ''
+    ) {
+      return true;
+    }
+  }
+  return isNaN(Number(val));
+}
 
 const DEFAULT_USE_CASE_DESCRIPTIONS: Record<string, string> = {
   lowlight: 'Photos and videos captured in challenging low-light conditions',
@@ -93,6 +119,7 @@ function getUseCaseDescription(metric: string, customDesc?: string): string {
 }
 
 function calculateScaleMax(peakScore: number): number {
+  if (peakScore <= 0) return 200;
   if (peakScore <= 10) return 10;
   if (peakScore <= 100) return 100;
   if (peakScore <= 160) return 160;
@@ -101,9 +128,10 @@ function calculateScaleMax(peakScore: number): number {
 }
 
 /**
- * Pure mathematical scoring engine for xSypher tabbed benchmark evaluations.
- * Supports hierarchical aggregation (Tab -> Sub-Category -> Metric),
- * custom metric weights, dynamic top scores, and edge runtime safety.
+ * Pure mathematical scoring engine for xSypher multi-category benchmarking.
+ * Supports hierarchical aggregation (Category -> Sub-Category -> Metric),
+ * custom metric weights, dynamic 0-200 point scaling, strict N/A safety,
+ * and edge runtime safety.
  */
 export function calculateXSypherScore(rawItems: any[], requestedTab?: string): CalculatedBreakdown {
   if (!Array.isArray(rawItems) || rawItems.length === 0) {
@@ -116,14 +144,24 @@ export function calculateXSypherScore(rawItems: any[], requestedTab?: string): C
       subCategories: [],
       useCases: [],
       tabs: {},
+      categories: {},
+      groupedData: {},
       availableTabs: [],
     };
   }
 
-  // Normalize items
+  // Normalize items with strict N/A detection
   const normalizedItems: ScoreItem[] = rawItems.map((item) => {
-    const rawScore = Number(item.score ?? item.value ?? 0);
-    const rawTopScore = item.topScore !== undefined ? Number(item.topScore) : rawScore;
+    const rawScoreVal = item.score ?? item.value;
+    const isScoreNA = isNAScore(rawScoreVal);
+    const rawScore = isScoreNA ? 0 : Number(rawScoreVal);
+
+    const rawTopVal = item.topScore;
+    const isTopScoreNA = rawTopVal !== undefined && isNAScore(rawTopVal);
+    const rawTopScore = isTopScoreNA
+      ? (isScoreNA ? 0 : rawScore)
+      : (rawTopVal !== undefined ? Number(rawTopVal) : rawScore);
+
     const rawWeight = item.weight !== undefined && Number(item.weight) > 0 ? Number(item.weight) : 1.0;
 
     const rawTab = item.tab ? String(item.tab).trim() : '';
@@ -136,20 +174,24 @@ export function calculateXSypherScore(rawItems: any[], requestedTab?: string): C
       rawTab.toLowerCase().includes('use case')
     );
 
+    const rawValueStr = item.rawValue !== undefined && item.rawValue !== null ? String(item.rawValue).trim() : undefined;
+
     return {
       tab: rawTab || 'Camera',
       subCategory: rawSub || 'General',
       group: rawSub || 'General',
       metric: item.metric ? String(item.metric).trim() : (item.label ? String(item.label).trim() : 'Metric'),
-      score: isNaN(rawScore) ? 0 : rawScore,
-      topScore: isNaN(rawTopScore) ? rawScore : Math.max(rawTopScore, rawScore),
+      rawValue: rawValueStr && rawValueStr !== '' ? rawValueStr : undefined,
+      score: isScoreNA ? 'N/A' : (isNaN(rawScore) ? 0 : rawScore),
+      topScore: isTopScoreNA && isScoreNA ? 'N/A' : (isNaN(rawTopScore) ? rawScore : Math.max(rawTopScore, rawScore)),
       weight: isNaN(rawWeight) ? 1.0 : rawWeight,
       isUseCase,
       useCaseDescription: item.useCaseDescription,
+      ...(isScoreNA ? { isNA: true } : {}),
     };
   });
 
-  // Group items by tab
+  // Group items by category/tab
   const tabItemMap = new Map<string, ScoreItem[]>();
   for (const item of normalizedItems) {
     const tabName = item.tab || 'Camera';
@@ -161,9 +203,8 @@ export function calculateXSypherScore(rawItems: any[], requestedTab?: string): C
 
   const availableTabs = Array.from(tabItemMap.keys());
 
-  // Determine active tab
+  // Determine active tab if requested
   let activeTab = requestedTab || (availableTabs.length > 0 ? availableTabs[0] : 'Camera');
-  // Check if requestedTab exists (case-insensitive match)
   const matchedTab = availableTabs.find((t) => t.toLowerCase() === activeTab.toLowerCase());
   if (matchedTab) {
     activeTab = matchedTab;
@@ -180,14 +221,21 @@ export function calculateXSypherScore(rawItems: any[], requestedTab?: string): C
     let tabPeak = 0;
 
     for (const item of items) {
-      if (item.score > tabPeak) tabPeak = item.score;
-      if ((item.topScore ?? 0) > tabPeak) tabPeak = item.topScore!;
+      const isNA = item.isNA || isNAScore(item.score);
+      if (!isNA) {
+        const numScore = Number(item.score);
+        const numTop = isNAScore(item.topScore) ? numScore : Number(item.topScore);
+        if (numScore > tabPeak) tabPeak = numScore;
+        if (numTop > tabPeak) tabPeak = numTop;
+      }
 
       if (item.isUseCase) {
         useCases.push({
           label: item.metric,
-          score: Math.round(item.score),
-          topScore: Math.round(item.topScore ?? item.score),
+          score: isNA ? 0 : Math.round(Number(item.score)),
+          topScore: isNA
+            ? 0
+            : Math.round(isNAScore(item.topScore) ? Number(item.score) : Number(item.topScore)),
           description: getUseCaseDescription(item.metric, item.useCaseDescription),
         });
       } else {
@@ -205,12 +253,23 @@ export function calculateXSypherScore(rawItems: any[], requestedTab?: string): C
       let weightedScoreSum = 0;
       let weightedTopScoreSum = 0;
       let totalWeight = 0;
+      let validMetricsCount = 0;
 
       for (const m of metrics) {
-        const w = m.weight ?? 1.0;
-        weightedScoreSum += m.score * w;
-        weightedTopScoreSum += (m.topScore ?? m.score) * w;
+        const isNA = m.isNA || isNAScore(m.score);
+        if (isNA) {
+          m.isNA = true;
+          continue; // strictly omit N/A from weighted average
+        }
+
+        const scoreNum = Number(m.score);
+        const topNum = isNAScore(m.topScore) ? scoreNum : Number(m.topScore);
+        const w = m.weight !== undefined && Number(m.weight) > 0 ? Number(m.weight) : 1.0;
+
+        weightedScoreSum += scoreNum * w;
+        weightedTopScoreSum += Math.max(topNum, scoreNum) * w;
         totalWeight += w;
+        validMetricsCount++;
       }
 
       const subScore = totalWeight > 0 ? Math.round(weightedScoreSum / totalWeight) : 0;
@@ -220,12 +279,12 @@ export function calculateXSypherScore(rawItems: any[], requestedTab?: string): C
         name: subName,
         score: subScore,
         topScore: Math.max(subTopScore, subScore),
-        weight: totalWeight > 0 ? totalWeight / metrics.length : 1.0,
+        weight: validMetricsCount > 0 ? totalWeight / validMetricsCount : 0,
         metrics,
       });
     }
 
-    // Calculate tab overall score
+    // Calculate category overall score
     let tabScore = 0;
     let tabTopScore = 0;
 
@@ -235,18 +294,23 @@ export function calculateXSypherScore(rawItems: any[], requestedTab?: string): C
       let totalSubWeight = 0;
 
       for (const sub of subCategories) {
-        totalWeightedScore += sub.score * sub.weight;
-        totalWeightedTopScore += sub.topScore * sub.weight;
-        totalSubWeight += sub.weight;
+        if (sub.weight > 0) {
+          totalWeightedScore += sub.score * sub.weight;
+          totalWeightedTopScore += sub.topScore * sub.weight;
+          totalSubWeight += sub.weight;
+        }
       }
 
       tabScore = totalSubWeight > 0 ? Math.round(totalWeightedScore / totalSubWeight) : 0;
       tabTopScore = totalSubWeight > 0 ? Math.round(totalWeightedTopScore / totalSubWeight) : tabScore;
     } else if (useCases.length > 0) {
-      const sum = useCases.reduce((acc, u) => acc + u.score, 0);
-      const topSum = useCases.reduce((acc, u) => acc + u.topScore, 0);
-      tabScore = Math.round(sum / useCases.length);
-      tabTopScore = Math.round(topSum / useCases.length);
+      const validUC = useCases.filter((u) => !isNAScore(u.score) && u.score > 0);
+      if (validUC.length > 0) {
+        const sum = validUC.reduce((acc, u) => acc + u.score, 0);
+        const topSum = validUC.reduce((acc, u) => acc + u.topScore, 0);
+        tabScore = Math.round(sum / validUC.length);
+        tabTopScore = Math.round(topSum / validUC.length);
+      }
     }
 
     computedTabs[tName] = {
@@ -263,7 +327,7 @@ export function calculateXSypherScore(rawItems: any[], requestedTab?: string): C
     tab: activeTab,
     score: 0,
     topScore: 0,
-    scaleMax: 100,
+    scaleMax: 200,
     subCategories: [],
     useCases: [],
   };
@@ -286,6 +350,8 @@ export function calculateXSypherScore(rawItems: any[], requestedTab?: string): C
     subCategories: activeResult.subCategories,
     useCases: activeResult.useCases,
     tabs: computedTabs,
+    categories: computedTabs,
+    groupedData: computedTabs,
     availableTabs,
   };
 }

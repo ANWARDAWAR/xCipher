@@ -58,7 +58,8 @@ function r2RemotePattern(): NonNullable<NonNullable<NextConfig["images"]>["remot
   if (!base) return [];
   try {
     const url = new URL(base);
-    return [{ protocol: url.protocol.replace(":", "") as "http" | "https", hostname: url.hostname }];
+    if (url.protocol !== "https:" || url.hostname.includes("*") || url.username || url.password) return [];
+    return [{ protocol: "https", hostname: url.hostname, port: url.port }];
   } catch {
     // Malformed value: skip it rather than failing the build with a stack trace
     // that does not mention the variable.
@@ -66,10 +67,7 @@ function r2RemotePattern(): NonNullable<NonNullable<NextConfig["images"]>["remot
   }
 }
 
-const nextConfig: any = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+const nextConfig: NextConfig = {
   // env block removed because Auth.js infers host dynamically via trustHost
   allowedDevOrigins: localNetworkOrigins(),
   async headers() {
@@ -79,7 +77,7 @@ const nextConfig: any = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: `default-src 'self'; script-src 'self' ${process.env.NODE_ENV === "development" ? "'unsafe-eval'" : ""} 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https:; font-src 'self' data:; frame-src 'self' https://www.youtube-nocookie.com; frame-ancestors 'none'; connect-src 'self' https:;`,
+            value: `default-src 'self'; script-src 'self' ${process.env.NODE_ENV === "development" ? "'unsafe-eval'" : ""} 'unsafe-inline' https://www.tiktok.com; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https:; font-src 'self' data:; frame-src 'self' https://www.youtube-nocookie.com https://www.tiktok.com; frame-ancestors 'none'; connect-src 'self' https:;`,
           },
           {
             key: "X-Frame-Options",
@@ -107,8 +105,15 @@ const nextConfig: any = {
   },
   images: {
     remotePatterns: [
-      { protocol: 'https', hostname: '**' },
-      { protocol: 'http', hostname: '**' },
+      { protocol: 'https', hostname: 'res.cloudinary.com', port: '' },
+      { protocol: 'https', hostname: 'images.unsplash.com', port: '' },
+      { protocol: 'https', hostname: 'plus.unsplash.com', port: '' },
+      { protocol: 'https', hostname: 'images.pexels.com', port: '' },
+      { protocol: 'https', hostname: 'avatars.githubusercontent.com', port: '' },
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com', port: '' },
+      { protocol: 'https', hostname: 'upload.wikimedia.org', port: '' },
+      { protocol: 'https', hostname: 'www.gravatar.com', port: '' },
+      ...r2RemotePattern(),
     ],
   },
   experimental: {

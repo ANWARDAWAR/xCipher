@@ -42,6 +42,7 @@ interface ArticleRow {
     id: string;
     name: string;
     slug: string;
+    parent?: { name: string } | null;
   } | null;
   tags: { id: string; name: string }[];
   _count?: {
@@ -84,6 +85,16 @@ function absoluteDateTime(date: Date | string): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function ArticleActions({ article: a, actor }: { article: ArticleRow; actor: ArticleIndexProps['actor'] }) {
+  const ownsArticle = Boolean(actor.authorId && (a.authorId || a.authorModel?.id) === actor.authorId);
+  const canEdit = authorize(actor.role, 'article.edit.any') || ownsArticle && authorize(actor.role, 'article.edit.own');
+  return <div className="article-card-actions flex items-center justify-end gap-1.5">
+    {a.status === 'PUBLISHED' && <Link className="console-icon-action" href={`/article/${a.slug}`} target="_blank" rel="noopener noreferrer" aria-label={`View ${a.title} on site`}><ExternalLink size={17} /></Link>}
+    {canEdit && <Link href={`/admin/editor/${a.id}`} className="console-icon-action" aria-label={`Edit ${a.title}`}><Edit3 size={17} /></Link>}
+    <ArticleActionMenu id={a.id} title={a.title} status={a.status} canArchive={authorize(actor.role, 'article.archive') && (ownsArticle || authorize(actor.role, 'article.edit.any'))} canDeletePermanently={authorize(actor.role, 'article.delete')} canDeleteOwnDraft={authorize(actor.role, 'article.delete.own.draft') && ownsArticle} />
+  </div>;
 }
 
 export default function ArticleIndex({
@@ -207,7 +218,7 @@ export default function ArticleIndex({
     {anyBulk && (
       // Mobile has no table header to hang select-all off, so it gets its own
       // row above the list rather than losing the affordance entirely.
-      <div className="md:hidden flex items-center gap-2 mt-4 px-1">
+      <div className="md:hidden flex items-center gap-2 mt-4 px-1 console-select-all">
         <input
           id="select-all-mobile"
           type="checkbox"
@@ -220,7 +231,18 @@ export default function ArticleIndex({
         </label>
       </div>
     )}
-    <div className="bg-surface border border-line rounded-xl shadow-xs mt-4 overflow-hidden">
+    <div className="md:hidden article-mobile-list">
+      {visibleArticles.map(a => <article key={a.id} className={`article-mobile-card ${selected.has(a.id) ? 'is-selected' : ''}`}>
+        <div className="article-card-top"><StatusChip status={a.status} />{anyBulk && <label className="console-card-select"><input type="checkbox" checked={selected.has(a.id)} onChange={() => toggle(a.id)} aria-label={`Select ${a.title || 'Untitled article'}`} /></label>}</div>
+        <div className="article-card-story">{a.img && <Image src={a.img} alt="" width={68} height={68} className="article-card-thumb" />}
+          <div className="min-w-0 flex-1"><Link href={`/admin/articles/${a.id}`} className="article-card-title">{a.title || 'Untitled article'}</Link><p>{a.authorModel?.name || a.author || 'Unknown author'}</p></div>
+        </div>
+        <div className="article-card-meta">{a.category && <span>{a.category.parent?.name || a.category.name}</span>}<time dateTime={new Date(a.updatedAt).toISOString()}>{relativeTime(a.updatedAt)}</time>{a.status === 'PUBLISHED' && <span><Eye size={13} />{fmtViews(a.views)} reads</span>}</div>
+        {a.status === 'SCHEDULED' && a.scheduledFor && <p className="article-card-schedule"><Clock size={13} />Goes live {absoluteDateTime(a.scheduledFor)}</p>}
+        <footer><Link href={`/admin/articles/${a.id}`} className="article-card-open">Open story</Link><ArticleActions article={a} actor={actor} /></footer>
+      </article>)}
+    </div>
+    <div className="hidden md:block bg-surface border border-line rounded-xl shadow-xs mt-4 overflow-hidden">
       {/* Table from md up. Below that the same data renders as stacked rows:
           a five-column table on a 375px screen forces horizontal scrolling,
           which hides the actions column exactly where it is hardest to find. */}
@@ -264,7 +286,7 @@ export default function ArticleIndex({
         <tbody className="divide-y divide-line">
           {visibleArticles.map((a) => {
             const authorName = a.authorModel?.name || a.author || "Unknown";
-            const categoryName = (a.category as any)?.parent?.name || a.category?.name || "";
+            const categoryName = a.category?.parent?.name || a.category?.name || "";
 
             return (
               <tr
@@ -368,35 +390,7 @@ export default function ArticleIndex({
 
                 {/* Actions */}
                 <td className="whitespace-nowrap p-3.5 align-middle text-right w-28 " data-label="Actions">
-                  <div className="flex items-center justify-end gap-1.5">
-                    {a.status === "PUBLISHED" && (
-                      <Link
-                        className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-surface-3 border border-transparent hover:border-line transition-colors"
-                        href={`/article/${a.slug}`}
-                        target="_blank"
-                        title="View on site"
-                        aria-label={`View "${a.title}" on site`}
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </Link>
-                    )}
-                    <Link
-                      href={`/admin/editor/${a.id}`}
-                      className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-surface-3 border border-transparent hover:border-line transition-colors"
-                      title={a.status === "PUBLISHED" ? "Edit article" : "Open editor"}
-                      aria-label={`Edit "${a.title}"`}
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </Link>
-                    <ArticleActionMenu 
-                      id={a.id} 
-                      title={a.title} 
-                      status={a.status}
-                      canArchive={authorize(actor.role, "article.archive")}
-                      canDeletePermanently={authorize(actor.role, "article.delete")}
-                      canDeleteOwnDraft={authorize(actor.role, "article.delete.own.draft") && a.authorId === actor.authorId}
-                    />
-                  </div>
+                  <ArticleActions article={a} actor={actor} />
                 </td>
               </tr>
             );

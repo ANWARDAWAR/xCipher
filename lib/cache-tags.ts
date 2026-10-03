@@ -24,6 +24,7 @@
 export const CACHE_TAGS = {
   /** Any article list: homepage, /latest, category, tag, author, search. */
   articles: "articles",
+  homepage: "homepage",
   /** The taxonomy itself -- category and tag names, slugs, counts. */
   taxonomy: "taxonomy",
   /** Author profile records (name, bio, avatar), not their article lists. */

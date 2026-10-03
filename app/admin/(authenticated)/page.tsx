@@ -227,7 +227,7 @@ export default async function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-7 max-w-7xl mx-auto">
+    <div className="console-dashboard space-y-7 max-w-7xl mx-auto">
       {/* ── Top Header Greeting & Quick Action ──────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-line">
         <div>
@@ -245,25 +245,25 @@ export default async function AdminDashboard() {
           >
             <span>All Articles</span>
           </Link>
-          <Link
+          {canWrite && <Link
             href="/admin/editor"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm hover:shadow transition-all duration-150 active:scale-[0.99]"
+            className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-deep active:bg-accent-press text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm hover:shadow transition-all duration-150 active:scale-[0.99]"
           >
             <Plus className="w-4 h-4" />
             <span>New Story</span>
-          </Link>
+          </Link>}
         </div>
       </div>
 
       {/* ── Quick Actions Strip ────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Link href="/admin/editor" className="flex flex-col p-4 bg-surface border border-line rounded-xl hover:border-accent hover:shadow-md transition-all group">
+      <div className="dashboard-shortcuts grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        {canWrite && <Link href="/admin/editor" className="flex flex-col p-4 bg-surface border border-line rounded-xl hover:border-accent hover:shadow-md transition-all group">
           <div className="p-2 bg-accent/10 text-accent rounded-lg w-fit mb-3 group-hover:scale-110 transition-transform">
             <Plus className="w-5 h-5" />
           </div>
           <span className="font-semibold text-ink text-sm">Draft New Story</span>
           <span className="text-xs text-muted mt-1">Open the Tiptap editor</span>
-        </Link>
+        </Link>}
         {canReview && (
           <Link href="/admin/review" className="flex flex-col p-4 bg-surface border border-line rounded-xl hover:border-purple-500 hover:shadow-md transition-all group">
             <div className="p-2 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg w-fit mb-3 group-hover:scale-110 transition-transform">
@@ -273,20 +273,20 @@ export default async function AdminDashboard() {
             <span className="text-xs text-muted mt-1">{awaitingReview} awaiting review</span>
           </Link>
         )}
-        <Link href="/admin/taxonomy" className="flex flex-col p-4 bg-surface border border-line rounded-xl hover:border-blue-500 hover:shadow-md transition-all group">
+        {authorize(actorRole, 'taxonomy.create') && <Link href="/admin/taxonomy" className="flex flex-col p-4 bg-surface border border-line rounded-xl hover:border-blue-500 hover:shadow-md transition-all group">
           <div className="p-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg w-fit mb-3 group-hover:scale-110 transition-transform">
             <Folder className="w-5 h-5" />
           </div>
           <span className="font-semibold text-ink text-sm">Manage Taxonomy</span>
           <span className="text-xs text-muted mt-1">Categories & tags</span>
-        </Link>
-        <Link href="/admin/users" className="flex flex-col p-4 bg-surface border border-line rounded-xl hover:border-emerald-500 hover:shadow-md transition-all group">
+        </Link>}
+        {authorize(actorRole, 'user.invite') && <Link href="/admin/users/invite" className="flex flex-col p-4 bg-surface border border-line rounded-xl hover:border-emerald-500 hover:shadow-md transition-all group">
           <div className="p-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg w-fit mb-3 group-hover:scale-110 transition-transform">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
           </div>
           <span className="font-semibold text-ink text-sm">Invite User</span>
           <span className="text-xs text-muted mt-1">Add staff members</span>
-        </Link>
+        </Link>}
       </div>
 
       <hr className="border-line my-6" />
@@ -375,7 +375,7 @@ export default async function AdminDashboard() {
       })()}
 
       {/* ── High-Contrast KPI Metric Cards ──────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      <div className="dashboard-metrics grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         {/* Card 1: Total Stories */}
         <div className="bg-surface border border-line rounded-xl p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-line-2 hover:-translate-y-0.5 relative overflow-hidden group">
           <div className="flex items-center justify-between text-muted">

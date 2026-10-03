@@ -4,10 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getCategoryArticles } from "@/lib/cached-queries";
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { category as categoryTable } from "@/lib/db/schema";
 import { siteConfig } from "@/lib/seo";
-import StoryRow from "@/components/article/StoryRow";
+import PaginatedFeed from "@/components/article/PaginatedFeed";
+import { LISTING_ARTICLE_LIMIT } from "@/lib/queries";
 import Sidebar from "@/components/layout/Sidebar";
 import { getImgSrc } from "@/lib/utils";
 import RelativeTime from "@/components/common/RelativeTime";
@@ -133,7 +134,12 @@ export default async function CategoryPage({ params, searchParams }: Props) {
           {rest.length > 0 ? (
             <>
               <div className="day-label" style={{ marginBottom: "6px" }}>More in {catName}</div>
-              {rest.map(a => <StoryRow key={a.id} article={a} />)}
+              <PaginatedFeed
+                initialArticles={rest}
+                initialOffset={1}
+                initialHasMore={articles.length === LISTING_ARTICLE_LIMIT}
+                filter={{ categorySlug: slug, subcategorySlug: sub || undefined }}
+              />
             </>
           ) : !feat ? (
             <p className="muted" style={{ padding: "40px 0" }}>No stories published in {catName} yet.</p>

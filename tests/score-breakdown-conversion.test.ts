@@ -203,4 +203,88 @@ describe("Bidirectional Table <-> ScoreBreakdownBlock Conversion", () => {
     expect(rows[0]).toEqual(["Camera", "Photo", "Main", "165", "168", "1.2"]);
     expect(rows[1]).toEqual(["Camera", "Video", "Stabilization", "160", "162", "1"]);
   });
+
+  it("converts a 7-column hybrid table with Raw Value into ScoreBreakdownBlock and back", () => {
+    const tableDoc = {
+      type: "doc",
+      content: [
+        {
+          type: "table",
+          content: [
+            {
+              type: "tableRow",
+              content: [
+                { type: "tableHeader", content: [{ type: "paragraph", content: [{ type: "text", text: "Category" }] }] },
+                { type: "tableHeader", content: [{ type: "paragraph", content: [{ type: "text", text: "Sub-Category" }] }] },
+                { type: "tableHeader", content: [{ type: "paragraph", content: [{ type: "text", text: "Metric" }] }] },
+                { type: "tableHeader", content: [{ type: "paragraph", content: [{ type: "text", text: "Raw Value" }] }] },
+                { type: "tableHeader", content: [{ type: "paragraph", content: [{ type: "text", text: "Device Score" }] }] },
+                { type: "tableHeader", content: [{ type: "paragraph", content: [{ type: "text", text: "Top Score" }] }] },
+                { type: "tableHeader", content: [{ type: "paragraph", content: [{ type: "text", text: "Weight" }] }] },
+              ],
+            },
+            {
+              type: "tableRow",
+              content: [
+                { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "Battery" }] }] },
+                { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "Endurance" }] }] },
+                { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "Video Playback" }] }] },
+                { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "18h 30m" }] }] },
+                { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "168" }] }] },
+                { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "175" }] }] },
+                { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "1.0" }] }] },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const editor = createEditor(tableDoc);
+    editor.commands.setTextSelection(5);
+    const converted = (editor.chain() as any).convertTableToScoreBreakdown().run();
+    expect(converted).toBe(true);
+
+    let scoreBlockNode: any = null;
+    let blockPos = -1;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === "scoreBreakdownBlock") {
+        scoreBlockNode = node;
+        blockPos = pos;
+      }
+    });
+
+    expect(scoreBlockNode).not.toBeNull();
+    const items = JSON.parse(scoreBlockNode.attrs?.items);
+    expect(items[0]).toEqual({
+      tab: "Battery",
+      subCategory: "Endurance",
+      group: "Endurance",
+      metric: "Video Playback",
+      rawValue: "18h 30m",
+      score: 168,
+      topScore: 175,
+      weight: 1.0,
+      isUseCase: false,
+    });
+
+    // Convert back to 7-column table
+    const tableConverted = (editor.chain() as any).convertScoreBreakdownToTable(blockPos).run();
+    expect(tableConverted).toBe(true);
+
+    let tableNode: any = null;
+    editor.state.doc.descendants((node) => {
+      if (node.type.name === "table") tableNode = node;
+    });
+
+    expect(tableNode).not.toBeNull();
+    const rows: string[][] = [];
+    tableNode.forEach((row: any) => {
+      const cells: string[] = [];
+      row.forEach((cell: any) => cells.push(cell.textContent));
+      rows.push(cells);
+    });
+
+    expect(rows[0]).toEqual(["Battery", "Endurance", "Video Playback", "18h 30m", "168", "175", "1"]);
+  });
 });

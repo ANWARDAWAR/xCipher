@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
+import Image from "next/image";
 import { getComments, type PublicComment } from "@/app/actions/comments";
 
 interface CommentsSectionProps {
@@ -79,9 +80,12 @@ export default function CommentsSection({ articleSlug }: CommentsSectionProps) {
           comments.map((c) => (
             <div key={c.id} className="cmt" role="listitem">
               {/* Gravatar via email hash */}
-              <img
+              <Image
                 src={`https://www.gravatar.com/avatar/${c.emailHash}?d=mp&s=48`}
                 alt=""
+                width={56}
+                height={56}
+                sizes="56px"
                 className="ava lg"
                 style={{ fontSize: "16px", borderRadius: "50%" }}
                 aria-hidden="true"

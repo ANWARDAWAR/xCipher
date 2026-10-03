@@ -29,6 +29,13 @@ export default async function EditDraftPage({ params }: EditDraftPageProps) {
     with: {
       // Include parent category to support the CategorySelector component
       category: { with: { parent: true } },
+      tags: {
+        with: {
+          tag: {
+            columns: { id: true, name: true, slug: true },
+          },
+        },
+      },
       revisions: {
         orderBy: (r, { desc }) => [desc(r.createdAt)],
         with: { user: { columns: { name: true, email: true } } }
@@ -77,9 +84,10 @@ export default async function EditDraftPage({ params }: EditDraftPageProps) {
     contentJson: articleJson,
   };
 
-  const [categories, tags] = await Promise.all([
+  const [categories, tags, allAuthors] = await Promise.all([
     getCategories(),
-    getTags()
+    getTags(),
+    db.query.author.findMany({ columns: { id: true, name: true, slug: true }, orderBy: (a, { asc }) => [asc(a.name)] }),
   ]);
 
   return (
@@ -96,6 +104,7 @@ export default async function EditDraftPage({ params }: EditDraftPageProps) {
         authorId={dbUser?.authorProfile?.id}
         availableCategories={categories}
         availableTags={tags}
+        availableAuthors={allAuthors}
       />
     </div>
   );

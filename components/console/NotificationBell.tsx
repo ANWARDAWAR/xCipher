@@ -135,7 +135,7 @@ export default function NotificationBell({ items, unreadCount }: Props) {
           tabIndex={-1}
           role="dialog"
           aria-label="Notifications"
-          className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-surface border border-line rounded-xl shadow-2 z-50 focus:outline-none"
+          className="console-notification-panel absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-surface border border-line rounded-xl shadow-2 z-50 focus:outline-none"
         >
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-line">
             <span className="text-[11px] font-bold uppercase tracking-wider text-muted">

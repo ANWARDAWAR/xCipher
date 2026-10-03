@@ -129,7 +129,7 @@ export default function CommentsQueueClient({
 
       <div className="bg-surface border border-line rounded-xl shadow-sm overflow-hidden flex flex-col">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[900px]">
+          <table className="console-data-table w-full text-left border-collapse min-w-[900px]" aria-label="Comments awaiting moderation">
             <thead>
               <tr className="border-b border-line bg-paper/50 dark:bg-surface/[0.02]">
                 <th className="whitespace-nowrap min-w-[120px] py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[20%] ">Commenter</th>

@@ -1,21 +1,20 @@
 import { revalidatePath as nextRevalidatePath, revalidateTag as nextRevalidateTag } from "next/cache";
 
-export function revalidatePath(path: string, type?: "layout" | "page") {
+export async function revalidatePath(path: string, type?: "layout" | "page") {
   try {
     if (type) {
-      nextRevalidatePath(path, type);
+      await nextRevalidatePath(path, type);
     } else {
-      nextRevalidatePath(path);
+      await nextRevalidatePath(path);
     }
   } catch (e) {
     console.warn(`[revalidate] Ignored error revalidating path ${path}:`, e);
   }
 }
 
-export function revalidateTag(tag: string) {
+export async function revalidateTag(tag: string, profile: "max" | { expire: number } = "max") {
   try {
-    // @ts-ignore
-    nextRevalidateTag(tag);
+    await nextRevalidateTag(tag, profile);
   } catch (e) {
     console.warn(`[revalidate] Ignored error revalidating tag ${tag}:`, e);
   }

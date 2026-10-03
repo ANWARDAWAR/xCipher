@@ -107,7 +107,7 @@ export default function ImageDropzone({
         onDrop={onDrop}
         disabled={disabled || busy}
         aria-describedby={error ? errorId : undefined}
-        className="dz"
+        className="dz flex min-h-[180px] w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-neutral-300 p-8 text-neutral-500 transition-colors hover:bg-neutral-50 disabled:cursor-wait dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800/50"
         data-dragging={dragging ? "true" : undefined}
         data-busy={busy ? "true" : undefined}
       >

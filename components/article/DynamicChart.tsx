@@ -23,11 +23,15 @@ import {
   LabelList
 } from 'recharts';
 import { motion } from 'framer-motion';
+import { formatChartValue } from '@/lib/chart-format';
+import { Maximize } from 'lucide-react';
+import MediaModal, { type MediaSummary } from './MediaModal';
 
 interface DynamicChartProps {
   config: any[];
   chartType: string;
   animateOnce?: boolean;
+  fullView?: boolean;
 }
 
 const COLORS = [
@@ -39,7 +43,7 @@ const COLORS = [
   '#ec4899', // pink
 ];
 
-export default function DynamicChart({ config, chartType, animateOnce = true }: DynamicChartProps) {
+export default function DynamicChart({ config, chartType, animateOnce = true, fullView = true }: DynamicChartProps) {
   const keys = useMemo(() => {
     if (!config || config.length === 0) return [];
     return Object.keys(config[0]).filter(k => k !== 'name');
@@ -54,6 +58,8 @@ export default function DynamicChart({ config, chartType, animateOnce = true }: 
   }, []);
 
   const chartHeight = chartType === 'pie' ? 350 : (isMobile ? 320 : 500);
+  const formatValue = (value: unknown, key: string) => formatChartValue(value, key);
+  const [isFullViewOpen, setIsFullViewOpen] = useState(false);
 
   if (!config || config.length === 0) return null;
 
@@ -67,9 +73,11 @@ export default function DynamicChart({ config, chartType, animateOnce = true }: 
       return (
         <ResponsiveContainer width="100%" height={350}>
           <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-            <Tooltip 
-              contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--line)', color: 'var(--ink)', borderRadius: '8px' }}
-              itemStyle={{ color: 'var(--ink)' }}
+            <Tooltip
+              wrapperStyle={{ pointerEvents: 'none' }}
+              formatter={(value, name) => [formatValue(value, String(name)), String(name)]}
+              contentStyle={{ backgroundColor: 'rgba(23, 23, 23, .95)', borderColor: 'var(--line)', color: '#fff', borderRadius: '8px', padding: '8px' }}
+              itemStyle={{ color: '#fff', fontSize: '12px' }}
             />
             <Legend wrapperStyle={{ color: 'var(--ink)', fontSize: '12px', marginTop: '10px' }} />
             <Pie
@@ -111,9 +119,11 @@ export default function DynamicChart({ config, chartType, animateOnce = true }: 
             <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
             <XAxis dataKey="name" stroke="var(--muted)" tick={{ fontSize: 11, fill: 'var(--muted)' }} angle={-45} textAnchor="end" height={100} dx={-5} dy={10} />
             <YAxis stroke="var(--muted)" tick={{ fill: 'var(--muted)' }} />
-            <Tooltip 
-              contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--line)', color: 'var(--ink)', borderRadius: '8px' }}
-              itemStyle={{ color: 'var(--ink)' }}
+            <Tooltip
+              wrapperStyle={{ pointerEvents: 'none' }}
+              formatter={(value, name) => [formatValue(value, String(name)), String(name)]}
+              contentStyle={{ backgroundColor: 'rgba(23, 23, 23, .95)', borderColor: 'var(--line)', color: '#fff', borderRadius: '8px', padding: '8px' }}
+              itemStyle={{ color: '#fff', fontSize: '12px' }}
             />
             <Legend verticalAlign="bottom" wrapperStyle={{ color: 'var(--ink)', fontSize: '12px' }} />
             {keys.map((key, index) => {
@@ -142,9 +152,11 @@ export default function DynamicChart({ config, chartType, animateOnce = true }: 
             <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
             <XAxis dataKey="name" stroke="var(--muted)" tick={{ fontSize: 11, fill: 'var(--muted)' }} angle={-45} textAnchor="end" height={100} dx={-5} dy={10} />
             <YAxis stroke="var(--muted)" tick={{ fill: 'var(--muted)' }} />
-            <Tooltip 
-              contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--line)', color: 'var(--ink)', borderRadius: '8px' }}
-              itemStyle={{ color: 'var(--ink)' }}
+            <Tooltip
+              wrapperStyle={{ pointerEvents: 'none' }}
+              formatter={(value, name) => [formatValue(value, String(name)), String(name)]}
+              contentStyle={{ backgroundColor: 'rgba(23, 23, 23, .95)', borderColor: 'var(--line)', color: '#fff', borderRadius: '8px', padding: '8px' }}
+              itemStyle={{ color: '#fff', fontSize: '12px' }}
             />
             <Legend verticalAlign="bottom" wrapperStyle={{ color: 'var(--ink)', fontSize: '12px' }} />
             {keys.map((key, index) => (
@@ -169,10 +181,12 @@ export default function DynamicChart({ config, chartType, animateOnce = true }: 
             <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" />
             <XAxis dataKey="name" type="category" stroke="var(--muted)" tick={{ fontSize: 11, fill: 'var(--muted)' }} angle={-45} textAnchor="end" height={100} dx={-5} dy={10} />
             <YAxis stroke="var(--muted)" tick={{ fill: 'var(--muted)' }} />
-            <Tooltip 
+            <Tooltip
               cursor={{ strokeDasharray: '3 3' }}
-              contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--line)', color: 'var(--ink)', borderRadius: '8px' }}
-              itemStyle={{ color: 'var(--ink)' }}
+              wrapperStyle={{ pointerEvents: 'none' }}
+              formatter={(value, name) => [formatValue(value, String(name)), String(name)]}
+              contentStyle={{ backgroundColor: 'rgba(23, 23, 23, .95)', borderColor: 'var(--line)', color: '#fff', borderRadius: '8px', padding: '8px' }}
+              itemStyle={{ color: '#fff', fontSize: '12px' }}
             />
             <Legend verticalAlign="bottom" wrapperStyle={{ color: 'var(--ink)', fontSize: '12px' }} />
             {keys.map((key, index) => (
@@ -224,10 +238,12 @@ export default function DynamicChart({ config, chartType, animateOnce = true }: 
               return value;
             }}
           />
-          <Tooltip 
-            contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--line)', color: 'var(--ink)', borderRadius: '8px' }}
-            itemStyle={{ color: 'var(--ink)' }}
+          <Tooltip
             cursor={{ fill: 'var(--surface-2)' }}
+            wrapperStyle={{ pointerEvents: 'none' }}
+            formatter={(value, name) => [formatValue(value, String(name)), String(name)]}
+            contentStyle={{ backgroundColor: 'rgba(23, 23, 23, .95)', borderColor: 'var(--line)', color: '#fff', borderRadius: '8px', padding: '8px' }}
+            itemStyle={{ color: '#fff', fontSize: '12px' }}
           />
           <Legend verticalAlign="bottom" wrapperStyle={{ color: 'var(--ink)', fontSize: '12px' }} />
           {keys.map((key, index) => {
@@ -263,6 +279,21 @@ export default function DynamicChart({ config, chartType, animateOnce = true }: 
     );
   };
 
+  const chartSummary: MediaSummary[] = keys.map((key, index) => ({
+    label: key,
+    color: COLORS[index % COLORS.length],
+    value: (
+      <div className="space-y-1">
+        {config.map((row, rowIndex) => (
+          <div key={`${key}-${rowIndex}`} className="flex justify-between gap-3">
+            <span className="text-neutral-400">{String(row.name ?? `Row ${rowIndex + 1}`)}</span>
+            <span>{formatValue(row[key], key)}</span>
+          </div>
+        ))}
+      </div>
+    ),
+  }));
+
   return (
     <motion.div
       initial={animateOnce ? { opacity: 0, y: 30 } : false}
@@ -271,14 +302,33 @@ export default function DynamicChart({ config, chartType, animateOnce = true }: 
       transition={{ duration: 0.6, ease: "easeOut" }}
       className="w-full my-8"
     >
-      <div 
-        className={chartType !== 'pie' ? "w-full overflow-x-auto overflow-y-hidden touch-pan-x" : "w-full"} 
+      <div className="relative">
+        {fullView && (
+          <button
+            type="button"
+            onClick={() => setIsFullViewOpen(true)}
+            aria-label="View chart full screen"
+            className="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--surface)]/90 text-[var(--ink)] shadow transition hover:bg-[var(--surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          >
+            <Maximize size={18} />
+          </button>
+        )}
+        <div
+        className={chartType !== 'pie' ? "w-full overflow-x-auto overflow-y-hidden touch-pan-x touch-pan-y no-scrollbar" : "w-full touch-pan-y"}
         style={chartType !== 'pie' ? { WebkitOverflowScrolling: "touch" } : undefined}
       >
         <div style={{ minWidth: chartType !== 'pie' ? 500 : '100%' }}>
           {renderChart()}
         </div>
       </div>
+      </div>
+      <MediaModal
+        open={isFullViewOpen}
+        onClose={() => setIsFullViewOpen(false)}
+        title="Chart full view"
+        media={<div className="w-[min(70vw,900px)] max-w-full">{renderChart()}</div>}
+        summary={chartSummary}
+      />
     </motion.div>
   );
 }

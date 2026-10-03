@@ -11,9 +11,12 @@ export default function PublicError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log the error to an error reporting service
-    console.error("Public Route Error Caught:", error);
+    console.error("Public Route Error Caught:", process.env.NODE_ENV === "production" ? { digest: error.digest } : error);
   }, [error]);
+
+  const errorDetails = process.env.NODE_ENV !== "production" && error.message
+    ? error.message
+    : error.digest ? `Digest: ${error.digest}` : null;
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] px-4 py-12">
@@ -28,17 +31,17 @@ export default function PublicError({
           500
         </h1>
         <h2 className="font-[family:var(--f-display)] text-xl sm:text-2xl font-bold text-[var(--ink)] mb-4 tracking-wide uppercase">
-          // System Fault
+          {"// System Fault"}
         </h2>
         
         <p className="font-[family:var(--f-ui)] text-[var(--muted)] text-base sm:text-lg mb-8 max-w-lg mx-auto">
           A critical exception occurred while attempting to fetch the requested intelligence. The incident has been logged.
         </p>
 
-        {(error.message || error.digest) && (
+        {errorDetails && (
           <div className="bg-[var(--surface)] border border-[var(--line)] rounded-lg p-4 mb-8 max-w-full overflow-x-auto text-left">
             <pre className="font-[family:var(--font-jetbrains-mono)] text-xs text-[var(--muted)] whitespace-pre-wrap break-all">
-              {error.message || `Digest: ${error.digest}`}
+              {errorDetails}
             </pre>
           </div>
         )}

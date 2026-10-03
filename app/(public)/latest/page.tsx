@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getLatestArticles } from "@/lib/cached-queries";
-import StoryRow from "@/components/article/StoryRow";
+import PaginatedFeed from "@/components/article/PaginatedFeed";
+import { LATEST_ARTICLE_LIMIT } from "@/lib/queries";
 import Sidebar from "@/components/layout/Sidebar";
 
 export const metadata: Metadata = {
@@ -41,15 +42,6 @@ export default async function LatestPage() {
   // The buckets are still only as fresh as the 180s revalidate window, which is
   // correct for day-granularity headings.
   const renderedAt = currentTimestamp();
-  const groups: Record<string, typeof articles> = { Today: [], Yesterday: [], "This week": [], Earlier: [] };
-
-  articles.forEach(a => {
-    const ageMins = Math.max(0, Math.floor((renderedAt - new Date(a.createdAt).getTime()) / 60000));
-    if (ageMins < 1440) groups.Today.push(a); 
-    else if (ageMins < 2880) groups.Yesterday.push(a); 
-    else if (ageMins < 10080) groups["This week"].push(a); 
-    else groups.Earlier.push(a); 
-  });
 
   return (
     <div className="wrap">
@@ -61,12 +53,7 @@ export default async function LatestPage() {
       <div className="cat-body">
         <div>
           {articles.length > 0 ? (
-            Object.entries(groups).filter(([, v]) => v.length > 0).map(([k, v]) => (
-              <div key={k} className="day-group">
-                <div className="day-label">{k}</div>
-                {v.map(a => <StoryRow key={a.id} article={a} />)}
-              </div>
-            ))
+            <PaginatedFeed initialArticles={articles} initialPageSize={LATEST_ARTICLE_LIMIT} bucketAt={renderedAt} />
           ) : (
             <p className="muted" style={{ padding: "40px 0" }}>No published stories yet. Check back soon.</p>
           )}

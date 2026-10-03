@@ -3,11 +3,11 @@ import { getImgSrc } from "@/lib/utils";
 export const siteConfig = {
   name: "xSypher",
   description: "xSypher is an independent technology publication covering AI, cybersecurity, gadgets, software, programming, startups, gaming and the tech business.",
-  url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+  url: process.env.NEXT_PUBLIC_SITE_URL || "https://xsypher.com",
   twitter: "@xSypherTech",
   locale: "en_US",
   publisher: "xSypher Media",
-  logoUrl: undefined, // Conditionally populated or omitted
+  logoUrl: new URL('/xsypher-logo-full.png', process.env.NEXT_PUBLIC_SITE_URL || 'https://xsypher.com').href,
 };
 
 export function constructMetadata({
@@ -78,7 +78,12 @@ export function generateNewsArticleJsonLd(article: any) {
     "@type": "NewsArticle",
     "headline": article.seoTitle || article.title,
     "description": article.seoDesc || article.deck,
-    "image": article.img ? [getImgSrc(article.img, 1200, 630)] : undefined,
+    "image": article.img ? [{
+      "@type": "ImageObject",
+      "url": getImgSrc(article.img, 1200, 630),
+      ...(article.featuredImageCaption ? { caption: article.featuredImageCaption } : {}),
+      ...(article.featuredImageCredit ? { creditText: article.featuredImageCredit } : {}),
+    }] : undefined,
     "datePublished": article.publishedAt ? new Date(article.publishedAt).toISOString() : new Date(article.createdAt).toISOString(),
     "dateModified": new Date(article.updatedAt).toISOString(),
     "author": article.authorModel ? [{

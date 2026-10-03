@@ -219,7 +219,7 @@ export default function SubscribersClient({
 
       <div className="bg-surface border border-line rounded-xl shadow-sm overflow-hidden flex flex-col min-h-[400px]">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[700px]">
+          <table className="console-data-table w-full text-left border-collapse min-w-[700px]" aria-label="Subscribers">
             <thead>
               <tr className="border-b border-line bg-paper/50 dark:bg-surface/[0.02]">
                 <th className="whitespace-nowrap min-w-[120px] py-3 px-4 text-xs font-semibold text-muted uppercase tracking-wider w-[40%] ">Subscriber</th>
@@ -232,7 +232,7 @@ export default function SubscribersClient({
               {initialSubscribers.length > 0 ? (
                 initialSubscribers.map((s) => (
                   <tr key={s.id} className="hover:bg-paper/80 dark:hover:bg-surface/5 transition-colors group">
-                    <td className="whitespace-nowrap py-4 px-4 align-middle w-[40%] ">
+                    <td className="whitespace-nowrap py-4 px-4 align-middle w-[40%] " data-label="Subscriber">
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-ink font-mono">
                           {s.email}
@@ -242,15 +242,15 @@ export default function SubscribersClient({
                         </span>
                       </div>
                     </td>
-                    <td className="whitespace-nowrap py-4 px-4 align-middle w-[20%] ">
+                    <td className="whitespace-nowrap py-4 px-4 align-middle w-[20%] " data-label="Status">
                       {getStatusBadge(s.status)}
                     </td>
-                    <td className="whitespace-nowrap py-4 px-4 align-middle w-[20%] ">
+                    <td className="whitespace-nowrap py-4 px-4 align-middle w-[20%] " data-label="Joined">
                       <div className="text-sm text-ink-2">
                         {new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap py-4 px-4 align-middle text-right w-[20%] relative ">
+                    <td className="whitespace-nowrap py-4 px-4 align-middle text-right w-[20%] relative " data-label="Actions">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

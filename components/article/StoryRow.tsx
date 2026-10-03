@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getImgSrc, timeAgo } from "@/lib/utils";
 import RelativeTime from "@/components/common/RelativeTime";
 import { Article, Category } from "@/lib/types";
+import { getReadingTimeMinutes } from "@/lib/reading-time";
 
 export type StoryArticle = Partial<Article> & {
   id: string;
@@ -16,6 +17,7 @@ export type StoryArticle = Partial<Article> & {
   cat?: string;
   age?: number;
   mins?: number;
+  wordCount?: number | null;
   [key: string]: any;
 };
 
@@ -70,7 +72,7 @@ export default function StoryRow({ article: a, showDeck = true }: Props) {
         </h3>
         {showDeck && <p className="row-deck">{a.deck}</p>}
         <div className="row-meta">
-          {a.author || "xSypher Staff"} · {ageNode} · {a.readingTime || a.mins || 1} min read
+          {a.author || "xSypher Staff"} · {ageNode} · <span className="text-[11px] text-[var(--muted)]">{getReadingTimeMinutes(a)} min read</span>
         </div>
       </div>
     </article>

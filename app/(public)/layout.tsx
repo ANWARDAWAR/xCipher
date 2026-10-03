@@ -3,6 +3,10 @@ import SiteFooter from "@/components/layout/SiteFooter";
 import ScrollReveal from "@/components/common/ScrollReveal";
 import BackToTop from "@/components/common/BackToTop";
 import ScrollReset from "@/components/common/ScrollReset";
+import CookieConsent from "@/components/common/CookieConsent";
+import { AdSenseScript } from "@/components/common/AdUnit";
+import { generateOrganizationJsonLd } from "@/lib/entity-schema";
+import { serializeJsonLd } from "@/lib/article-schema";
 
 export default function PublicLayout({
   children,
@@ -11,6 +15,11 @@ export default function PublicLayout({
 }>) {
   return (
     <>
+      <link rel="preconnect" href="https://res.cloudinary.com" />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(generateOrganizationJsonLd()) }}
+      />
       {/*
         The .skip-link styles have existed in globals.css since the redesign --
         offscreen until focused, sliding in at :focus -- but no page ever
@@ -29,6 +38,8 @@ export default function PublicLayout({
       </main>
       <SiteFooter />
       <BackToTop />
+      <CookieConsent />
+      <AdSenseScript />
       <div id="toast" role="status" aria-live="polite"></div>
     </>
   );

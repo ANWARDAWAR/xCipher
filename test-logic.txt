@@ -1,1 +1,0 @@
-Let's check `UserDirectoryTable.tsx` for how roles are updated or invitations are managed.

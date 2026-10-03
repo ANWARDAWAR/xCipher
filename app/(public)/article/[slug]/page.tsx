@@ -1,15 +1,15 @@
-import type { Metadata, ResolvingMetadata } from "next";
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { MessageSquare } from "lucide-react";
-import { getImgSrc, fmtViews, timeAgo } from "@/lib/utils";
+import { getImgSrc } from "@/lib/utils";
 import { db } from "@/lib/db";
-import { getRecentArticleSlugs } from "@/lib/cached-queries";
-import { eq, inArray, not, and, notInArray, or, sql } from "drizzle-orm";
-import { article as articleTable, _articleToTag } from "@/lib/db/schema";
-import { ARTICLE_CARD_COLUMNS, ARTICLE_CARD_WITH } from "@/lib/queries";
-import { constructMetadata, generateNewsArticleJsonLd, siteConfig } from "@/lib/seo";
+import { getArticleRecommendations, getBenchmarkLeaderboard } from "@/lib/cached-queries";
+import { eq, and, sql } from "drizzle-orm";
+import { article as articleTable } from "@/lib/db/schema";
+import { constructMetadata, generateNewsArticleJsonLd } from "@/lib/seo";
+import { serializeJsonLd, withEditorialSchema } from "@/lib/article-schema";
 import { SocialIcon } from "@/components/author/AuthorProfileView";
 import ArticleBody from "@/components/article/ArticleBody";
 import ArticleSidebar from "@/components/article/ArticleSidebar";
@@ -22,12 +22,12 @@ import { fetchFromR2 } from "@/lib/storage";
 import ArticleMobileToolbar from "@/components/article/ArticleMobileToolbar";
 import ViewCounter from "@/components/article/ViewCounter";
 import ActiveCategorySetter from "@/components/layout/ActiveCategorySetter";
-
+import ShareRow from "@/components/article/ShareRow";
 interface Props {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateMetadata({ params }: Props, parent: ResolvingMetadata): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const [article] = await db.query.article.findMany({ 
     where: and(eq(articleTable.slug, slug), eq(articleTable.status, "PUBLISHED")),
@@ -79,7 +79,7 @@ export default async function ArticlePage({ params }: Props) {
     where: and(eq(articleTable.slug, slug), eq(articleTable.status, "PUBLISHED")),
     limit: 1,
     columns: {
-      id: true, slug: true, title: true, deck: true, img: true, author: true, role: true, views: true, 
+      id: true, slug: true, title: true, deck: true, img: true, featuredImageAlt: true, featuredImageCaption: true, featuredImageCredit: true, author: true, role: true, views: true,
       status: true, createdAt: true, publishedAt: true, updatedAt: true, categoryId: true, contentUrl: true
     },
     with: { category: { with: { parent: true } }, authorModel: true, tags: { with: { tag: true } } } 
@@ -100,7 +100,7 @@ export default async function ArticlePage({ params }: Props) {
     notFound();
   }
   
-  const mainCat = (article.category as any)?.parent;
+  const mainCat = article.category?.parent;
   const subCat = mainCat ? article.category : null;
   const catName = mainCat?.name || article.category?.name || "News";
   const catSlug = mainCat?.slug || article.category?.slug || "news";
@@ -109,8 +109,6 @@ export default async function ArticlePage({ params }: Props) {
   const authorSlug = article.authorModel?.slug || null;
   const articleAuthorRole = article.authorModel?.role || article.role || "Contributing writer";
 
-  const authorBio = article.authorModel?.overview || "Contributing writer for xSypher.";
-
   let socials: { platform: string; url: string }[] = [];
   try {
     const raw = article.authorModel?.socialLinks;
@@ -118,65 +116,29 @@ export default async function ArticlePage({ params }: Props) {
     if (Array.isArray(parsed)) socials = parsed.filter(s => s.url?.trim());
   } catch { socials = []; }
 
-  // Fetch actual content from R2
-  const r2Content = await fetchFromR2(article.contentUrl);
+  // Independent content and auxiliary reads can run concurrently.
+  const [r2Content, globalLeaderboard, { related: relatedDb, discoverMore: discoverMoreDb }] = await Promise.all([
+    fetchFromR2(article.contentUrl),
+    getBenchmarkLeaderboard(),
+    getArticleRecommendations(article.id, article.tags.map(tag => tag.B), mainCat?.id ?? article.categoryId, catSlug),
+  ]);
   const articleHtml = typeof r2Content === "object" ? r2Content?.html : r2Content || "<p>Content could not be loaded.</p>";
-
-  // Related articles
-  let relatedDb = article.tags && article.tags.length > 0 ? await db.query.article.findMany({
-    where: and(
-      inArray(articleTable.id, sql`(SELECT "A" FROM "_ArticleToTag" WHERE "B" IN (${sql.join(article.tags.map(t => sql`${t.B}`), sql`, `)}))`),
-      not(eq(articleTable.id, article.id)),
-      eq(articleTable.status, "PUBLISHED")
-    ),
-    orderBy: (a, { desc }) => [desc(a.publishedAt)],
-    limit: 3,
-    columns: ARTICLE_CARD_COLUMNS,
-    with: ARTICLE_CARD_WITH,
-  }) : [];
-
-  const mainCatId = mainCat ? mainCat.id : article.categoryId;
-
-  if (relatedDb.length < 3) {
-    const relatedIds = relatedDb.length > 0 ? relatedDb.map(r => r.id) : [];
-    const fallback = await db.query.article.findMany({
-      where: and(
-        mainCatId ? sql`${articleTable.categoryId} IN (SELECT id FROM "Category" WHERE id = ${mainCatId} OR "parentId" = ${mainCatId})` : undefined,
-        notInArray(articleTable.id, [article.id, ...relatedIds]),
-        eq(articleTable.status, "PUBLISHED")
-      ),
-      orderBy: (a, { desc }) => [desc(a.publishedAt)],
-      limit: 3 - relatedDb.length,
-      columns: ARTICLE_CARD_COLUMNS,
-      with: ARTICLE_CARD_WITH,
-    });
-    relatedDb = [...relatedDb, ...fallback];
-  }
   
+  const textContent = articleHtml.replace(/<[^>]*>?/gm, '');
+  const wordCount = textContent.split(/\s+/).filter((word: string) => word.length > 0).length;
+  const calculatedReadingTime = Math.max(1, Math.ceil(wordCount / 200));
+
   const related = relatedDb.map(a => ({
     ...a,
-    mins: 5,
+    mins: a.readingTime || 1,
     views: a.views,
     img: a.img || "",
     alt: a.title
   }));
 
-  const relatedIdsForMore = relatedDb.length > 0 ? relatedDb.map(r => r.id) : [];
-  const discoverMoreDb = await db.query.article.findMany({
-    where: and(
-      mainCatId ? sql`${articleTable.categoryId} NOT IN (SELECT id FROM "Category" WHERE id = ${mainCatId} OR "parentId" = ${mainCatId})` : undefined,
-      notInArray(articleTable.id, [article.id, ...relatedIdsForMore]),
-      eq(articleTable.status, "PUBLISHED")
-    ),
-    orderBy: (a, { desc }) => [desc(a.publishedAt)],
-    limit: 4,
-    columns: ARTICLE_CARD_COLUMNS,
-    with: ARTICLE_CARD_WITH,
-  });
-
   const discoverMore = discoverMoreDb.map(a => ({
     ...a,
-    mins: 5,
+    mins: a.readingTime || 1,
     views: a.views,
     img: a.img || "",
     alt: a.title
@@ -219,11 +181,11 @@ export default async function ArticlePage({ params }: Props) {
       <ActiveCategorySetter slug={catSlug} />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(generateNewsArticleJsonLd(article)) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(withEditorialSchema(generateNewsArticleJsonLd(article), articleHtml)) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd) }}
       />
       <ProgressBar />
       <ViewCounter articleId={article.id} />
@@ -231,7 +193,7 @@ export default async function ArticlePage({ params }: Props) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-10">
           
           {/* HEADER ROW */}
-          <header className="mb-10 flex flex-col min-w-0 lg:col-start-2 lg:col-span-10 xl:col-start-2 xl:col-span-8">
+          <header className="mb-4 flex flex-col min-w-0 lg:col-start-2 lg:col-span-10 xl:col-start-2 xl:col-span-8">
               <nav className="crumb mb-6" aria-label="Breadcrumb">
                 <Link href="/">Home</Link>
                 <span className="sep">/</span>
@@ -256,14 +218,14 @@ export default async function ArticlePage({ params }: Props) {
                   {authorSlug ? (
                     <Link href={`/author/${authorSlug}`} className="shrink-0">
                       {article.authorModel?.avatar ? (
-                        <Image src={article.authorModel.avatar} alt={authorName} width={40} height={40} className="w-10 h-10 rounded-full shrink-0 object-cover" />
+                        <Image src={article.authorModel.avatar} alt={authorName} width={40} height={40} sizes="40px" className="w-10 h-10 rounded-full shrink-0 object-cover" />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold shrink-0">{authorName.charAt(0)}</div>
                       )}
                     </Link>
                   ) : (
                     article.authorModel?.avatar ? (
-                      <Image src={article.authorModel.avatar} alt={authorName} width={40} height={40} className="w-10 h-10 rounded-full shrink-0 object-cover" />
+                      <Image src={article.authorModel.avatar} alt={authorName} width={40} height={40} sizes="40px" className="w-10 h-10 rounded-full shrink-0 object-cover" />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold shrink-0">{authorName.charAt(0)}</div>
                     )
@@ -282,9 +244,7 @@ export default async function ArticlePage({ params }: Props) {
                   <span className="hidden sm:inline">·</span>
                   <span>Updated <b>{article.updatedAt.toLocaleDateString("en-US")}</b></span>
                   <span className="hidden sm:inline">·</span>
-                  <span><b>{(article as any).readingTime || 1} min</b> read</span>
-                  <span className="hidden sm:inline">·</span>
-                  <span><b>{fmtViews(article.views)}</b> reads</span>
+                  <span><b>{calculatedReadingTime} min</b> read</span>
                 </div>
               </div>
               
@@ -298,22 +258,26 @@ export default async function ArticlePage({ params }: Props) {
                   <MessageSquare className="w-3.5 h-3.5 !text-white"/>
                   <span>Comments</span>
                 </a>
-                <span className="muted" style={{ fontSize: "12px" }}>• {(article as any).readingTime || 1} min listen</span>
               </div>
               
-              <figure className="art-hero mb-8">
+              <figure className="art-hero mb-0">
                 <div className="ph r-169 relative w-full overflow-hidden rounded-xl">
                   <Image 
                     src={getImgSrc(article.img || "", 1400, 788)} 
-                    alt={article.title} 
+                    alt={article.featuredImageAlt || article.title}
                     fill 
+                    sizes="(max-width: 1023px) 100vw, (max-width: 1279px) 83vw, 900px"
                     priority 
                     className="object-cover"
                   />
                 </div>
                 <figcaption className="text-xs text-[var(--muted)] mt-3">
-                  {article.title}
-                  <span className="credit block text-[10px] uppercase tracking-wider mt-1">Photo: xSypher illustration / Pexels</span>
+                  {article.featuredImageCaption || article.title}
+                  {article.featuredImageCredit && (
+                    <span className="credit block text-[10px] uppercase tracking-wider mt-1">
+                      Image Credit: {article.featuredImageCredit}
+                    </span>
+                  )}
                 </figcaption>
               </figure>
             </header>
@@ -328,16 +292,26 @@ export default async function ArticlePage({ params }: Props) {
           {/* MAIN ARTICLE BODY & FOOTER */}
           <div className="lg:col-start-2 lg:col-span-10 xl:col-start-2 xl:col-span-8 flex flex-col min-w-0">
             <div className="prose min-w-0 max-w-none w-full" id="prose" itemProp="articleBody">
-              <ArticleBody html={articleHtml} />
+              <ArticleBody html={articleHtml} globalLeaderboard={globalLeaderboard} deviceName={article.title} />
             </div>
 
-            <div className="art-foot mt-12 pt-8 border-t border-[var(--line)]">
-        <div className="tag-row">
-          {(article.tags || []).map(t => (
-            <Link key={t.B} className="chip" href={`/tag/${t.tag.slug}`}>
-              {t.tag.name}
-            </Link>
-          ))}
+            <div className="art-foot mt-4">
+        {article.tags && article.tags.length > 0 && (
+          <div className="border-t border-[var(--line)] pt-3 mb-4">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--accent)] block mb-2">Tags</span>
+            <div className="tag-row mt-0">
+              {article.tags.map(t => (
+                <Link key={t.B} className="chip" href={`/tag/${t.tag.slug}`}>
+                  {t.tag.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+        {(!article.tags || article.tags.length === 0) && <div className="border-t border-[var(--line)] my-4"></div>}
+
+        <div className={article.tags && article.tags.length > 0 ? "border-t border-[var(--line)] pt-4 mb-4" : "mb-4"}>
+          <ShareRow title={article.title} slug={article.slug} />
         </div>
         
         <div className="fact-note">
@@ -351,20 +325,20 @@ export default async function ArticlePage({ params }: Props) {
           </span>
         </div>
 
-        <section className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl p-4 sm:p-7 shadow-sm flex flex-col mt-12 mb-10" aria-label="About the author">
+        <section className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl p-4 sm:p-7 shadow-sm flex flex-col mt-4 mb-8" aria-label="About the author">
           <div className="flex items-center gap-3 sm:gap-4 mb-3">
             <div className="flex-shrink-0">
               {authorSlug ? (
                 <Link href={`/author/${authorSlug}`} className="block">
                   {article.authorModel?.avatar ? (
-                    <img src={article.authorModel.avatar} alt={authorName} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]" />
+                    <Image src={article.authorModel.avatar} alt={authorName} width={80} height={80} sizes="(min-width: 640px) 80px, 64px" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]" />
                   ) : (
                     <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold text-xl sm:text-2xl shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]">{authorName.charAt(0)}</div>
                   )}
                 </Link>
               ) : (
                 article.authorModel?.avatar ? (
-                  <img src={article.authorModel.avatar} alt={authorName} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]" />
+                  <Image src={article.authorModel.avatar} alt={authorName} width={80} height={80} sizes="(min-width: 640px) 80px, 64px" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]" />
                 ) : (
                   <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold text-xl sm:text-2xl shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]">{authorName.charAt(0)}</div>
                 )

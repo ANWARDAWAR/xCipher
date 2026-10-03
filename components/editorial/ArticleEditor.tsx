@@ -43,12 +43,21 @@ import { YouTubeEmbed } from "./extensions/YouTubeEmbed";
 import { ProsConsBlock } from "./extensions/ProsConsBlock";
 import { SpecSheetBlock } from "./extensions/SpecSheetBlock";
 import { ScoreBreakdownBlock } from "./extensions/ScoreBreakdownBlock";
+import { InteractiveChartBlock } from "@/lib/editor/extensions/InteractiveChartBlock";
 import { SlashCommandList, getSuggestionItems } from "./SlashCommandList";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import ImageDropzone from "./ImageDropzone";
+import { optimizeImageUrl } from "@/lib/image-url";
 import ThumbnailCropper from "./ThumbnailCropper";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import { Role, ArticleStatus } from "@/lib/types";
+import { authorize } from "@/lib/capabilities";
+import { EditorialBlock } from "./extensions/EditorialBlock";
+import { parseEditorialBlock } from "@/lib/editorial-blocks";
+import DocumentOutline from "./DocumentOutline";
+import DocumentStatus from "./DocumentStatus";
+import PublishingPanel from "./PublishingPanel";
+import "./styles/studio.css";
 
 // Templates
 const ARTICLE_TEMPLATES: Record<string, { title: string, deck: string, html: string }> = {
@@ -78,8 +87,6 @@ const articleSchema = z.object({
   author: z.string().min(1, "Author is required"),
   role: z.string().optional(),
   featured: z.boolean().optional(),
-  // Mirrors ArticleStatus in prisma/schema.prisma, minus the deprecated REVIEW
-  // value, which is backfilled to SUBMITTED and never written.
   status: z.enum([
     "DRAFT",
     "SUBMITTED",
@@ -102,6 +109,15 @@ const articleSchema = z.object({
   tags: z.string().optional(),
   seoTitle: z.string().optional(),
   seoDesc: z.string().optional(),
+  metaTitle: z.string().optional(),
+  metaDescription: z.string().optional(),
+  ogImage: z.string().optional(),
+  focusKeyword: z.string().optional(),
+  canonicalUrl: z.string().optional(),
+  featuredImageAlt: z.string().optional(),
+  featuredImageCaption: z.string().optional(),
+  featuredImageCredit: z.string().optional(),
+  authorId: z.string().optional(),
   bodyHtml: z.string().optional(),
   notes: z.string().optional(),
   scheduledFor: z.string().optional(),
@@ -118,6 +134,7 @@ interface ArticleEditorProps {
   authorId?: string | null;
   availableCategories?: any[];
   availableTags?: any[];
+  availableAuthors?: { id: string; name: string; slug: string }[];
   initialRevisions?: any[];
 }
 
@@ -133,6 +150,18 @@ const slugify = (text: string) => {
     .replace(/^-+|-+$/g, "");
 };
 
+function getInitialTagNames(tags: unknown): string[] {
+  if (!Array.isArray(tags)) return [];
+
+  return tags
+    .map((entry: any) => {
+      if (typeof entry === "string") return entry;
+      return entry?.tag?.name || entry?.tag?.slug || entry?.name || entry?.slug || "";
+    })
+    .map((name) => String(name).trim())
+    .filter(Boolean);
+}
+
 export default function ArticleEditor({
   initialData,
   userRole,
@@ -141,6 +170,7 @@ export default function ArticleEditor({
   authorId,
   availableCategories = [],
   availableTags = [],
+  availableAuthors = [],
   initialRevisions = [],
 }: ArticleEditorProps) {
   const [isPending, setIsPending] = useState(false);
@@ -167,6 +197,8 @@ export default function ArticleEditor({
   const [conflictBaseline, setConflictBaseline] = useState<Date | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [outlineOpen, setOutlineOpen] = useState(true);
+  const [zoom, setZoom] = useState(100);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [tagInput, setTagInput] = useState("");
@@ -200,6 +232,7 @@ export default function ArticleEditor({
     initialData?.id ? String(initialData.id) : null
   );
   const [isProcessingThumb, setIsProcessingThumb] = useState(false);
+  const reopenInspectorAfterCrop = useRef(false);
 
   const handleExternalImage = async (url: string) => {
     if (!url) return;
@@ -243,6 +276,8 @@ export default function ArticleEditor({
   } = useDraftCache({ articleId });
 
   const handleThumbUpload = (file: File) => {
+    reopenInspectorAfterCrop.current = isInspectorOpen;
+    if (isInspectorOpen) setIsInspectorOpen(false);
     return new Promise<{ ok: boolean; url?: string; error?: string }>((resolve) => {
       setThumbCrop({
         src: URL.createObjectURL(file),
@@ -257,6 +292,8 @@ export default function ArticleEditor({
       URL.revokeObjectURL(thumbCrop.src);
       thumbCrop.resolve({ ok: false, error: "Cropping cancelled." });
       setThumbCrop(null);
+      if (reopenInspectorAfterCrop.current) setIsInspectorOpen(true);
+      reopenInspectorAfterCrop.current = false;
     }
   };
 
@@ -283,6 +320,8 @@ export default function ArticleEditor({
     } finally {
       URL.revokeObjectURL(thumbCrop.src);
       setThumbCrop(null);
+      if (reopenInspectorAfterCrop.current) setIsInspectorOpen(true);
+      reopenInspectorAfterCrop.current = false;
     }
   };
 
@@ -316,12 +355,19 @@ export default function ArticleEditor({
     status: (initialData?.status?.toUpperCase() || "DRAFT") as any,
     deck: initialData?.deck || initialData?.excerpt || "",
     img: initialData?.img ? String(initialData.img) : "",
-    tags: Array.isArray(initialData?.tags)
-      ? initialData.tags.map((t: any) => typeof t === "string" ? t : t.slug).filter(Boolean).join(", ")
-      : initialData?.tags || "",
+    tags: getInitialTagNames(initialData?.tags).join(", "),
     seoTitle: initialData?.seoTitle || "",
     seoDesc: initialData?.seoDesc || "",
-    bodyHtml: initialData?.contentHtml || initialData?.bodyHtml || initialData?.body || "<p>Start writing...</p>",
+    metaTitle: initialData?.metaTitle || "",
+    metaDescription: initialData?.metaDescription || "",
+    ogImage: initialData?.ogImage || "",
+    focusKeyword: initialData?.focusKeyword || "",
+    canonicalUrl: initialData?.canonicalUrl || "",
+    featuredImageAlt: initialData?.featuredImageAlt || "",
+    featuredImageCaption: initialData?.featuredImageCaption || "",
+    featuredImageCredit: initialData?.featuredImageCredit || "",
+    authorId: initialData?.authorId || authorId || "",
+    bodyHtml: initialData?.contentHtml || initialData?.bodyHtml || initialData?.body || "<p></p>",
     scheduledFor: initialData?.scheduledFor ? new Date(initialData.scheduledFor).toISOString().slice(0, 16) : "",
     homepagePlacement: initialData?.homepagePlacement || "",
   };
@@ -337,6 +383,8 @@ export default function ArticleEditor({
       StarterKit.configure({
         codeBlock: false, // Replaced by CodeBlockLowlight for syntax highlighting
         heading: false,
+        link: false,
+        underline: false,
       }),
       Heading.extend({
         renderHTML({ node, HTMLAttributes }) {
@@ -373,7 +421,12 @@ export default function ArticleEditor({
       ProsConsBlock,
       SpecSheetBlock,
       ScoreBreakdownBlock,
-      Table.configure({ resizable: true }),
+      InteractiveChartBlock,
+      EditorialBlock,
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: { class: 'w-full min-w-full table-auto text-left' },
+      }),
       TableRow,
       TableCell,
       TableHeader,
@@ -438,6 +491,9 @@ export default function ArticleEditor({
     editorProps: {
       attributes: {
         class: 'prose ed-body-content',
+        'aria-label': 'Article body',
+        'data-placeholder': 'Start your story, or type / to insert a block…',
+        spellcheck: 'true',
       },
     },
     content: defaultValues.bodyHtml,
@@ -460,9 +516,18 @@ export default function ArticleEditor({
         status: (initialData.status?.toUpperCase() || "DRAFT") as any,
         deck: initialData.deck || initialData.excerpt || "",
         img: initialData.img ? String(initialData.img) : "",
-        tags: Array.isArray(initialData.tags) ? initialData.tags.map((t: any) => typeof t === "string" ? t : t.slug).filter(Boolean).join(", ") : initialData.tags || "",
+        tags: getInitialTagNames(initialData.tags).join(", "),
         seoTitle: initialData.seoTitle || "",
         seoDesc: initialData.seoDesc || "",
+        metaTitle: initialData.metaTitle || "",
+        metaDescription: initialData.metaDescription || "",
+        ogImage: initialData.ogImage || "",
+        focusKeyword: initialData.focusKeyword || "",
+        canonicalUrl: initialData.canonicalUrl || "",
+        featuredImageAlt: initialData.featuredImageAlt || "",
+        featuredImageCaption: initialData.featuredImageCaption || "",
+        featuredImageCredit: initialData.featuredImageCredit || "",
+        authorId: initialData.authorId || authorId || "",
         homepagePlacement: initialData.homepagePlacement || "",
         bodyHtml: htmlContent,
       });
@@ -479,7 +544,7 @@ export default function ArticleEditor({
     }
   }, [initialData, editor, reset]);
 
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTitleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newTitle = e.target.value;
     setValue("title", newTitle, { shouldValidate: true, shouldDirty: true });
     if (!slugManuallyEdited) {
@@ -679,6 +744,16 @@ export default function ArticleEditor({
   };
 
   const handleSave = async (targetStatus: string, isAutosave = false, notesOverride?: string) => {
+    if (['SUBMITTED', 'PUBLISHED', 'SCHEDULED'].includes(targetStatus)) {
+      let incomplete = false;
+      editor?.state.doc.descendants(node => {
+        if (node.type.name === 'editorialBlock' && !parseEditorialBlock(node.attrs.data)) incomplete = true;
+      });
+      if (incomplete) {
+        if (isAutosave) { setAutosaveStatus('error'); return null; }
+        throw new Error('Complete the fields in your review and media blocks before submitting, scheduling, or publishing.');
+      }
+    }
     const currentTitle = watch("title") || getValues("title");
     if (!currentTitle || !currentTitle.trim()) {
       if (!isAutosave) throw new Error("Please enter an article title before saving.");
@@ -737,7 +812,7 @@ export default function ArticleEditor({
         cat: watch("cat") || getValues("cat") || "ai",
         author: watch("author") || getValues("author") || authorName || "xSypher Staff",
         role: watch("role") || getValues("role") || authorRole || null,
-        authorId: authorId || initialData?.authorId || null,
+        authorId: watch("authorId") || getValues("authorId") || authorId || initialData?.authorId || null,
         status: targetStatus,
         featured: Boolean(watch("featured") ?? getValues("featured")),
         deck: watch("deck") || getValues("deck") || null,
@@ -745,6 +820,14 @@ export default function ArticleEditor({
         tags: tagsArray,
         seoTitle: watch("seoTitle") || getValues("seoTitle") || null,
         seoDesc: watch("seoDesc") || getValues("seoDesc") || null,
+        metaTitle: watch("metaTitle") || getValues("metaTitle") || null,
+        metaDescription: watch("metaDescription") || getValues("metaDescription") || null,
+        ogImage: watch("ogImage") || getValues("ogImage") || null,
+        focusKeyword: watch("focusKeyword") || getValues("focusKeyword") || null,
+        canonicalUrl: watch("canonicalUrl") || getValues("canonicalUrl") || null,
+        featuredImageAlt: watch("featuredImageAlt") || getValues("featuredImageAlt") || null,
+        featuredImageCaption: watch("featuredImageCaption") || getValues("featuredImageCaption") || null,
+        featuredImageCredit: watch("featuredImageCredit") || getValues("featuredImageCredit") || null,
         bodyHtml: editor?.getHTML() || "",
         bodyJson: editor?.getJSON() ? JSON.parse(JSON.stringify(editor.getJSON())) : null,
         lastUpdatedAt: lastSavedRef.current ? lastSavedRef.current.toISOString() : undefined,
@@ -883,7 +966,7 @@ export default function ArticleEditor({
     const currentTitle = watch("title") || getValues("title");
     if (!currentTitle || !currentTitle.trim()) {
       showToast("Please enter an article title first to preview");
-      document.getElementById("edTitle")?.focus();
+      document.getElementById("article-title")?.focus();
       return;
     }
 
@@ -909,7 +992,7 @@ export default function ArticleEditor({
     return null;
   }
 
-  const isEditorial = ["OWNER", "ADMIN", "EDITOR", "REVIEWER"].includes(userRole || "");
+  const isEditorial = authorize(userRole as Role, 'article.review') || authorize(userRole as Role, 'article.publish');
   /**
    * Human-readable sync state for the top bar.
    *
@@ -933,7 +1016,7 @@ export default function ArticleEditor({
                 ? { label: "Saved to cloud", tone: "saved" }
                 : { label: "", tone: "idle" };
 
-  const canPublish = ["OWNER", "ADMIN", "EDITOR"].includes(userRole || "");
+  const canPublish = authorize(userRole as Role, 'article.publish');
   const currentFormStatus = watch("status") || "DRAFT";
 
 
@@ -958,9 +1041,16 @@ export default function ArticleEditor({
 
   const currentTagsString = watch("tags") || "";
   const currentTags = typeof currentTagsString === "string" ? currentTagsString.split(",").map(t => t.trim()).filter(Boolean) : (Array.isArray(currentTagsString) ? currentTagsString : []);
+  const featuredImageUrl = String(watch("img") || getValues("img") || "").trim();
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col min-h-0 bg-[var(--bg)] relative">
+    <form onSubmit={(e) => { e.preventDefault(); }} onKeyDown={event => {
+      if (event.key === 'Escape' && isFullscreen) setIsFullscreen(false);
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        if (!busy) void handleSave(getValues('status')).then(() => showToast('Document saved.', 'success')).catch((error: Error) => showToast(error.message, 'error'));
+      }
+    }} className={`editor-studio flex flex-col min-h-0 relative ${isFullscreen ? 'studio-focus' : ''}`}>
       {busy && (
         <div className="absolute inset-0 z-50 bg-white/20 dark:bg-black/20 backdrop-blur-[2px] flex items-center justify-center pointer-events-none transition-opacity duration-300">
            <div className="bg-[var(--surface)] text-[var(--ink)] shadow-xl rounded-full px-4 py-2 flex items-center gap-2 font-medium text-sm animate-pulse border border-[var(--line)]">
@@ -1030,6 +1120,8 @@ export default function ArticleEditor({
               onClick={() => setIsInspectorOpen(true)}
               className="p-2 text-[var(--muted)] hover:text-[var(--ink)] rounded-lg hover:bg-[var(--surface-2)] transition-colors lg:hidden"
               title="Settings"
+              aria-label="Open publishing details"
+              aria-haspopup="dialog"
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -1142,12 +1234,14 @@ export default function ArticleEditor({
         </header>
 
         {/* Formatting Toolbar Row — directly below action bar, inside same sticky container */}
-        {!isFullscreen && editor && (
-          <div className="border-t border-[var(--line-2)]/50 px-4 sm:px-10">
+        {editor && (
+          <div className="border-t border-[var(--line-2)]/50 px-3 sm:px-5">
             <EditorToolbar
               editor={editor}
               isFullscreen={isFullscreen}
               toggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+              onToggleOutline={() => setOutlineOpen(!outlineOpen)}
+              outlineOpen={outlineOpen}
             />
           </div>
         )}
@@ -1199,6 +1293,7 @@ export default function ArticleEditor({
             <button type="button" onClick={() => {
               if (conflictBaseline) {
                 setLastSaved(conflictBaseline);
+                lastSavedRef.current = conflictBaseline;
                 setAutosaveStatus("idle");
                 setConflictBaseline(null);
                 showToast("Overwriting with local changes...");
@@ -1212,11 +1307,15 @@ export default function ArticleEditor({
       )}
 
       {/* ── 2-Column Workspace ── */}
-      <div className="flex flex-row flex-1 w-full relative">
+      <div className="studio-workspace flex flex-row flex-1 w-full relative">
+
+        {outlineOpen && !isFullscreen && <DocumentOutline editor={editor} close={() => setOutlineOpen(false)} />}
 
         {/* ── Main Writing Canvas (Left/Center) ── */}
-        <main className="flex-1 min-w-0 px-4 sm:px-10 py-8">
-          <div className="max-w-3xl mx-auto mb-32 space-y-4">
+        <main className="studio-canvas flex-1 min-w-0">
+          <div className="studio-page-caption"><span>xSypher / Editorial studio</span><span>{currentFormStatus === 'PUBLISHED' ? 'Published document' : 'Working document'}</span></div>
+          <div className="studio-paper mx-auto space-y-4" style={{ zoom: zoom / 100 }}>
+            <div className="studio-paper-kicker">{watch('cat') || 'Story'} <span>•</span> {watch('author')}</div>
             
             {/* Templates Utility */}
             {process.env.NODE_ENV === "development" && (
@@ -1238,6 +1337,7 @@ export default function ArticleEditor({
             <div>
               <textarea
                 id="article-title"
+                aria-label="Article title"
                 className={`w-full text-4xl lg:text-5xl font-extrabold text-[var(--ink)] tracking-tight leading-tight placeholder:text-[var(--muted)]/50 bg-[var(--surface-2)] border border-[var(--line)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent focus:outline-none resize-none overflow-hidden transition-all ${errors.title && isSubmitted ? 'ring-1 ring-[var(--bad)]' : ''}`}
                 rows={1}
                 placeholder="Article Title"
@@ -1262,6 +1362,7 @@ export default function ArticleEditor({
             <div>
               <textarea
                 id="article-deck"
+                aria-label="Article subtitle"
                 className="w-full text-xl text-[var(--ink-2)] placeholder:text-[var(--muted)]/50 bg-[var(--surface-2)] border border-[var(--line)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent focus:outline-none resize-none overflow-hidden leading-relaxed transition-all"
                 rows={1}
                 placeholder="Add a subtitle or short excerpt..."
@@ -1282,22 +1383,15 @@ export default function ArticleEditor({
             </div>
 
             {/* Tiptap Editor Canvas */}
-            <div className={isFullscreen ? "ed-editor-shell is-fullscreen fixed inset-0 z-[9999] bg-[var(--bg)] flex flex-col p-4 overflow-y-auto" : "ed-editor-shell border-none shadow-none bg-transparent"}>
-              <div className={isFullscreen ? "ed-editor-inner w-full mx-auto max-w-3xl" : "w-full"}>
+            <div className="ed-editor-shell border-none shadow-none bg-transparent">
+              <div className="w-full min-h-screen flex flex-col">
                 {/* In fullscreen mode, render toolbar inside the shell */}
-                {isFullscreen && (
-                  <EditorToolbar
-                    editor={editor}
-                    isFullscreen={isFullscreen}
-                    toggleFullscreen={() => setIsFullscreen(!isFullscreen)}
-                  />
-                )}
 
                 <div
-                  className="ed-body mt-2 prose min-h-[500px]"
+                  className="ed-body mt-2 prose min-h-[calc(100vh-200px)] flex-1 pb-32"
                   id="edBody"
                   aria-label="Article body editor"
-                  style={isFullscreen ? { minHeight: "calc(100vh - 150px)" } : { border: 'none', padding: 0 }}
+                  style={{ border: 'none', padding: 0 }}
                 >
                   <EditorBubbleMenu editor={editor} />
                   <EditorContent editor={editor} />
@@ -1308,33 +1402,14 @@ export default function ArticleEditor({
           </div>
         </main>
 
-        {/* Backdrop for mobile slide-over */}
-        {isInspectorOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-[var(--ink)]/40 backdrop-blur-sm lg:hidden"
-            onClick={() => setIsInspectorOpen(false)}
-            aria-hidden="true"
-          />
-        )}
-
         {/* ── Document Inspector Rail (Right Sidebar) ── */}
-        <aside className={`fixed inset-y-0 right-0 z-50 w-full max-w-[360px] lg:w-80 xl:w-96 shrink-0 border-l border-[var(--line)] bg-[var(--surface)] p-6 sm:p-8 transform transition-transform duration-300 ease-in-out lg:static lg:transform-none lg:translate-x-0 lg:block lg:sticky lg:z-30 lg:top-[112px] lg:h-[calc(100vh-112px)] lg:overflow-y-auto ${isInspectorOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-          <div className="ed-rail-head flex items-center justify-between lg:hidden mb-6">
-            <h2 className="text-lg font-bold text-[var(--ink)]">Settings</h2>
-            <button
-              type="button"
-              onClick={() => setIsInspectorOpen(false)}
-              className="p-2 -mr-2 text-[var(--muted)] hover:text-[var(--ink)] rounded-full hover:bg-[var(--surface-2)] transition-colors"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-          </div>
+        <PublishingPanel open={isInspectorOpen} close={() => setIsInspectorOpen(false)}>
 
           <div className="space-y-4">
-            {/* Panel A: Publishing Details */}
+            {/* ── Section A: Post Settings & Workflow ── */}
             <details open className="group border-b border-[var(--line-2)] pb-4">
               <summary className="flex cursor-pointer items-center justify-between font-bold text-sm tracking-wide uppercase text-[var(--muted)] hover:text-[var(--ink)] transition-colors list-none [&::-webkit-details-marker]:hidden">
-                Publishing Details
+                Post Settings
                 <svg className="w-4 h-4 text-[var(--muted)] group-open:rotate-90 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
@@ -1372,25 +1447,41 @@ export default function ArticleEditor({
                   <input type="hidden" {...register("tags")} />
                 </div>
 
-                <div className="space-y-3 pt-2">
-                  <div>
-                    <label className="ed-rail-label">Author</label>
+                {/* Author Override */}
+                <div>
+                  <label className="ed-rail-label" htmlFor="edAuthorOverride">Author</label>
+                  {isEditorial && availableAuthors.length > 0 ? (
+                    <select
+                      id="edAuthorOverride"
+                      className="ed-rail-input"
+                      value={watch("authorId") || ""}
+                      onChange={(e) => {
+                        const selected = availableAuthors.find(a => a.id === e.target.value);
+                        if (selected) {
+                          setValue("authorId", selected.id, { shouldDirty: true });
+                          setValue("author", selected.name, { shouldDirty: true });
+                        }
+                      }}
+                    >
+                      <option value="" disabled>Select author…</option>
+                      {availableAuthors.map(a => (
+                        <option key={a.id} value={a.id}>{a.name}</option>
+                      ))}
+                    </select>
+                  ) : (
                     <input className="w-full text-sm bg-[var(--surface-3)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--muted)] cursor-not-allowed" value={watch("author")} readOnly title="Set from profile settings" />
-                  </div>
-                  <div>
-                    <label className="ed-rail-label">Author Role</label>
-                    <input className="w-full text-sm bg-[var(--surface-3)] border border-[var(--line-2)] rounded-md px-3 py-2 text-[var(--muted)] cursor-not-allowed" value={watch("role")} readOnly title="Set from profile settings" />
-                  </div>
+                  )}
                 </div>
 
+                {/* Schedule Publication */}
                 {canPublish && (
                   <div className="pt-2">
                     <label className="ed-rail-label" htmlFor="edScheduledFor">Schedule Publication</label>
                     <input className="ed-rail-input" type="datetime-local" id="edScheduledFor" {...register("scheduledFor")} />
                   </div>
                 )}
-                
-                {(userRole === "OWNER" || userRole === "ADMIN") && canPublish && (
+
+                {authorize(userRole as Role, 'article.feature') && canPublish && (
                   <div className="pt-2">
                     <label className="ed-rail-label">Homepage Placement</label>
                     <div className="space-y-2 mt-1">
@@ -1405,25 +1496,11 @@ export default function ArticleEditor({
                     </div>
                   </div>
                 )}
-              </div>
-            </details>
 
-            {/* Panel B: Featured Media */}
-            <details className="group border-b border-[var(--line-2)] pb-4">
-              <summary className="flex cursor-pointer items-center justify-between font-bold text-sm tracking-wide uppercase text-[var(--muted)] hover:text-[var(--ink)] transition-colors list-none [&::-webkit-details-marker]:hidden">
-                Featured Media
-                <svg className="w-4 h-4 text-[var(--muted)] group-open:rotate-90 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </summary>
-              <div className="pt-4 space-y-4 animate-in fade-in duration-200">
-                <div className="space-y-3">
-                  {/* Homepage Placement moved to Publishing Details */}
-                </div>
-
-                <div>
-                  <label className="ed-rail-label">Thumbnail Image</label>
-                  {!watch("img") ? (
+                {/* Featured Image */}
+                <div className="pt-2">
+                  <label className="ed-rail-label">Featured Image</label>
+                  {!featuredImageUrl ? (
                     <div className="mt-2">
                       <ImageDropzone
                         onUpload={handleThumbUpload}
@@ -1451,7 +1528,11 @@ export default function ArticleEditor({
                   ) : (
                     <div className="mt-3 group relative aspect-video w-full rounded-md overflow-hidden border border-[var(--line-2)] bg-[var(--surface-3)]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={watch("img")!} alt="Featured image preview" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = "none")} />
+                      <img
+                        src={featuredImageUrl}
+                        alt={watch("featuredImageAlt") || "Featured image preview"}
+                        className="w-full h-full object-cover"
+                      />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
                         <button
                           type="button"
@@ -1464,13 +1545,26 @@ export default function ArticleEditor({
                     </div>
                   )}
                 </div>
+                {/* Featured Image Alt Text */}
+                <div>
+                  <label className="ed-rail-label" htmlFor="edFeaturedImageAlt">Image Alt Text <span className="text-[var(--accent)]">(required for a11y)</span></label>
+                  <input className="ed-rail-input" id="edFeaturedImageAlt" placeholder="Describe the featured image…" {...register("featuredImageAlt")} />
+                </div>
+                <div>
+                  <label className="ed-rail-label" htmlFor="edFeaturedImageCaption">Image Caption</label>
+                  <input className="ed-rail-input" id="edFeaturedImageCaption" placeholder="Caption shown below the image…" {...register("featuredImageCaption")} />
+                </div>
+                <div>
+                  <label className="ed-rail-label" htmlFor="edFeaturedImageCredit">Image Credit</label>
+                  <input className="ed-rail-input" id="edFeaturedImageCredit" placeholder="Photographer or source…" {...register("featuredImageCredit")} />
+                </div>
               </div>
             </details>
 
-            {/* Panel C: Search & Social SEO */}
+            {/* ── Section B: Search Engine Optimization (SEO) ── */}
             <details className="group border-b border-[var(--line-2)] pb-4">
               <summary className="flex cursor-pointer items-center justify-between font-bold text-sm tracking-wide uppercase text-[var(--muted)] hover:text-[var(--ink)] transition-colors list-none [&::-webkit-details-marker]:hidden">
-                Search & Social SEO
+                SEO
                 <svg className="w-4 h-4 text-[var(--muted)] group-open:rotate-90 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
@@ -1485,21 +1579,92 @@ export default function ArticleEditor({
                   />
                 </div>
                 <div>
-                  <label className="ed-rail-label" htmlFor="edSeoTitle">SEO Title</label>
-                  <input className="ed-rail-input" id="edSeoTitle" placeholder="Defaults to article title" {...register("seoTitle")} />
+                  <label className="ed-rail-label" htmlFor="edFocusKeyword">Focus Keyword</label>
+                  <input className="ed-rail-input" id="edFocusKeyword" placeholder="Primary target keyword" {...register("focusKeyword")} />
                 </div>
                 <div>
-                  <label className="ed-rail-label" htmlFor="edSeoDesc">SEO Description</label>
-                  <textarea className="ed-rail-input resize-none" rows={3} id="edSeoDesc" placeholder="Defaults to excerpt" {...register("seoDesc")} />
+                  <label className="ed-rail-label" htmlFor="edMetaTitle">Meta Title</label>
+                  <input className="ed-rail-input" id="edMetaTitle" placeholder="Defaults to article title" {...register("metaTitle")} />
+                  {(() => {
+                    const len = (watch("metaTitle") || "").length;
+                    return len > 0 ? (
+                      <span className={`text-xs mt-1 block ${len > 60 ? 'text-[var(--bad)]' : len > 50 ? 'text-[var(--warn)]' : 'text-[var(--muted)]'}`}>
+                        {len}/60 characters
+                      </span>
+                    ) : null;
+                  })()}
+                </div>
+                <div>
+                  <label className="ed-rail-label" htmlFor="edMetaDescription">Meta Description</label>
+                  <textarea className="ed-rail-input resize-none" rows={3} id="edMetaDescription" placeholder="Defaults to excerpt" {...register("metaDescription")} />
+                  {(() => {
+                    const len = (watch("metaDescription") || "").length;
+                    return len > 0 ? (
+                      <span className={`text-xs mt-1 block ${len > 160 ? 'text-[var(--bad)]' : len > 150 ? 'text-[var(--warn)]' : 'text-[var(--muted)]'}`}>
+                        {len}/160 characters
+                      </span>
+                    ) : null;
+                  })()}
+                </div>
+                <div>
+                  <label className="ed-rail-label" htmlFor="edCanonicalUrl">Canonical URL</label>
+                  <input className="ed-rail-input font-mono text-xs" id="edCanonicalUrl" placeholder="Leave blank to use default article URL" {...register("canonicalUrl")} />
+                </div>
+                {/* Legacy SEO fields (kept for backwards compatibility) */}
+                <div>
+                  <label className="ed-rail-label" htmlFor="edSeoTitle">SEO Title (Legacy)</label>
+                  <input className="ed-rail-input" id="edSeoTitle" placeholder="Defaults to meta title" {...register("seoTitle")} />
+                </div>
+                <div>
+                  <label className="ed-rail-label" htmlFor="edSeoDesc">SEO Description (Legacy)</label>
+                  <textarea className="ed-rail-input resize-none" rows={2} id="edSeoDesc" placeholder="Defaults to meta description" {...register("seoDesc")} />
                 </div>
                 <div className="pt-2">
                   <label className="ed-rail-label">Google SERP Preview</label>
                   <SeoPreview
-                    title={watch("seoTitle") || watch("title") || ""}
-                    description={watch("seoDesc") || watch("deck") || ""}
+                    title={watch("metaTitle") || watch("seoTitle") || watch("title") || ""}
+                    description={watch("metaDescription") || watch("seoDesc") || watch("deck") || ""}
                     slug={watch("slug") || ""}
                     image={watch("img") || ""}
                   />
+                </div>
+              </div>
+            </details>
+
+            {/* ── Section C: Social Distribution ── */}
+            <details className="group border-b border-[var(--line-2)] pb-4">
+              <summary className="flex cursor-pointer items-center justify-between font-bold text-sm tracking-wide uppercase text-[var(--muted)] hover:text-[var(--ink)] transition-colors list-none [&::-webkit-details-marker]:hidden">
+                Social Distribution
+                <svg className="w-4 h-4 text-[var(--muted)] group-open:rotate-90 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </summary>
+              <div className="pt-4 space-y-4 animate-in fade-in duration-200">
+                <div>
+                  <label className="ed-rail-label">Social Share Image (OG)</label>
+                  <p className="text-xs text-[var(--muted)] mb-2">If left blank, the featured image is used as the OpenGraph image.</p>
+                  {!watch("ogImage") ? (
+                    <ImageDropzone
+                      onUpload={handleThumbUpload}
+                      onUploaded={(url) => setValue("ogImage", url, { shouldDirty: true })}
+                      label="Drop OG image or click to browse"
+                      hint="Recommended: 1200 x 630 pixels. Max size: 5MB."
+                    />
+                  ) : (
+                    <div className="group relative aspect-video w-full rounded-md overflow-hidden border border-[var(--line-2)] bg-[var(--surface-3)]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={optimizeImageUrl(watch("ogImage")!, 1200)} alt="OG image preview" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = "none")} />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                        <button
+                          type="button"
+                          onClick={() => setValue("ogImage", "", { shouldDirty: true })}
+                          className="btn-cs ghost !text-white border-white/20 hover:bg-white/10"
+                        >
+                          Remove OG Image
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </details>
@@ -1543,8 +1708,10 @@ export default function ArticleEditor({
               <TableOfContents containerSelector=".ProseMirror" />
             </div>
           </section>
-        </aside>
+        </PublishingPanel>
       </div>
+
+      <DocumentStatus editor={editor} zoom={zoom} setZoom={setZoom} status={syncStatus.label} />
 
       <ThumbnailCropper
         open={!!thumbCrop}

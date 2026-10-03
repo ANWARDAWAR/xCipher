@@ -4,11 +4,13 @@ export interface CalloutOptions {
   HTMLAttributes: Record<string, any>
 }
 
+export type CalloutType = 'info' | 'takeaway' | 'quote' | 'warning' | 'editor-note' | 'update' | 'pro-tip';
+
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     callout: {
-      setCallout: (options?: { type?: 'info' | 'takeaway' | 'quote' | 'warning' }) => ReturnType
-      toggleCallout: (options?: { type?: 'info' | 'takeaway' | 'quote' | 'warning' }) => ReturnType
+      setCallout: (options?: { type?: CalloutType }) => ReturnType
+      toggleCallout: (options?: { type?: CalloutType }) => ReturnType
     }
   }
 }
@@ -61,7 +63,7 @@ export const Callout = Node.create<CalloutOptions>({
       toggleCallout:
         (options) =>
         ({ commands }) => {
-          return commands.toggleNode(this.name, 'paragraph', options)
+          return commands.toggleWrap(this.name, options)
         },
     }
   },

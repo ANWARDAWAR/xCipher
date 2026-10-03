@@ -27,9 +27,10 @@ export default async function NewStoryPage() {
       })
     : null;
 
-  const [categories, tags] = await Promise.all([
+  const [categories, tags, allAuthors] = await Promise.all([
     getCategories(),
-    getTags()
+    getTags(),
+    db.query.author.findMany({ columns: { id: true, name: true, slug: true }, orderBy: (a, { asc }) => [asc(a.name)] }),
   ]);
 
   return (
@@ -43,6 +44,7 @@ export default async function NewStoryPage() {
         authorId={dbUser?.authorProfile?.id}
         availableCategories={categories}
         availableTags={tags}
+        availableAuthors={allAuthors}
       />
     </div>
   );

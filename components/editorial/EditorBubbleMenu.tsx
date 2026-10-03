@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BubbleMenu } from "@tiptap/react/menus";
-import type { Editor } from "@tiptap/react";
+import { useEditorState, type Editor } from "@tiptap/react";
+import { getEditorFormattingState } from "@/lib/editor/document-state";
 import {
   Bold,
   Italic,
@@ -90,6 +91,7 @@ function MarkButton({
 }
 
 export function EditorBubbleMenu({ editor }: Props) {
+  useEditorState({ editor, selector: ({ editor }) => editor ? getEditorFormattingState(editor) : null });
   const [linkMode, setLinkMode] = useState(false);
   const [draft, setDraft] = useState("");
   const [invalid, setInvalid] = useState(false);
@@ -108,7 +110,11 @@ export function EditorBubbleMenu({ editor }: Props) {
 
   const insertImage = useCallback(
     (v: { src: string; alt: string; caption: string; credit: string }) => {
-      (editor?.chain().focus() as any).setFigure(v).run();
+      if (editor?.isActive('figure') || editor?.isActive('image')) {
+        editor.chain().focus().updateAttributes('figure', v).run();
+      } else {
+        (editor?.chain().focus() as any).setFigure(v).run();
+      }
     },
     [editor]
   );
