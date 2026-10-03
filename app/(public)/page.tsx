@@ -142,7 +142,7 @@ export default async function Home() {
           </h1>
           <p className="story-deck">{lead.deck}</p>
           <div className="byline">
-            {lead.authorModel?.avatar ? (
+            {lead.authorModel?.avatar?.trim() ? (
               <Image src={lead.authorModel.avatar} alt={lead.authorModel.name || lead.author || ""} width={56} height={56} sizes="56px" className="ava lg object-cover rounded-full" />
             ) : (
               <div className="ava lg">{(lead.author || "xSypher").charAt(0)}</div>
@@ -331,7 +331,7 @@ export default async function Home() {
                 </h3>
                 <p className="story-deck">{pickFeat.deck}</p>
                 <div className="byline">
-                  {pickFeat.authorModel?.avatar ? (
+                  {pickFeat.authorModel?.avatar?.trim() ? (
                     <Image src={pickFeat.authorModel.avatar} alt={pickFeat.authorModel.name || pickFeat.author || ""} width={34} height={34} sizes="34px" className="ava object-cover rounded-full" />
                   ) : (
                     <div className="ava">{(pickFeat.author || "xSypher").charAt(0)}</div>
@@ -408,7 +408,7 @@ function CatSplit({ cat, articles, reverse = false }: { cat: string, articles: a
               </h3>
               <p className="story-deck">{feat.deck}</p>
               <div className="byline" style={{ marginTop: "12px" }}>
-                {feat.authorModel?.avatar ? (
+                {feat.authorModel?.avatar?.trim() ? (
                   <Image src={feat.authorModel.avatar} alt={feat.authorModel.name || feat.author || ""} width={26} height={26} sizes="26px" className="ava sm object-cover rounded-full" />
                 ) : (
                   <div className="ava sm">{(feat.author || "xSypher Staff").charAt(0)}</div>

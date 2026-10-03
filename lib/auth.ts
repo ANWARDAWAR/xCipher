@@ -8,16 +8,14 @@ import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import { headers } from "next/headers";
 import { cache } from "react";
 import { verifyPassword } from "@/lib/crypto";
+import authConfig from "@/lib/auth.config";
 
 // Resolve secrets, cookies and the database adapter after request bindings exist.
 export const { handlers, auth, signIn, signOut } = NextAuth(() => {
-  const env = process.env;
-  const secureCookies = env.NODE_ENV === "production" &&
-    !(env.NEXTAUTH_URL?.includes("localhost") || env.AUTH_URL?.includes("localhost") || env.NEXT_PUBLIC_SITE_URL?.includes("localhost"));
-
   return {
-  trustHost: true,
-  secret: env.NEXTAUTH_SECRET || env.AUTH_SECRET,
+  // Spread the shared edge config (callbacks, cookies, session, pages, secret, trustHost).
+  ...authConfig,
+  // Layer on the server-only adapter and the real Credentials provider.
   adapter: DrizzleAdapter(db, { usersTable: userTable, accountsTable: account, sessionsTable: session, verificationTokensTable: verificationToken } as any) as any,
   providers: [
     Credentials({
@@ -94,56 +92,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
       },
     }),
   ],
-  session: {
-    strategy: "jwt",
-  },
-  cookies: {
-    sessionToken: {
-      name: secureCookies ? "__Secure-next-auth.session-token" : "next-auth.session-token",
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        domain: secureCookies ? ".xsypher.com" : undefined,
-        secure: secureCookies,
-      }
-    }
-  },
-  callbacks: {
-    async redirect({ url, baseUrl }) {
-      if (url.startsWith("/")) return `${baseUrl}${url}`;
-      try {
-        const urlObj = new URL(url);
-        if (urlObj.origin === baseUrl || urlObj.hostname.endsWith(".xsypher.com") || urlObj.hostname.includes("localhost")) {
-          return url;
-        }
-      } catch (e) {
-        return baseUrl;
-      }
-      return baseUrl;
-    },
-    async jwt({ token, user }: any) {
-      if (user) {
-        token.id = user.id;
-        token.role = user.role;
-        token.sessionVersion = user.sessionVersion;
-      }
-      return token;
-    },
-    async session({ session, token }: any) {
-      if (token && session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
-        session.user.sessionVersion = token.sessionVersion as number;
-      }
-      return session;
-    },
-  },
-  pages: {
-    signIn: "/admin/login",
-  },
+  // Override the lightweight logger with the full server-side one.
   logger: {
-    error(error) {
+    error(error: any) {
       // Downgrade JWTSessionError (stale cookies) to warning to avoid polluting Cloudflare logs
       if (error?.name === "JWTSessionError") {
         console.warn("[auth][warn] Stale or invalid JWT cookie detected. User treated as unauthenticated.");
@@ -151,15 +102,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
         console.error("[auth][error]", error);
       }
     },
-    warn(code) {
+    warn(code: string) {
       console.warn("[auth][warn]", code);
     },
-    debug(code, ...message) {
+    debug(code: string, ...message: any[]) {
       console.debug("[auth][debug]", code, ...message);
     }
   },
   };
 });
+
 
 export async function getSession() {
   return await auth();
