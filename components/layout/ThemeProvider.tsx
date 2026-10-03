@@ -8,7 +8,7 @@ import { ThemeProvider as NextThemesProvider, type ThemeProviderProps } from "ne
 // We intercept and suppress this known benign warning on the client so it does not trigger the dev overlay.
 if (typeof window !== "undefined") {
   const originalError = console.error;
-  console.error = (...args: unknown[]) => {
+  console.error = function consoleErrorOverride(...args: unknown[]) {
     if (
       typeof args[0] === "string" &&
       args[0].includes("Encountered a script tag while rendering React component")

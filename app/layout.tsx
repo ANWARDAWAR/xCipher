@@ -87,29 +87,30 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+const websiteJsonLd = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": siteConfig.name,
+  "url": siteConfig.url,
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": `${siteConfig.url}/search?q={search_term_string}`,
+    "query-input": "required name=search_term_string"
+  }
+}).replace(/</g, '\\u003c');
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const jsonLd = JSON.stringify({
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": siteConfig.name,
-    "url": siteConfig.url,
-    "potentialAction": {
-      "@type": "SearchAction",
-      "target": `${siteConfig.url}/search?q={search_term_string}`,
-      "query-input": "required name=search_term_string"
-    }
-  }).replace(/</g, '\\u003c');
 
   return (
     <html lang="en" suppressHydrationWarning className={`scroll-pt-28 lg:scroll-pt-32 ${spaceGrotesk.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} ${kremlin.variable}`}>
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: jsonLd }}
+          dangerouslySetInnerHTML={{ __html: websiteJsonLd }}
         />
         {/* Carry a theme chosen under a previous brand over to the current storage key.
             In Next.js 15+ / React 19, inline scripts should be placed inside <head> 
