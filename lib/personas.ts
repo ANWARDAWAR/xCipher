@@ -1,6 +1,7 @@
 export interface EditorialPersona {
   name: string;
   bio: string;
+  overview?: string;
   avatar: string;
 }
 
@@ -72,6 +73,7 @@ export function getArticleAuthor(article: ArticleAuthorSource) {
     name: author?.name || article.author || "xSypher Staff",
     avatar: author?.avatar || null,
     bio: author?.bio || author?.overview || "Contributing writer at xSypher.",
+    overview: author?.overview || author?.bio || "Contributing writer at xSypher.",
     slug: author?.slug || null,
     role: author?.role || article.role || "Contributing writer",
     socialLinks: author?.socialLinks,

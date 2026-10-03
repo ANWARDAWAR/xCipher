@@ -13,9 +13,9 @@ export default function AuthorBox({ article }: { article: ArticleAuthorSource })
     <section className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl p-4 sm:p-7 shadow-sm flex flex-col mt-4 mb-8" aria-label="About the author">
       <div className="mb-3"><ArticleByline article={article} size={64} showRole /></div>
       {article.isAnonymous ? (
-        <p className="text-sm text-[var(--muted)] leading-relaxed max-w-2xl">{author.bio}</p>
+        <p className="text-sm text-[var(--muted)] leading-relaxed max-w-2xl">{author.overview || author.bio}</p>
       ) : (
-        <div className="text-sm text-[var(--muted)] leading-relaxed max-w-2xl" dangerouslySetInnerHTML={{ __html: sanitizeBioHtml(author.bio) }} />
+        <div className="text-sm text-[var(--muted)] leading-relaxed max-w-2xl" dangerouslySetInnerHTML={{ __html: sanitizeBioHtml(author.overview || author.bio) }} />
       )}
       {!article.isAnonymous && (socials.length > 0 || author.slug) && (
         <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--line)]/50">
