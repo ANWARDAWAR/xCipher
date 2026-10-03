@@ -7196,9 +7196,19 @@ body.is-article .prose code {
     word-break: normal !important;
     vertical-align: top !important;
     border: 0 !important;
+    border-right: 1px solid var(--line) !important;
     font-size: 0.875rem !important;
     line-height: 1.6 !important;
     color: var(--ink) !important;
+}
+
+.prose table th:last-child,
+.prose table td:last-child,
+.tiptap table th:last-child,
+.tiptap table td:last-child,
+.tiptap-content table th:last-child,
+.tiptap-content table td:last-child {
+    border-right: 0 !important;
 }
 
 .prose table thead th,
