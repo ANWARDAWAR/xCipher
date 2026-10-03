@@ -11,7 +11,7 @@ export default function ArticleByline({ article, size = 24, showRole = false, ch
   const author = getArticleAuthor(article);
   const isLarge = size >= 64;
   const isAnon = article.isAnonymous;
-  const avatarClasses = `rounded-full shrink-0 ${isLarge ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-[var(--surface)]' : ''} ${isAnon ? `object-contain bg-white ${isLarge ? 'p-2.5' : 'p-1'}` : 'object-cover'}`;
+  const avatarClasses = `rounded-full shrink-0 ${isLarge ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-[var(--surface)]' : ''} ${isAnon ? `object-contain bg-[var(--surface-3)] ${isLarge ? 'p-2' : 'p-1'}` : 'object-cover'}`;
   const fallbackClasses = `rounded-full bg-[var(--surface-3)] inline-flex items-center justify-center shrink-0 font-bold ${isLarge ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-[var(--surface)]' : ''}`;
 
   const avatar = author.avatar ? (
