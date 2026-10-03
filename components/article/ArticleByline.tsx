@@ -11,11 +11,21 @@ export default function ArticleByline({ article, size = 24, showRole = false, ch
   const author = getArticleAuthor(article);
   const isLarge = size >= 64;
   const isAnon = article.isAnonymous;
-  const avatarClasses = `rounded-full shrink-0 ${isLarge ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-[var(--surface)]' : ''} ${isAnon ? `object-contain bg-[var(--surface-3)] ${isLarge ? 'p-2' : 'p-1'}` : 'object-cover'}`;
-  const fallbackClasses = `rounded-full bg-[var(--surface-3)] inline-flex items-center justify-center shrink-0 font-bold ${isLarge ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-[var(--surface)]' : ''}`;
+  
+  const avatarWrapperClasses = `relative rounded-full shrink-0 flex items-center justify-center overflow-hidden ${
+    isLarge ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-[var(--surface)]' : ''
+  } ${isAnon ? (isLarge ? 'p-1.5 bg-[var(--surface-3)]' : 'p-1 bg-[var(--surface-3)]') : ''}`;
+
+  const imgClasses = `rounded-full w-full h-full ${isAnon ? 'object-contain' : 'object-cover'}`;
+
+  const fallbackClasses = `rounded-full bg-[var(--surface-3)] inline-flex items-center justify-center shrink-0 font-bold ${
+    isLarge ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-[var(--surface)]' : ''
+  }`;
 
   const avatar = author.avatar ? (
-    <Image src={author.avatar} alt={author.name} width={size} height={size} sizes={`${size}px`} className={avatarClasses} />
+    <span style={{ width: size, height: size }} className={avatarWrapperClasses}>
+      <Image src={author.avatar} alt={author.name} width={size} height={size} sizes={`${size}px`} className={imgClasses} />
+    </span>
   ) : (
     <span style={{ width: size, height: size }} className={fallbackClasses}>{author.name.charAt(0)}</span>
   );
