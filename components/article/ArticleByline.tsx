@@ -25,7 +25,7 @@ export default function ArticleByline({ article, size = 24, showRole = false }: 
         {author.slug ? (
           <Link href={`/author/${author.slug}`} className={`font-bold hover:text-[var(--accent)] transition-colors ${isLarge ? 'text-xl' : ''}`} itemProp="name">{author.name}</Link>
         ) : <span className={`font-bold ${isLarge ? 'text-xl' : ''}`} itemProp="name">{author.name}</span>}
-        {showRole && <span className={isLarge ? 'text-sm text-red-500 font-medium' : 'text-xs text-[var(--muted)]'}>{author.role}</span>}
+        {showRole && <span className={isLarge ? 'text-xs sm:text-sm text-red-500 font-medium' : 'text-xs text-[var(--muted)]'}>{author.role}</span>}
       </span>
     </span>
   );
