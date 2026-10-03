@@ -143,10 +143,9 @@ export default async function Home() {
           </h1>
           <p className="story-deck">{lead.deck}</p>
           <div className="byline">
-            <ArticleByline article={lead} size={56} showRole />
-            <span>
-              {<RelativeTime dateTime={new Date(lead.createdAt).toISOString()} />} <span className="dot">·</span> {lead.mins} min read
-            </span>
+            <ArticleByline article={lead} size={56} showRole>
+              <RelativeTime dateTime={new Date(lead.createdAt).toISOString()} /> <span className="dot">·</span> {lead.mins} min read
+            </ArticleByline>
           </div>
         </article>
         
