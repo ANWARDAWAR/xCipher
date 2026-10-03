@@ -63,4 +63,24 @@ describe("public feed pagination", () => {
     await expect(getMoreArticles(0, 20)).rejects.toThrow("Could not load more articles. Please try again.");
     log.mockRestore();
   });
+
+  it("removes anonymous identities from paginated responses", async () => {
+    mocks.findMany.mockResolvedValueOnce([{
+      id: "story", isAnonymous: true, category: { slug: "ai" },
+      author: "Private Author", authorId: "private-id", role: "Private role",
+      authorModel: { name: "Private Author", slug: "private", avatar: "/private.png" },
+    }]);
+    const rows = await getMoreArticles(0, 20);
+    expect(rows[0]).toMatchObject({ author: "xSypher AI Desk", authorModel: null, authorId: null });
+    expect(JSON.stringify(rows)).not.toMatch(/private/i);
+    expect(mocks.findMany.mock.calls[0][0].columns.isAnonymous).toBe(true);
+  });
+
+  it("excludes anonymous stories from author archives and their counts", () => {
+    const query = dialect.sqlToQuery(publicFeedWhere({ authorId: "private-id" })!);
+    expect(query.sql).toContain('"Article"."isAnonymous" =');
+    expect(query.params).toContain(false);
+    const unfiltered = dialect.sqlToQuery(publicFeedWhere()!);
+    expect(unfiltered.sql).not.toContain('"isAnonymous"');
+  });
 });

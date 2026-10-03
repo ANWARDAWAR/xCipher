@@ -121,6 +121,7 @@ export const article = pgTable('Article', {
   deck: text('deck'),
   contentUrl: text('contentUrl'),
   author: text('author'),
+  isAnonymous: boolean('isAnonymous').default(false).notNull(),
   role: text('role'),
   categoryId: text('categoryId'),
   status: articleStatusEnum('status').default('DRAFT').notNull(),

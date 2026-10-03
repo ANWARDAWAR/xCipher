@@ -57,6 +57,8 @@ import { parseEditorialBlock } from "@/lib/editorial-blocks";
 import DocumentOutline from "./DocumentOutline";
 import DocumentStatus from "./DocumentStatus";
 import PublishingPanel from "./PublishingPanel";
+import EditorialPersonaSettings from "./EditorialPersonaSettings";
+import { getPersonaForCategory } from "@/lib/personas";
 import "./styles/studio.css";
 
 // Templates
@@ -85,6 +87,8 @@ const articleSchema = z.object({
   slug: z.string().min(1, "Slug is required"),
   cat: z.string().min(1, "Category is required"),
   author: z.string().min(1, "Author is required"),
+  isAnonymous: z.boolean(),
+  categoryParentSlug: z.string().optional(),
   role: z.string().optional(),
   featured: z.boolean().optional(),
   status: z.enum([
@@ -350,6 +354,8 @@ export default function ArticleEditor({
     slug: initialData?.slug || "",
     cat: initialData?.category?.slug || initialData?.cat || "ai",
     author: initialData?.author || authorName || "xSypher Staff",
+    isAnonymous: initialData?.isAnonymous ?? false,
+    categoryParentSlug: initialData?.category?.parent?.slug || "",
     role: initialData?.role || authorRole || "",
     featured: Boolean(initialData?.featured),
     status: (initialData?.status?.toUpperCase() || "DRAFT") as any,
@@ -511,6 +517,8 @@ export default function ArticleEditor({
         slug: initialData.slug || "",
         cat: initialData.category?.slug || initialData.cat || "ai",
         author: initialData.author || authorName || "xSypher Staff",
+        isAnonymous: initialData.isAnonymous ?? false,
+        categoryParentSlug: initialData.category?.parent?.slug || "",
         role: initialData.role || authorRole || "",
         featured: Boolean(initialData.featured),
         status: (initialData.status?.toUpperCase() || "DRAFT") as any,
@@ -616,6 +624,8 @@ export default function ArticleEditor({
         slug: slugify(title),
         cat: getValues("cat") || "ai",
         author: getValues("author") || "xSypher Staff",
+        isAnonymous: getValues("isAnonymous"),
+        categoryParentSlug: getValues("categoryParentSlug"),
         role: getValues("role") || "Editorial",
         featured: getValues("featured") || false,
         status: "DRAFT",
@@ -642,6 +652,8 @@ export default function ArticleEditor({
       slug,
       cat: "ai",
       author: "Elena Rostova",
+      isAnonymous: false,
+      categoryParentSlug: "",
       role: "Principal AI Researcher",
       featured: true,
       status: "DRAFT",
@@ -692,7 +704,7 @@ export default function ArticleEditor({
     // keepDefaultValues:false so the restored content becomes the new baseline;
     // otherwise react-hook-form would treat it as dirty against the old values
     // and the beforeunload guard would fire on a form the user just restored.
-    reset(values as ArticleFormValues);
+    reset({ ...values, isAnonymous: values.isAnonymous ?? initialData?.isAnonymous ?? false } as ArticleFormValues);
     if (recoveredDraft.bodyJson) {
       editor?.commands.setContent(recoveredDraft.bodyJson);
       setValue("bodyHtml", recoveredDraft.bodyHtml, { shouldDirty: false });
@@ -811,6 +823,7 @@ export default function ArticleEditor({
         slug: currentSlug.trim(),
         cat: watch("cat") || getValues("cat") || "ai",
         author: watch("author") || getValues("author") || authorName || "xSypher Staff",
+        isAnonymous: getValues("isAnonymous"),
         role: watch("role") || getValues("role") || authorRole || null,
         authorId: watch("authorId") || getValues("authorId") || authorId || initialData?.authorId || null,
         status: targetStatus,
@@ -1315,7 +1328,7 @@ export default function ArticleEditor({
         <main className="studio-canvas flex-1 min-w-0">
           <div className="studio-page-caption"><span>xSypher / Editorial studio</span><span>{currentFormStatus === 'PUBLISHED' ? 'Published document' : 'Working document'}</span></div>
           <div className="studio-paper mx-auto space-y-4" style={{ zoom: zoom / 100 }}>
-            <div className="studio-paper-kicker">{watch('cat') || 'Story'} <span>•</span> {watch('author')}</div>
+            <div className="studio-paper-kicker">{watch('cat') || 'Story'} <span>•</span> {watch('isAnonymous') ? getPersonaForCategory(watch('cat'), watch('categoryParentSlug')).name : watch('author')}</div>
             
             {/* Templates Utility */}
             {process.env.NODE_ENV === "development" && (
@@ -1419,7 +1432,10 @@ export default function ArticleEditor({
                   <label className="ed-rail-label" htmlFor="edCat">Category</label>
                   <CategorySelector 
                     initialCategory={initialData?.category}
-                    onChange={(slug) => setValue("cat", slug, { shouldDirty: true })}
+                    onChange={(slug, parentSlug) => {
+                      setValue("cat", slug, { shouldDirty: true });
+                      setValue("categoryParentSlug", parentSlug || "", { shouldDirty: true });
+                    }}
                   />
                   <input type="hidden" {...register("cat")} />
                 </div>
@@ -1446,6 +1462,14 @@ export default function ArticleEditor({
                   />
                   <input type="hidden" {...register("tags")} />
                 </div>
+
+                <EditorialPersonaSettings
+                  isAnonymous={watch("isAnonymous")}
+                  categorySlug={watch("cat")}
+                  parentSlug={watch("categoryParentSlug")}
+                  authorName={watch("author")}
+                  onChange={value => setValue("isAnonymous", value, { shouldDirty: true })}
+                />
 
                 {/* Author Override */}
                 <div>

@@ -22,7 +22,7 @@ const PRIMARY_CATEGORIES = [
 interface CategorySelectorProps {
   initialCategory?: any; // The category object from Prisma (with parent optionally)
   initialFallbackSlug?: string; // e.g. "ai"
-  onChange: (finalSlug: string) => void;
+  onChange: (finalSlug: string, parentSlug?: string) => void;
 }
 
 export default function CategorySelector({ initialCategory, initialFallbackSlug = "ai", onChange }: CategorySelectorProps) {
@@ -67,7 +67,7 @@ export default function CategorySelector({ initialCategory, initialFallbackSlug 
 
   const handleSubcatChange = (val: string) => {
     setSubcatSlug(val);
-    onChange(val || parentSlug); // if cleared, revert to parent
+    onChange(val || parentSlug, val ? parentSlug : undefined); // if cleared, revert to parent
   };
 
   const handleCreateSubcat = async (name: string) => {

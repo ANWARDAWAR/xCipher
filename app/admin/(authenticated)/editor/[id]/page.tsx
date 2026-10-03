@@ -3,9 +3,10 @@ import ArticleEditor from "@/components/editorial/ArticleEditorClient";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { canEditArticle } from "@/lib/permissions";
-import { getCategories, getTags } from "@/app/actions/taxonomy";
-import { eq } from "drizzle-orm";
-import { user as userTable, article as articleTable } from "@/lib/db/schema";
+import { buildArticleScope } from "@/lib/capabilities";
+import type { Role } from "@/lib/types";
+import { and, eq } from "drizzle-orm";
+import { author as authorTable, article as articleTable } from "@/lib/db/schema";
 import ReviewFeedbackPanel from "@/components/editorial/ReviewFeedbackPanel";
 import { fetchFromR2 } from "@/lib/storage";
 
@@ -16,16 +17,14 @@ interface EditDraftPageProps {
 export default async function EditDraftPage({ params }: EditDraftPageProps) {
   const { id } = await params;
   const user = await getCurrentUser();
-
-  const dbUser = user?.id
-    ? await db.query.user.findFirst({
-      where: eq(userTable.id, user.id),
-      with: { authorProfile: true },
-    })
-    : null;
+  if (!user) redirect("/admin/login");
+  const actor = { id: user.id, role: user.role as Role, authorId: user.authorId };
 
   const draft = await db.query.article.findFirst({
-    where: eq(articleTable.id, id),
+    where: and(eq(articleTable.id, id), buildArticleScope(actor)),
+    // The editable body comes from R2. Do not also fetch/serialize the full
+    // search index text from Postgres in this server-rendered response.
+    columns: { textContent: false },
     with: {
       // Include parent category to support the CategorySelector component
       category: { with: { parent: true } },
@@ -37,6 +36,7 @@ export default async function EditDraftPage({ params }: EditDraftPageProps) {
         },
       },
       revisions: {
+        columns: { id: true, notes: true, statusChange: true, createdAt: true },
         orderBy: (r, { desc }) => [desc(r.createdAt)],
         with: { user: { columns: { name: true, email: true } } }
       },
@@ -63,7 +63,7 @@ export default async function EditDraftPage({ params }: EditDraftPageProps) {
   }
 
   const editPolicy = canEditArticle(
-    { id: user?.id || "", role: user?.role || "", authorId: dbUser?.authorProfile?.id },
+    actor,
     draft
   );
 
@@ -71,39 +71,40 @@ export default async function EditDraftPage({ params }: EditDraftPageProps) {
     redirect('/admin/drafts');
   }
 
-  const r2Content = await fetchFromR2(draft.contentUrl);
+  const [r2Content, authorProfile, allAuthors] = await Promise.all([
+    fetchFromR2(draft.contentUrl),
+    user.authorId
+      ? db.query.author.findFirst({
+        where: eq(authorTable.id, user.authorId),
+        columns: { id: true, name: true, role: true },
+      })
+      : Promise.resolve(null),
+    db.query.author.findMany({ columns: { id: true, name: true, slug: true }, orderBy: (a, { asc }) => [asc(a.name)] }),
+  ]);
   const articleHtml = typeof r2Content === "object" ? r2Content?.html : r2Content || "";
   const articleJson = typeof r2Content === "object" ? r2Content?.json : null;
 
+  const { revisions, reviews, ...metadata } = draft;
   const initialData = {
-    ...draft,
+    ...metadata,
     cat: draft.category?.slug || "ai",
     status: draft.status,
     bodyHtml: articleHtml,
-    body: articleHtml,
     contentJson: articleJson,
   };
-
-  const [categories, tags, allAuthors] = await Promise.all([
-    getCategories(),
-    getTags(),
-    db.query.author.findMany({ columns: { id: true, name: true, slug: true }, orderBy: (a, { asc }) => [asc(a.name)] }),
-  ]);
 
   return (
     <div>
       <h1>Edit story</h1>
       <p className="cs-sub">Write, save drafts and publish.</p>
-      <ReviewFeedbackPanel status={draft.status} latestReview={draft.reviews[0] ?? null} />
+      <ReviewFeedbackPanel status={draft.status} latestReview={reviews[0] ?? null} />
       <ArticleEditor
         initialData={initialData}
-        initialRevisions={draft.revisions}
-        userRole={user?.role}
-        authorName={dbUser?.authorProfile?.name || dbUser?.name}
-        authorRole={dbUser?.authorProfile?.role || dbUser?.role}
-        authorId={dbUser?.authorProfile?.id}
-        availableCategories={categories}
-        availableTags={tags}
+        initialRevisions={revisions}
+        userRole={user.role}
+        authorName={authorProfile?.name || user.name}
+        authorRole={authorProfile?.role || user.role}
+        authorId={authorProfile?.id}
         availableAuthors={allAuthors}
       />
     </div>

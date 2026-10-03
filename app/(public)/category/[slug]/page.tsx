@@ -8,6 +8,7 @@ import { eq, sql } from "drizzle-orm";
 import { category as categoryTable } from "@/lib/db/schema";
 import { siteConfig } from "@/lib/seo";
 import PaginatedFeed from "@/components/article/PaginatedFeed";
+import ArticleByline from "@/components/article/ArticleByline";
 import { LISTING_ARTICLE_LIMIT } from "@/lib/queries";
 import Sidebar from "@/components/layout/Sidebar";
 import { getImgSrc } from "@/lib/utils";
@@ -120,12 +121,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                 </h3>
                 <p className="story-deck" style={{ fontSize: "15.5px" }}>{feat.deck}</p>
                 <div className="byline" style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
-                  {feat.authorModel?.avatar ? (
-                    <Image src={feat.authorModel.avatar} width={24} height={24} alt={feat.authorModel?.name || feat.author || ""} className="rounded-full" />
-                  ) : (
-                    <div className="ava sm">{(feat.authorModel?.name || feat.author || "xSypher").charAt(0)}</div>
-                  )}
-                  <span><b>{feat.authorModel?.name || feat.author || "xSypher Staff"}</b> <span className="dot">·</span> {<RelativeTime dateTime={new Date(feat.createdAt).toISOString()} />} <span className="dot">·</span> {feat.readingTime || 1} min read</span>
+                  <ArticleByline article={feat} />
+                  <span><span className="dot">·</span> {<RelativeTime dateTime={new Date(feat.createdAt).toISOString()} />} <span className="dot">·</span> {feat.readingTime || 1} min read</span>
                 </div>
               </div>
             </article>

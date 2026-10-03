@@ -3,10 +3,9 @@ import { getCurrentUser } from "@/lib/auth";
 import ArticleEditor from "@/components/editorial/ArticleEditorClient";
 import { authorize } from "@/lib/capabilities";
 import { db } from "@/lib/db";
-import { getCategories, getTags } from "@/app/actions/taxonomy";
 import { eq } from "drizzle-orm";
-import { user as userTable } from "@/lib/db/schema";
-import { Role } from "@/lib/types";
+import { author as authorTable } from "@/lib/db/schema";
+import type { Role } from "@/lib/types";
 
 export default async function NewStoryPage() {
   const user = await getCurrentUser();
@@ -20,16 +19,13 @@ export default async function NewStoryPage() {
     redirect("/admin");
   }
 
-  const dbUser = user?.id
-    ? await db.query.user.findFirst({
-        where: eq(userTable.id, user.id),
-        with: { authorProfile: true },
+  const [authorProfile, allAuthors] = await Promise.all([
+    user.authorId
+      ? db.query.author.findFirst({
+        where: eq(authorTable.id, user.authorId),
+        columns: { id: true, name: true, role: true },
       })
-    : null;
-
-  const [categories, tags, allAuthors] = await Promise.all([
-    getCategories(),
-    getTags(),
+      : Promise.resolve(null),
     db.query.author.findMany({ columns: { id: true, name: true, slug: true }, orderBy: (a, { asc }) => [asc(a.name)] }),
   ]);
 
@@ -38,12 +34,10 @@ export default async function NewStoryPage() {
       <h1>New story</h1>
       <p className="cs-sub">Write, save drafts and publish.</p>
       <ArticleEditor
-        userRole={user?.role}
-        authorName={dbUser?.authorProfile?.name || dbUser?.name}
-        authorRole={dbUser?.authorProfile?.role || dbUser?.role}
-        authorId={dbUser?.authorProfile?.id}
-        availableCategories={categories}
-        availableTags={tags}
+        userRole={user.role}
+        authorName={authorProfile?.name || user.name}
+        authorRole={authorProfile?.role || user.role}
+        authorId={authorProfile?.id}
         availableAuthors={allAuthors}
       />
     </div>

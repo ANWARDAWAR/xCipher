@@ -5,6 +5,7 @@ import RelativeTime from "@/components/common/RelativeTime";
 import { getHomeArticles, getHomeHeroArticle, getHomeBriefing } from "@/lib/cached-queries";
 import StoryCard from "@/components/article/StoryCard";
 import StoryRow from "@/components/article/StoryRow";
+import ArticleByline from "@/components/article/ArticleByline";
 import BreakingTicker from "@/components/home/BreakingTicker";
 import EditorialTicker from "@/components/home/EditorialTicker";
 import NewsletterSignup from "@/components/newsletter/NewsletterSignup";
@@ -142,13 +143,9 @@ export default async function Home() {
           </h1>
           <p className="story-deck">{lead.deck}</p>
           <div className="byline">
-            {lead.authorModel?.avatar?.trim() ? (
-              <Image src={lead.authorModel.avatar} alt={lead.authorModel.name || lead.author || ""} width={56} height={56} sizes="56px" className="ava lg object-cover rounded-full" />
-            ) : (
-              <div className="ava lg">{(lead.author || "xSypher").charAt(0)}</div>
-            )}
+            <ArticleByline article={lead} size={56} showRole />
             <span>
-              <b>{lead.author || "xSypher Staff"}</b>, {lead.role || ""} <span className="dot">·</span> {<RelativeTime dateTime={new Date(lead.createdAt).toISOString()} />} <span className="dot">·</span> {lead.mins} min read
+              {<RelativeTime dateTime={new Date(lead.createdAt).toISOString()} />} <span className="dot">·</span> {lead.mins} min read
             </span>
           </div>
         </article>
@@ -331,12 +328,8 @@ export default async function Home() {
                 </h3>
                 <p className="story-deck">{pickFeat.deck}</p>
                 <div className="byline">
-                  {pickFeat.authorModel?.avatar?.trim() ? (
-                    <Image src={pickFeat.authorModel.avatar} alt={pickFeat.authorModel.name || pickFeat.author || ""} width={34} height={34} sizes="34px" className="ava object-cover rounded-full" />
-                  ) : (
-                    <div className="ava">{(pickFeat.author || "xSypher").charAt(0)}</div>
-                  )}
-                  <span><b>{pickFeat.author || "xSypher Staff"}</b> <span className="dot">·</span> {<RelativeTime dateTime={new Date(pickFeat.createdAt).toISOString()} />}</span>
+                  <ArticleByline article={pickFeat} size={34} />
+                  <span><span className="dot">·</span> {<RelativeTime dateTime={new Date(pickFeat.createdAt).toISOString()} />}</span>
                 </div>
               </article>
             )}
@@ -408,12 +401,8 @@ function CatSplit({ cat, articles, reverse = false }: { cat: string, articles: a
               </h3>
               <p className="story-deck">{feat.deck}</p>
               <div className="byline" style={{ marginTop: "12px" }}>
-                {feat.authorModel?.avatar?.trim() ? (
-                  <Image src={feat.authorModel.avatar} alt={feat.authorModel.name || feat.author || ""} width={26} height={26} sizes="26px" className="ava sm object-cover rounded-full" />
-                ) : (
-                  <div className="ava sm">{(feat.author || "xSypher Staff").charAt(0)}</div>
-                )}
-                <span><b>{feat.author}</b> <span className="dot">·</span> {<RelativeTime dateTime={new Date(feat.createdAt).toISOString()} />} <span className="dot">·</span> {feat.mins} min read</span>
+                <ArticleByline article={feat} size={26} />
+                <span><span className="dot">·</span> {<RelativeTime dateTime={new Date(feat.createdAt).toISOString()} />} <span className="dot">·</span> {feat.mins} min read</span>
               </div>
             </div>
           </article>

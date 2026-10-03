@@ -7,7 +7,6 @@ import { eq } from "drizzle-orm";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import { headers } from "next/headers";
 import { cache } from "react";
-import { verifyPassword } from "@/lib/crypto";
 import authConfig from "@/lib/auth.config";
 
 // Resolve secrets, cookies and the database adapter after request bindings exist.
@@ -71,6 +70,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
         // Use the Edge-compatible bcrypt-ts verifier
         let isPasswordValid = false;
         try {
+          // Session checks do not need the password hashing implementation.
+          const { verifyPassword } = await import("@/lib/crypto");
           isPasswordValid = await verifyPassword(credentials.password as string, user.password);
         } catch (error) {
           console.error("[auth] Password verification failed:", error);

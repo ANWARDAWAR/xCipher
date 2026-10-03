@@ -16,8 +16,9 @@ export interface Article {
   contentJson: any | null;
   contentHtml: string | null;
   img: string | null;
-  authorId: string;
+  authorId: string | null;
   author: string | null;
+  isAnonymous: boolean;
   categoryId: string | null;
   status: ArticleStatus;
   featured: boolean;

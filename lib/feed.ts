@@ -2,6 +2,7 @@ import { and, desc, eq, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { article } from "@/lib/db/schema";
 import { ARTICLE_CARD_COLUMNS, ARTICLE_CARD_WITH } from "@/lib/queries";
+import { maskPublicArticle } from "@/lib/personas";
 
 export interface FeedFilter {
   categorySlug?: string;
@@ -25,16 +26,19 @@ export function publicFeedWhere(filter: FeedFilter = {}) {
       : undefined,
     // Retain legacy articles whose byline predates the author relation.
     filter.authorId
-      ? or(
-          eq(article.authorId, filter.authorId),
-          sql`${article.author} IN (SELECT name FROM "Author" WHERE id = ${filter.authorId} AND name <> '')`,
+      ? and(
+          eq(article.isAnonymous, false),
+          or(
+            eq(article.authorId, filter.authorId),
+            sql`${article.author} IN (SELECT name FROM "Author" WHERE id = ${filter.authorId} AND name <> '')`,
+          ),
         )
       : undefined,
   );
 }
 
 export async function queryPublicFeed(offset: number, limit: number, filter: FeedFilter = {}) {
-  return db.query.article.findMany({
+  const articles = await db.query.article.findMany({
     where: publicFeedWhere(filter),
     // The ID breaks timestamp ties so adjacent pages have a stable order.
     orderBy: [desc(article.publishedAt), desc(article.id)],
@@ -43,6 +47,7 @@ export async function queryPublicFeed(offset: number, limit: number, filter: Fee
     columns: ARTICLE_CARD_COLUMNS,
     with: ARTICLE_CARD_WITH,
   });
+  return articles.map(maskPublicArticle);
 }
 
 export type FeedArticle = Awaited<ReturnType<typeof queryPublicFeed>>[number];

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { siteConfig } from "@/lib/seo";
+import { getArticleAuthor } from "@/lib/personas";
 import { and, eq, lte } from "drizzle-orm";
 import { article as articleTable } from "@/lib/db/schema";
 
@@ -16,6 +17,7 @@ export async function GET() {
       limit: 20,
       with: {
         authorModel: true,
+        category: { with: { parent: true } },
       },
     });
 
@@ -38,7 +40,7 @@ export async function GET() {
         const pubDate = article.publishedAt 
           ? new Date(article.publishedAt).toUTCString()
           : new Date(article.createdAt).toUTCString();
-        const author = escapeXml(article.authorModel?.name || article.author || "xSypher Editorial");
+        const author = escapeXml(getArticleAuthor(article).name);
 
         return `
     <item>

@@ -34,15 +34,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const dbUser = await db.query.user.findFirst({
     where: eq(userTable.id, user.id),
-    with: { authorProfile: true },
+    columns: { name: true, image: true, role: true },
+    with: { authorProfile: { columns: { name: true, avatar: true } } },
   });
 
   const displayName = dbUser?.authorProfile?.name || dbUser?.name || user.name || "User";
   const avatarUrl = dbUser?.authorProfile?.avatar || dbUser?.image || null;
-  const headline = dbUser?.authorProfile?.headline || null;
   const initial = displayName.charAt(0).toUpperCase();
   const userRole = (dbUser?.role || user.role || "AUTHOR").toUpperCase();
-  const authorSlug = dbUser?.authorProfile?.slug || null;
 
   let reviewCount = 0;
   if (canViewReviewQueue(userRole as Role)) {

@@ -10,7 +10,7 @@ function webUrl(value: unknown, base?: string): string | undefined {
   }
 }
 
-export function parseAuthorSocialLinks(raw: unknown): { platform: string; url: string }[] {
+export function parseAuthorSocialLinks(raw: unknown, includeEmail = false): { platform: string; url: string }[] {
   let value: unknown = raw;
   if (typeof value === "string") {
     try { value = JSON.parse(value); } catch { return []; }
@@ -20,7 +20,7 @@ export function parseAuthorSocialLinks(raw: unknown): { platform: string; url: s
       ? Object.entries(value).map(([platform, url]) => ({ platform, url })) : [];
   return entries.flatMap(entry => {
     if (!entry || typeof entry !== "object" || !("url" in entry)) return [];
-    const url = webUrl(entry.url);
+    const url = webUrl(entry.url) || (includeEmail && typeof entry.url === "string" && /^mailto:[^\s]+$/i.test(entry.url) ? entry.url : undefined);
     if (!url) return [];
     const platform = "platform" in entry && typeof entry.platform === "string" ? entry.platform : "Website";
     return [{ platform, url }];

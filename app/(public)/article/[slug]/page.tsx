@@ -9,8 +9,8 @@ import { getArticleRecommendations, getBenchmarkLeaderboard } from "@/lib/cached
 import { eq, and, sql } from "drizzle-orm";
 import { article as articleTable } from "@/lib/db/schema";
 import { constructMetadata, generateNewsArticleJsonLd } from "@/lib/seo";
+import { getArticleAuthor } from "@/lib/personas";
 import { serializeJsonLd, withEditorialSchema } from "@/lib/article-schema";
-import { SocialIcon } from "@/components/author/AuthorProfileView";
 import ArticleBody from "@/components/article/ArticleBody";
 import ArticleSidebar from "@/components/article/ArticleSidebar";
 import TableOfContents from "@/components/article/TableOfContents";
@@ -23,6 +23,9 @@ import ArticleMobileToolbar from "@/components/article/ArticleMobileToolbar";
 import ViewCounter from "@/components/article/ViewCounter";
 import ActiveCategorySetter from "@/components/layout/ActiveCategorySetter";
 import ShareRow from "@/components/article/ShareRow";
+import ArticleByline from "@/components/article/ArticleByline";
+import AuthorBox from "@/components/article/AuthorBox";
+
 interface Props {
   params: Promise<{ slug: string }>;
 }
@@ -31,7 +34,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const [article] = await db.query.article.findMany({ 
     where: and(eq(articleTable.slug, slug), eq(articleTable.status, "PUBLISHED")),
-    limit: 1
+    limit: 1,
+    with: { category: { with: { parent: true } }, authorModel: { columns: { name: true, slug: true } } },
   });
 
   if (!article) {
@@ -56,7 +60,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     type: "article",
     publishedTime: article.publishedAt ? article.publishedAt.toISOString() : article.createdAt.toISOString(),
     modifiedTime: article.updatedAt.toISOString(),
-    authors: [article.author || "xSypher Staff"],
+    authors: [getArticleAuthor(article).name],
   });
 }
 
@@ -80,7 +84,7 @@ export default async function ArticlePage({ params }: Props) {
     limit: 1,
     columns: {
       id: true, slug: true, title: true, deck: true, img: true, featuredImageAlt: true, featuredImageCaption: true, featuredImageCredit: true, author: true, role: true, views: true,
-      status: true, createdAt: true, publishedAt: true, updatedAt: true, categoryId: true, contentUrl: true
+      status: true, createdAt: true, publishedAt: true, updatedAt: true, categoryId: true, contentUrl: true, isAnonymous: true
     },
     with: { category: { with: { parent: true } }, authorModel: true, tags: { with: { tag: true } } } 
   });
@@ -104,18 +108,6 @@ export default async function ArticlePage({ params }: Props) {
   const subCat = mainCat ? article.category : null;
   const catName = mainCat?.name || article.category?.name || "News";
   const catSlug = mainCat?.slug || article.category?.slug || "news";
-  
-  const authorName = article.authorModel?.name || article.author || "xSypher Staff";
-  const authorSlug = article.authorModel?.slug || null;
-  const articleAuthorRole = article.authorModel?.role || article.role || "Contributing writer";
-
-  let socials: { platform: string; url: string }[] = [];
-  try {
-    const raw = article.authorModel?.socialLinks;
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : (raw || []);
-    if (Array.isArray(parsed)) socials = parsed.filter(s => s.url?.trim());
-  } catch { socials = []; }
-
   // Independent content and auxiliary reads can run concurrently.
   const [r2Content, globalLeaderboard, { related: relatedDb, discoverMore: discoverMoreDb }] = await Promise.all([
     fetchFromR2(article.contentUrl),
@@ -214,31 +206,7 @@ export default async function ArticlePage({ params }: Props) {
               <p className="art-deck" itemProp="description">{article.deck}</p>
               
               <div className="py-4 my-6 border-t border-b border-[var(--line)]">
-                <div className="flex items-center gap-3 mb-4">
-                  {authorSlug ? (
-                    <Link href={`/author/${authorSlug}`} className="shrink-0">
-                      {article.authorModel?.avatar ? (
-                        <Image src={article.authorModel.avatar} alt={authorName} width={40} height={40} sizes="40px" className="w-10 h-10 rounded-full shrink-0 object-cover" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold shrink-0">{authorName.charAt(0)}</div>
-                      )}
-                    </Link>
-                  ) : (
-                    article.authorModel?.avatar ? (
-                      <Image src={article.authorModel.avatar} alt={authorName} width={40} height={40} sizes="40px" className="w-10 h-10 rounded-full shrink-0 object-cover" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold shrink-0">{authorName.charAt(0)}</div>
-                    )
-                  )}
-                  <div className="flex flex-col justify-center flex-1 min-w-0">
-                    {authorSlug ? (
-                      <Link href={`/author/${authorSlug}`} className="text-sm font-bold text-[var(--ink)] hover:text-[var(--accent)] truncate" itemProp="author">{authorName}</Link>
-                    ) : (
-                      <span className="text-sm font-bold text-[var(--ink)] truncate" itemProp="author">{authorName}</span>
-                    )}
-                    <span className="text-xs text-[var(--muted)] whitespace-normal break-words">{articleAuthorRole}</span>
-                  </div>
-                </div>
+                <div className="flex items-center gap-3 mb-4"><ArticleByline article={article} size={40} showRole /></div>
                 <div className="font-mono text-[11px] text-[var(--muted)] tracking-tight flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span>Published <b><time itemProp="datePublished" className="text-[var(--ink)]">{(article.publishedAt || article.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</time></b></span>
                   <span className="hidden sm:inline">·</span>
@@ -325,56 +293,7 @@ export default async function ArticlePage({ params }: Props) {
           </span>
         </div>
 
-        <section className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl p-4 sm:p-7 shadow-sm flex flex-col mt-4 mb-8" aria-label="About the author">
-          <div className="flex items-center gap-3 sm:gap-4 mb-3">
-            <div className="flex-shrink-0">
-              {authorSlug ? (
-                <Link href={`/author/${authorSlug}`} className="block">
-                  {article.authorModel?.avatar ? (
-                    <Image src={article.authorModel.avatar} alt={authorName} width={80} height={80} sizes="(min-width: 640px) 80px, 64px" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]" />
-                  ) : (
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold text-xl sm:text-2xl shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]">{authorName.charAt(0)}</div>
-                  )}
-                </Link>
-              ) : (
-                article.authorModel?.avatar ? (
-                  <Image src={article.authorModel.avatar} alt={authorName} width={80} height={80} sizes="(min-width: 640px) 80px, 64px" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]" />
-                ) : (
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold text-xl sm:text-2xl shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]">{authorName.charAt(0)}</div>
-                )
-              )}
-            </div>
-            <div className="flex-1 min-w-0 flex flex-col justify-center">
-              <span className="text-base font-bold sm:text-lg leading-tight truncate text-[var(--ink)]">
-                {authorSlug ? (
-                  <Link href={`/author/${authorSlug}`} className="hover:text-[var(--accent)] transition-colors">{authorName}</Link>
-                ) : authorName}
-              </span>
-              <span className="text-[9px] sm:text-[11px] leading-snug line-clamp-2 mt-0.5 text-[var(--accent)] tracking-wider uppercase">
-                {articleAuthorRole}
-              </span>
-            </div>
-          </div>
-          
-          <p className="text-sm text-[var(--muted)] leading-relaxed max-w-2xl">
-            {article.authorModel?.overview || "Contributing writer at xSypher."}
-          </p>
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--line)]/50">
-            <div className="flex items-center gap-1.5">
-              {socials.map((s, i) => (
-                <Link key={i} href={s.url} target="_blank" rel="noopener noreferrer" aria-label={`${authorName} on ${s.platform}`} className="inline-flex items-center justify-center w-8 h-8 rounded-full text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors">
-                  <SocialIcon platform={s.platform} />
-                </Link>
-              ))}
-            </div>
-            {authorSlug && (
-              <Link href={`/author/${authorSlug}`} className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--ink)] hover:text-[var(--accent)] transition-colors group">
-                View all articles 
-                <span aria-hidden="true" className="group-hover:translate-x-1 transition-transform duration-150">→</span>
-              </Link>
-            )}
-          </div>
-        </section>
+        <AuthorBox article={article} />
 
         <CommentsSection articleSlug={article.slug} />
 

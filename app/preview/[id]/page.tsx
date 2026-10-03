@@ -9,7 +9,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { canEditArticle, canViewReviewQueue } from "@/lib/permissions";
 import { eq, inArray, and, not, notInArray } from "drizzle-orm";
 import { article as articleTable, user as userTable } from "@/lib/db/schema";
-import { SocialIcon } from "@/components/author/AuthorProfileView";
 import ArticleBody from "@/components/article/ArticleBody";
 import ArticleSidebar from "@/components/article/ArticleSidebar";
 import TableOfContents from "@/components/article/TableOfContents";
@@ -21,6 +20,9 @@ import { fetchFromR2 } from "@/lib/storage";
 import ArticleMobileToolbar from "@/components/article/ArticleMobileToolbar";
 import ActiveCategorySetter from "@/components/layout/ActiveCategorySetter";
 import { Role } from "@/lib/types";
+import { ARTICLE_CARD_COLUMNS, ARTICLE_CARD_WITH } from "@/lib/queries";
+import ArticleByline from "@/components/article/ArticleByline";
+import AuthorBox from "@/components/article/AuthorBox";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -87,19 +89,6 @@ export default async function PreviewPage({ params }: Props) {
   const subCat = mainCat ? article.category : null;
   const catName = mainCat?.name || article.category?.name || "News";
   const catSlug = mainCat?.slug || article.category?.slug || "news";
-  
-  const authorName = article.authorModel?.name || article.author || "xSypher Staff";
-  const authorSlug = article.authorModel?.slug || null;
-  const articleAuthorRole = article.authorModel?.role || article.role || "Contributing writer";
-  const authorBio = article.authorModel?.overview || "Contributing writer for xSypher.";
-
-  let socials: { platform: string; url: string }[] = [];
-  try {
-    const raw = article.authorModel?.socialLinks;
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : (raw || []);
-    if (Array.isArray(parsed)) socials = parsed.filter(s => s.url?.trim());
-  } catch { socials = []; }
-
   const r2Content = await fetchFromR2(article.contentUrl);
   const articleHtml = typeof r2Content === "object" ? r2Content?.html : r2Content || "<p>Content could not be loaded.</p>";
 
@@ -115,23 +104,8 @@ export default async function PreviewPage({ params }: Props) {
       ),
       orderBy: (a, { desc }) => [desc(a.publishedAt)],
       limit: 3,
-      columns: {
-        id: true,
-        title: true,
-        slug: true,
-        img: true,
-        deck: true,
-        status: true,
-        publishedAt: true,
-        createdAt: true,
-        updatedAt: true,
-        author: true,
-        views: true,
-      },
-      with: {
-        category: { columns: { name: true, slug: true } },
-        authorModel: { columns: { name: true, slug: true, avatar: true } }
-      }
+      columns: ARTICLE_CARD_COLUMNS,
+      with: ARTICLE_CARD_WITH
     });
   }
 
@@ -145,23 +119,8 @@ export default async function PreviewPage({ params }: Props) {
       ),
       orderBy: (a, { desc }) => [desc(a.publishedAt)],
       limit: 3 - relatedDb.length,
-      columns: {
-        id: true,
-        title: true,
-        slug: true,
-        img: true,
-        deck: true,
-        status: true,
-        publishedAt: true,
-        createdAt: true,
-        updatedAt: true,
-        author: true,
-        views: true,
-      },
-      with: {
-        category: { columns: { name: true, slug: true } },
-        authorModel: { columns: { name: true, slug: true, avatar: true } }
-      }
+      columns: ARTICLE_CARD_COLUMNS,
+      with: ARTICLE_CARD_WITH
     });
     relatedDb = [...relatedDb, ...fallback];
   }
@@ -224,31 +183,7 @@ export default async function PreviewPage({ params }: Props) {
               <p className="art-deck" itemProp="description">{article.deck}</p>
               
               <div className="py-4 my-6 border-t border-b border-[var(--line)]">
-                <div className="flex items-center gap-3 mb-4">
-                  {authorSlug ? (
-                    <Link href={`/author/${authorSlug}`} className="shrink-0">
-                      {article.authorModel?.avatar ? (
-                        <Image src={article.authorModel.avatar} alt={authorName} width={40} height={40} sizes="40px" className="w-10 h-10 rounded-full shrink-0 object-cover" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold shrink-0">{authorName.charAt(0)}</div>
-                      )}
-                    </Link>
-                  ) : (
-                    article.authorModel?.avatar ? (
-                      <Image src={article.authorModel.avatar} alt={authorName} width={40} height={40} sizes="40px" className="w-10 h-10 rounded-full shrink-0 object-cover" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold shrink-0">{authorName.charAt(0)}</div>
-                    )
-                  )}
-                  <div className="flex flex-col justify-center flex-1 min-w-0">
-                    {authorSlug ? (
-                      <Link href={`/author/${authorSlug}`} className="text-sm font-bold text-[var(--ink)] hover:text-[var(--accent)] truncate" itemProp="author">{authorName}</Link>
-                    ) : (
-                      <span className="text-sm font-bold text-[var(--ink)] truncate" itemProp="author">{authorName}</span>
-                    )}
-                    <span className="text-xs text-[var(--muted)] whitespace-normal break-words">{articleAuthorRole}</span>
-                  </div>
-                </div>
+                <div className="flex items-center gap-3 mb-4"><ArticleByline article={article} size={40} showRole /></div>
                 <div className="font-mono text-[11px] text-[var(--muted)] tracking-tight flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span>Published <b><time itemProp="datePublished" className="text-[var(--ink)]">{(article.publishedAt || article.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</time></b></span>
                   <span className="hidden sm:inline">·</span>
@@ -321,56 +256,7 @@ export default async function PreviewPage({ params }: Props) {
                 </span>
               </div>
 
-              <section className="bg-[var(--surface)] border border-[var(--line)] rounded-2xl p-4 sm:p-7 shadow-sm flex flex-col mt-12 mb-10" aria-label="About the author">
-                <div className="flex items-center gap-3 sm:gap-4 mb-3">
-                  <div className="flex-shrink-0">
-                    {authorSlug ? (
-                      <Link href={`/author/${authorSlug}`} className="block">
-                        {article.authorModel?.avatar ? (
-                          <Image src={article.authorModel.avatar} alt={authorName} width={80} height={80} sizes="(min-width: 640px) 80px, 64px" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]" />
-                        ) : (
-                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold text-xl sm:text-2xl shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]">{authorName.charAt(0)}</div>
-                        )}
-                      </Link>
-                    ) : (
-                      article.authorModel?.avatar ? (
-                        <Image src={article.authorModel.avatar} alt={authorName} width={80} height={80} sizes="(min-width: 640px) 80px, 64px" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]" />
-                      ) : (
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--surface-3)] text-[var(--ink)] flex items-center justify-center font-bold text-xl sm:text-2xl shadow-sm shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]">{authorName.charAt(0)}</div>
-                      )
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <span className="text-base font-bold sm:text-lg leading-tight truncate text-[var(--ink)]">
-                      {authorSlug ? (
-                        <Link href={`/author/${authorSlug}`} className="hover:text-[var(--accent)] transition-colors">{authorName}</Link>
-                      ) : authorName}
-                    </span>
-                    <span className="text-[9px] sm:text-[11px] leading-snug line-clamp-2 mt-0.5 text-[var(--accent)] tracking-wider uppercase">
-                      {articleAuthorRole}
-                    </span>
-                  </div>
-                </div>
-                
-                <p className="text-sm text-[var(--muted)] leading-relaxed max-w-2xl">
-                  {authorBio}
-                </p>
-                <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--line)]/50">
-                  <div className="flex items-center gap-1.5">
-                    {socials.map((s, i) => (
-                      <Link key={i} href={s.url} target="_blank" rel="noopener noreferrer" aria-label={`${authorName} on ${s.platform}`} className="inline-flex items-center justify-center w-8 h-8 rounded-full text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors">
-                        <SocialIcon platform={s.platform} />
-                      </Link>
-                    ))}
-                  </div>
-                  {authorSlug && (
-                    <Link href={`/author/${authorSlug}`} className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--ink)] hover:text-[var(--accent)] transition-colors group">
-                      View all articles 
-                      <span aria-hidden="true" className="group-hover:translate-x-1 transition-transform duration-150">→</span>
-                    </Link>
-                  )}
-                </div>
-              </section>
+              <AuthorBox article={article} />
 
               <CommentsSection articleSlug={article.slug} />
 

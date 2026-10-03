@@ -1,4 +1,5 @@
 import { getImgSrc } from "@/lib/utils";
+import { getArticleAuthor, type ArticleAuthorSource } from "@/lib/personas";
 
 export const siteConfig = {
   name: "xSypher",
@@ -72,7 +73,22 @@ export function constructMetadata({
   };
 }
 
-export function generateNewsArticleJsonLd(article: any) {
+interface NewsArticleSource extends ArticleAuthorSource {
+  title: string;
+  slug: string;
+  deck?: string | null;
+  seoTitle?: string | null;
+  seoDesc?: string | null;
+  img?: string | null;
+  featuredImageCaption?: string | null;
+  featuredImageCredit?: string | null;
+  publishedAt?: Date | string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export function generateNewsArticleJsonLd(article: NewsArticleSource) {
+  const author = getArticleAuthor(article);
   return {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
@@ -86,13 +102,14 @@ export function generateNewsArticleJsonLd(article: any) {
     }] : undefined,
     "datePublished": article.publishedAt ? new Date(article.publishedAt).toISOString() : new Date(article.createdAt).toISOString(),
     "dateModified": new Date(article.updatedAt).toISOString(),
-    "author": article.authorModel ? [{
+    "author": article.isAnonymous ? {
+      "@type": "Organization",
+      "name": author.name,
+      "url": siteConfig.url,
+    } : [{
       "@type": "Person",
-      "name": article.authorModel.name,
-      "url": `${siteConfig.url}/author/${article.authorModel.slug}`
-    }] : [{
-      "@type": "Person",
-      "name": article.author || "xSypher Staff"
+      "name": author.name,
+      ...(author.slug ? { url: `${siteConfig.url}/author/${author.slug}` } : {}),
     }],
     "publisher": {
       "@type": "Organization",

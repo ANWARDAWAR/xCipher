@@ -45,8 +45,13 @@ export default async function SearchPage({ searchParams }: Props) {
       q ? or(
         ilike(articleTable.title, pattern),
         ilike(articleTable.deck, pattern),
-        ilike(articleTable.author, pattern),
-        sql`${articleTable.authorId} IN (SELECT id FROM "User" WHERE "name" ILIKE ${pattern})`,
+        and(
+          eq(articleTable.isAnonymous, false),
+          or(
+            ilike(articleTable.author, pattern),
+            sql`${articleTable.authorId} IN (SELECT id FROM "Author" WHERE "name" ILIKE ${pattern})`,
+          ),
+        ),
         sql`${q} = ANY(${articleTable.legacyTags})`,
         sql`${articleTable.id} IN (SELECT "A" FROM "_ArticleToTag" WHERE "B" IN (SELECT id FROM "Tag" WHERE "name" ILIKE ${pattern}))`,
         sql`${articleTable.categoryId} IN (SELECT id FROM "Category" WHERE "name" ILIKE ${pattern})`

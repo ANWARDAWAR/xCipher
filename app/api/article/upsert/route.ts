@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { upsertArticle } from "@/app/actions/article";
 
 export async function POST(req: NextRequest) {
   try {
     const data = await req.json();
     const result = await upsertArticle(data);
-    return NextResponse.json(result);
-  } catch (error: any) {
+    return Response.json(result);
+  } catch (error: unknown) {
     console.error("[api/article/upsert] Error:", error);
-    return NextResponse.json({ success: false, error: "An unexpected error occurred." }, { status: 500 });
+    return Response.json({ success: false, error: "An unexpected error occurred." }, { status: 500 });
   }
 }

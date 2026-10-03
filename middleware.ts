@@ -1,14 +1,12 @@
 import NextAuth from "next-auth";
 import authConfig from "@/lib/auth.config";
+import type { Role } from "@/lib/types";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const { auth: edgeAuth } = NextAuth(authConfig);
 
 export default async function middleware(req: NextRequest) {
-    const session = await edgeAuth();
-    const token = session?.user;
-    
     const url = req.nextUrl.clone();
     const hostname = req.headers.get("host") || "";
     const pathname = url.pathname;
@@ -55,16 +53,28 @@ export default async function middleware(req: NextRequest) {
       effectivePath.startsWith("/admin/reset-password");
 
     const isProtected = effectivePath.startsWith("/admin") && !isAuthPublicRoute;
-                        
-    if (isProtected) {
+    // Both editor pages verify the active database user and their capabilities
+    // themselves, and the authenticated layout also enforces console access.
+    // Keep subdomain routing here without decoding their JWT a second time.
+    const editorVerifiesSession =
+      (req.method === "GET" || req.method === "HEAD") &&
+      (effectivePath === "/admin/editor" || effectivePath.startsWith("/admin/editor/"));
+
+    if (isProtected && !editorVerifiesSession) {
+      // Public pages and auth entry points do not need JWT decoding. API
+      // handlers are excluded below and verify their own sessions.
+      const session = await edgeAuth();
+      const token = session?.user;
       if (!token) {
         url.pathname = isAdminSubdomain ? "/login" : "/admin/login";
         url.searchParams.set("callbackUrl", isLocalDev ? `${url.origin}${effectivePath}` : req.url);
         return NextResponse.redirect(url);
       }
       
-      // Reject STAFF from accessing the admin console
-      if (token.role === "STAFF") {
+      // Load the policy only for authenticated console requests; its query
+      // scoping helpers should not initialize Drizzle on public page visits.
+      const { authorize } = await import("@/lib/capabilities");
+      if (!authorize(token.role as Role, "console.access")) {
         url.pathname = "/";
         url.hostname = isApex ? hostname : (process.env.NODE_ENV === "production" && !isLocalDev ? "xsypher.com" : "localhost:3000");
         return NextResponse.redirect(url);
@@ -88,6 +98,6 @@ export default async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api).*)",
+    "/((?!api(?:/|$)|_next/|favicon\\.ico$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$).*)",
   ],
 };

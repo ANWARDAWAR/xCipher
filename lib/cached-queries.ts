@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { db } from "./db";
 import { CACHE_TAGS, categoryTag, authorTag } from "./cache-tags";
 import { publicFeedWhere, queryPublicFeed } from "./feed";
+import { maskPublicArticle } from "./personas";
 import { eq, and, or, ne, lte, isNull, inArray, notInArray, sql } from "drizzle-orm";
 import { article as articleTable, benchmarkLeaderboard } from "@/lib/db/schema";
 import {
@@ -45,13 +46,14 @@ import {
 export const getHomeArticles = unstable_cache(
   async () => {
     try {
-      return await db.query.article.findMany({
+      const articles = await db.query.article.findMany({
         where: and(eq(articleTable.status, "PUBLISHED"), or(isNull(articleTable.publishedAt), lte(articleTable.publishedAt, new Date()))),
         orderBy: (a, { desc }) => [desc(a.publishedAt)],
         limit: HOME_ARTICLE_LIMIT,
         columns: ARTICLE_CARD_COLUMNS,
         with: ARTICLE_CARD_WITH,
       });
+      return articles.map(maskPublicArticle);
     } catch (error) {
       console.warn("[cached-queries] Failed to fetch home articles:", error);
       return [];
@@ -78,7 +80,7 @@ export const getHomeHeroArticle = unstable_cache(
       columns: ARTICLE_CARD_COLUMNS,
       with: ARTICLE_CARD_WITH,
     });
-    return hero ?? null;
+    return hero ? maskPublicArticle(hero) : null;
   },
   ["home-hero"],
   { tags: [CACHE_TAGS.articles, CACHE_TAGS.homepage], revalidate: 300 },
@@ -86,17 +88,20 @@ export const getHomeHeroArticle = unstable_cache(
 
 /** The hero ID participates in the cache key through the function arguments. */
 export const getHomeBriefing = unstable_cache(
-  async (heroId: string) => db.query.article.findMany({
-    where: and(
-      eq(articleTable.status, "PUBLISHED"),
-      or(isNull(articleTable.publishedAt), lte(articleTable.publishedAt, new Date())),
-      ne(articleTable.id, heroId),
-    ),
-    orderBy: (a, { desc }) => [desc(a.publishedAt)],
-    limit: 4,
-    columns: ARTICLE_CARD_COLUMNS,
-    with: ARTICLE_CARD_WITH,
-  }),
+  async (heroId: string) => {
+    const articles = await db.query.article.findMany({
+      where: and(
+        eq(articleTable.status, "PUBLISHED"),
+        or(isNull(articleTable.publishedAt), lte(articleTable.publishedAt, new Date())),
+        ne(articleTable.id, heroId),
+      ),
+      orderBy: (a, { desc }) => [desc(a.publishedAt)],
+      limit: 4,
+      columns: ARTICLE_CARD_COLUMNS,
+      with: ARTICLE_CARD_WITH,
+    });
+    return articles.map(maskPublicArticle);
+  },
   ["home-briefing"],
   { tags: [CACHE_TAGS.articles, CACHE_TAGS.homepage], revalidate: 300 },
 );
@@ -222,7 +227,7 @@ export function getArticleRecommendations(articleId: string, tagIds: string[], m
         with: ARTICLE_CARD_WITH,
       });
 
-      return { related, discoverMore };
+      return { related: related.map(maskPublicArticle), discoverMore: discoverMore.map(maskPublicArticle) };
     },
     ["article-recommendations", categorySlug],
     { tags: [CACHE_TAGS.articles, categoryTag(categorySlug)], revalidate: 3600 },

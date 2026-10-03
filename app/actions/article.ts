@@ -1,28 +1,44 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { article, auditLog, category, articleRevision, _articleToTag, user, author, tag, benchmarkLeaderboard } from "@/lib/db/schema";
+import { article, auditLog, category, articleRevision, _articleToTag, tag, benchmarkLeaderboard } from "@/lib/db/schema";
 import { eq, inArray, or, and, not, sql } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "@/lib/revalidate";
 import { articleMutationTags } from "@/lib/cache-tags";
 import { getCurrentUser } from "@/lib/auth";
-import { canEditArticle, canPublishArticle, canDeleteArticle } from "@/lib/permissions";
-import { sanitizeArticleHtml, isValidSafeUrl, getAllowedMediaDomains } from "@/lib/sanitize";
+import { canEditArticle } from "@/lib/permissions";
+import { sanitizeArticleHtml, isValidSafeUrl } from "@/lib/sanitize";
 import { calculateReadTime, deriveIsFeatured } from "@/lib/utils";
 import { authorize } from "@/lib/capabilities";
 import { handleServerError } from "@/lib/errors";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import { headers } from "next/headers";
+import { after } from "next/server";
 import { uploadToR2, deleteKeyFromR2 } from "@/lib/storage";
 
-import { Role } from "@/lib/types";
+import type { Role } from "@/lib/types";
 
-async function logAudit(action: string, entityType: string, entityId?: string, details?: any) {
+// Do not return the article's full search text over Neon HTTP and serialize
+// it again in the save response. Revisions and the editor only need metadata.
+const savedArticleColumns = {
+  id: article.id,
+  slug: article.slug,
+  title: article.title,
+  deck: article.deck,
+  contentUrl: article.contentUrl,
+  authorId: article.authorId,
+  isAnonymous: article.isAnonymous,
+  status: article.status,
+  updatedAt: article.updatedAt,
+};
+type SavedArticle = Pick<typeof article.$inferSelect, keyof typeof savedArticleColumns>;
+
+async function logAudit(action: string, entityType: string, entityId?: string, details?: unknown, actorId?: string) {
   try {
-    const userSession = await getCurrentUser();
+    const userId = actorId ?? (await getCurrentUser())?.id ?? null;
     await db.insert(auditLog).values({
       id: crypto.randomUUID(),
-      userId: userSession?.id || null,
+      userId,
       action,
       entityType,
       entityId: entityId || null,
@@ -56,26 +72,19 @@ export async function upsertArticle(data: any) {
       return { success: false, error: "Unauthenticated" };
     }
 
-    const dbUser = await db.query.user.findFirst({
-      where: eq(user.id, userSession.id),
-      with: { authorProfile: true }
-    });
-
-    if (!dbUser) {
-      return { success: false, error: "User record not found" };
-    }
-
+    // getCurrentUser already checks the database for the active user's role,
+    // authorId and sessionVersion. Do not decode the session or fetch it again.
     const userWithAuth = {
-      id: dbUser.id,
-      role: dbUser.role as Role,
-      authorId: dbUser.authorProfile?.id || null,
+      id: userSession.id,
+      role: userSession.role as Role,
+      authorId: userSession.authorId,
     };
 
     let existingArticle = null;
     if (data.id) {
       existingArticle = await db.query.article.findFirst({
         where: eq(article.id, data.id),
-        columns: { id: true, authorId: true, updatedAt: true, status: true, publishedAt: true, slug: true, contentUrl: true }
+        columns: { id: true, authorId: true, isAnonymous: true, updatedAt: true, status: true, publishedAt: true, slug: true, previousSlugs: true, contentUrl: true }
       });
       if (!existingArticle) {
         return { success: false, error: "Article not found" };
@@ -106,15 +115,21 @@ export async function upsertArticle(data: any) {
       return { success: false, error: "Featured image URL is invalid." };
     }
 
+    if (data.isAnonymous !== undefined && typeof data.isAnonymous !== "boolean") {
+      return { success: false, error: "Anonymous publication must be a boolean." };
+    }
+
     const categorySlug = (data.cat || "technology").toLowerCase().trim();
     
-    const [catRecord] = await db.select().from(category).where(eq(category.slug, categorySlug)).limit(1);
+    const [catRecord] = await db.select({ id: category.id }).from(category).where(eq(category.slug, categorySlug)).limit(1);
 
     if (!catRecord) {
       return { success: false, error: "Invalid category selected." };
     }
 
-    const uniqueSlug = await getUniqueSlug(data.slug || data.title, data.id);
+    const uniqueSlug = existingArticle && data.slug === existingArticle.slug
+      ? existingArticle.slug
+      : await getUniqueSlug(data.slug || data.title, data.id);
     const articleId = data.id || crypto.randomUUID();
 
     const scheduledFor = data.scheduledFor ? new Date(data.scheduledFor) : null;
@@ -138,6 +153,7 @@ export async function upsertArticle(data: any) {
       contentUrl,
       textContent: typeof sanitizedBodyHtml === 'string' ? sanitizedBodyHtml.replace(/<[^>]*>?/gm, ' ') : null,
       author: data.author?.trim() || userSession.name || "xSypher Staff",
+      isAnonymous: data.isAnonymous ?? existingArticle?.isAnonymous ?? false,
       role: data.role?.trim() || userSession.role || null,
       featured: typeof data.featured === "boolean" ? data.featured : deriveIsFeatured(data.homepagePlacement || null),
       img: data.img || null,
@@ -175,39 +191,39 @@ export async function upsertArticle(data: any) {
 
     let actionType = "";
     let existingArticleStatus = "NEW";
-    let finalArticle: any;
+    let finalArticle: SavedArticle;
 
-    const tagsData = Array.isArray(data.tags) ? data.tags.filter(Boolean).map((s: string) => ({ slug: s })) : [];
+    const tagsData: { slug: string }[] = Array.isArray(data.tags) ? data.tags.filter(Boolean).map((s: string) => ({ slug: s })) : [];
 
     try {
       // neon-http is a one-shot driver and does not support interactive
       // transactions. Keep these writes ordered and remove the newly uploaded
       // R2 object if any database step fails.
-      for (const t of tagsData) {
-        await db.insert(tag).values({ id: crypto.randomUUID(), slug: t.slug, name: t.slug }).onConflictDoNothing({ target: tag.slug });
+      if (tagsData.length > 0) {
+        await db.insert(tag).values(tagsData.map(t => ({ id: crypto.randomUUID(), slug: t.slug, name: t.slug }))).onConflictDoNothing({ target: tag.slug });
       }
 
       const tagRecs = tagsData.length > 0
-        ? await db.select({ id: tag.id }).from(tag).where(inArray(tag.slug, tagsData.map((t: any) => t.slug)))
+        ? await db.select({ id: tag.id }).from(tag).where(inArray(tag.slug, tagsData.map(t => t.slug)))
         : [];
 
       if (data.id) {
         existingArticleStatus = existingArticle?.status || "NEW";
-        let finalStatusUpdate = undefined;
-        if (dbUser.role === "AUTHOR" && ["PUBLISHED", "APPROVED", "SCHEDULED"].includes(existingArticleStatus)) {
+        let finalStatusUpdate: "SUBMITTED" | undefined;
+        if (!authorize(userWithAuth.role, "article.publish") && ["PUBLISHED", "APPROVED", "SCHEDULED"].includes(existingArticleStatus)) {
           finalStatusUpdate = "SUBMITTED";
         }
 
-        const currentPreviousSlugs: string[] = (existingArticle as any)?.previousSlugs || [];
+        const currentPreviousSlugs = existingArticle?.previousSlugs || [];
         const updatedPreviousSlugs = existingArticle && existingArticle.slug !== uniqueSlug
           ? Array.from(new Set([...currentPreviousSlugs, existingArticle.slug]))
           : currentPreviousSlugs;
 
         const [updated] = await db.update(article).set({
           ...payload,
-          ...(finalStatusUpdate ? { status: finalStatusUpdate as any } : {}),
+          ...(finalStatusUpdate ? { status: finalStatusUpdate } : {}),
           previousSlugs: updatedPreviousSlugs,
-        }).where(eq(article.id, data.id)).returning();
+        }).where(eq(article.id, data.id)).returning(savedArticleColumns);
 
         await db.delete(_articleToTag).where(eq(_articleToTag.A, updated.id));
         if (tagRecs.length > 0) {
@@ -217,13 +233,15 @@ export async function upsertArticle(data: any) {
         finalArticle = updated;
         actionType = finalStatusUpdate ? `DEMOTED_TO_${finalStatusUpdate}` : `UPDATE_ARTICLE_${updated.status}`;
       } else {
-        const resolvedAuthorId = dbUser.role === "AUTHOR" ? userWithAuth.authorId : (data.authorId || userWithAuth.authorId || null);
+        const resolvedAuthorId = authorize(userWithAuth.role, "article.publish")
+          ? (data.authorId || userWithAuth.authorId || null)
+          : userWithAuth.authorId;
 
         const [created] = await db.insert(article).values({
           id: articleId,
           ...payload,
           authorId: resolvedAuthorId,
-        }).returning();
+        }).returning(savedArticleColumns);
 
         if (tagRecs.length > 0) {
           await db.insert(_articleToTag).values(tagRecs.map(tr => ({ A: created.id, B: tr.id })));
@@ -253,67 +271,88 @@ export async function upsertArticle(data: any) {
       throw dbErr;
     }
 
-    await logAudit(actionType, "Article", finalArticle.id, { title: finalArticle.title, status: finalArticle.status });
+    await logAudit(actionType, "Article", finalArticle.id, { title: finalArticle.title, status: finalArticle.status }, userSession.id);
 
-    if (finalArticle.status === "PUBLISHED" && data.bodyJson) {
-      try {
-        const bodyObj = typeof data.bodyJson === "string" ? JSON.parse(data.bodyJson) : data.bodyJson;
-        const metricsToUpsert: any[] = [];
-        const extractScores = (node: any) => {
-          if (node.type === "scoreBreakdownBlock" && node.attrs?.items) {
-            try {
-              const items = typeof node.attrs.items === "string" ? JSON.parse(node.attrs.items) : node.attrs.items;
-              for (const item of items) {
-                if (item.tab && item.subCategory && item.metric && typeof item.score === "number") {
-                  metricsToUpsert.push({
-                    id: crypto.randomUUID(),
-                    category: item.tab,
-                    subCategory: item.subCategory,
-                    metric: item.metric,
-                    topScore: item.score,
-                    deviceName: finalArticle.title,
-                    articleId: finalArticle.id,
-                    updatedAt: new Date()
-                  });
+    // Keep durable content, metadata, revisions and audit writes above. Next's
+    // after() uses the platform request lifetime for secondary work; it does
+    // not grant an additional Cloudflare CPU allowance.
+    after(async () => {
+      if (finalArticle.status === "PUBLISHED" && data.bodyJson) {
+        try {
+          const bodyObj = typeof data.bodyJson === "string" ? JSON.parse(data.bodyJson) : data.bodyJson;
+          const metricsToUpsert: (typeof benchmarkLeaderboard.$inferInsert)[] = [];
+          const extractScores = (node: any) => {
+            if (node.type === "scoreBreakdownBlock" && node.attrs?.items) {
+              try {
+                const items = typeof node.attrs.items === "string" ? JSON.parse(node.attrs.items) : node.attrs.items;
+                for (const item of items) {
+                  if (item.tab && item.subCategory && item.metric && typeof item.score === "number") {
+                    metricsToUpsert.push({
+                      id: crypto.randomUUID(),
+                      category: item.tab,
+                      subCategory: item.subCategory,
+                      metric: item.metric,
+                      topScore: item.score,
+                      deviceName: finalArticle.title,
+                      articleId: finalArticle.id,
+                      updatedAt: new Date()
+                    });
+                  }
                 }
+              } catch (e) {
+                console.error("Failed to parse items in scoreBreakdownBlock", e);
               }
-            } catch (e) {
-              console.error("Failed to parse items in scoreBreakdownBlock", e);
             }
-          }
-          if (node.content && Array.isArray(node.content)) {
-            node.content.forEach(extractScores);
-          }
-        };
-        extractScores(bodyObj);
+            if (node.content && Array.isArray(node.content)) {
+              node.content.forEach(extractScores);
+            }
+          };
+          extractScores(bodyObj);
 
-        if (metricsToUpsert.length > 0) {
-          for (const metric of metricsToUpsert) {
-            await db.insert(benchmarkLeaderboard).values(metric).onConflictDoUpdate({
-              target: [benchmarkLeaderboard.category, benchmarkLeaderboard.subCategory, benchmarkLeaderboard.metric],
-              set: {
-                topScore: metric.topScore,
-                deviceName: metric.deviceName,
-                articleId: metric.articleId,
-                updatedAt: metric.updatedAt,
-              },
-              where: sql`${benchmarkLeaderboard.topScore} < ${metric.topScore}`,
-            });
+          if (metricsToUpsert.length > 0) {
+            for (const metric of metricsToUpsert) {
+              await db.insert(benchmarkLeaderboard).values(metric).onConflictDoUpdate({
+                target: [benchmarkLeaderboard.category, benchmarkLeaderboard.subCategory, benchmarkLeaderboard.metric],
+                set: {
+                  topScore: metric.topScore,
+                  deviceName: metric.deviceName,
+                  articleId: metric.articleId,
+                  updatedAt: metric.updatedAt,
+                },
+                where: sql`${benchmarkLeaderboard.topScore} < ${metric.topScore}`,
+              });
+            }
+            await revalidateTag('benchmark-leaderboard', 'max');
           }
-          revalidateTag('benchmark-leaderboard', 'max');
+        } catch (err) {
+          console.error("Error processing benchmark leaderboard", err);
         }
-      } catch (err) {
-        console.error("Error processing benchmark leaderboard", err);
       }
-    }
 
-    await Promise.all([
-      ...articleMutationTags({ slug: finalArticle.slug }).map(tag => revalidateTag(tag, 'max')),
-      revalidatePath("/", "layout"),
-      revalidatePath("/admin", "layout"),
-      revalidatePath(`/article/${finalArticle.slug}`, "page"),
-      revalidatePath("/sitemap.xml"),
-    ]);
+      const invalidations = [
+        revalidatePath(`/admin/editor/${finalArticle.id}`),
+        revalidatePath("/admin/drafts"),
+        revalidatePath("/admin/articles"),
+      ];
+      // Draft autosaves cannot affect a public page. Avoid discarding the
+      // publication's caches or every route under its root layout for them.
+      if (finalArticle.status === "PUBLISHED" || existingArticle?.status === "PUBLISHED") {
+        const slugs = new Set([finalArticle.slug, existingArticle?.slug].filter((slug): slug is string => !!slug));
+        const tags = new Set([...slugs].flatMap(slug => articleMutationTags({ slug })));
+        invalidations.push(
+          ...[...tags].map(tag => revalidateTag(
+            tag,
+            // Expire cached real bylines when an editorial desk is involved.
+            payload.isAnonymous || existingArticle?.isAnonymous ? { expire: 0 } : 'max',
+          )),
+          ...[...slugs].map(slug => revalidatePath(`/article/${slug}`, "page")),
+          revalidatePath("/", "page"),
+          revalidatePath("/sitemap.xml"),
+          revalidatePath("/feed.xml"),
+        );
+      }
+      await Promise.all(invalidations);
+    });
 
     return { success: true, article: finalArticle };
   } catch (error: any) {
@@ -379,7 +418,7 @@ export async function restoreRevision(revisionId: string) {
       revisionId,
       revisionCreatedAt: rev.createdAt,
       title: rev.title,
-    });
+    }, userSession.id);
 
     revalidatePath(`/admin/articles/${articleData.id}`);
     revalidatePath(`/admin/editor/${articleData.id}`);

@@ -24,6 +24,7 @@ export const ARTICLE_CARD_COLUMNS = {
   deck: true,
   img: true,
   author: true,
+  isAnonymous: true,
   role: true,
   views: true,
   readingTime: true,
